@@ -11,13 +11,6 @@ struct RadioView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // DEBUG overlay
-                Text("DBG: conn=\(String(describing: viewModel.connectionState)) isConn=\(viewModel.isConnected) isPlay=\(viewModel.isPlaying)")
-                    .font(.system(size: 9, design: .monospaced))
-                    .foregroundStyle(.yellow)
-                    .background(Color.black.opacity(0.7))
-                    .frame(maxWidth: .infinity)
-
                 // Connection status bar
                 connectionBar
 
@@ -309,6 +302,20 @@ struct RadioView: View {
                         .fill(viewModel.dspPipeline.isSquelchOpen ? Color.green : Color.red)
                         .frame(width: 10, height: 10)
                         .accessibilityLabel(viewModel.dspPipeline.isSquelchOpen ? "Squelch open" : "Squelch closed")
+
+                    Text("\(Int(viewModel.squelchLevel * 100))")
+                        .font(.caption.monospacedDigit())
+                        .frame(width: 28)
+                }
+
+                HStack {
+                    Text("0=open, 100=tight")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(String(format: "Noise %.3f", viewModel.squelchNoiseLevel))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -346,6 +353,13 @@ struct RadioView: View {
                 Text(String(format: "%+.0f", viewModel.ppm))
                     .font(.caption.monospacedDigit())
                     .frame(width: 40)
+            }
+
+            HStack {
+                Text("PPM corrects tuner crystal error (frequency offset).")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
         }
         .padding(.horizontal)

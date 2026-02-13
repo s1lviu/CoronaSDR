@@ -43,6 +43,7 @@ public final class DSPPipeline: @unchecked Sendable {
     private var resampler: Resampler
     private var driftCompensator: DriftCompensator
     private var deemphasisUs: Float = 75
+    private let targetAudioFill: Double = 0.65
 
     // FFT output callback
     public var onFFTFrame: (([Float], Int) -> Void)? // (bins, fftSize)
@@ -73,7 +74,7 @@ public final class DSPPipeline: @unchecked Sendable {
         self.resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         self.driftCompensator = DriftCompensator(
             baseRatio: outputRate / intermediateRate,
-            targetFill: 0.5
+            targetFill: targetAudioFill
         )
 
         rebuildDemodChain()
@@ -341,7 +342,7 @@ public final class DSPPipeline: @unchecked Sendable {
         let intermediateRate = Double(sampleRate) / Double(decimFactor)
         let newBaseRatio = outputRate / intermediateRate
         resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
-        driftCompensator = DriftCompensator(baseRatio: newBaseRatio, targetFill: 0.5)
+        driftCompensator = DriftCompensator(baseRatio: newBaseRatio, targetFill: targetAudioFill)
 
         SDRLogger.dsp.info("Filters rebuilt: bw=\(self.bandwidthHz)Hz, decim=\(decimFactor), intermediate=\(intermediateRate)Hz")
         print("🔧 Filters: bw=\(self.bandwidthHz)Hz, taps=\(numTaps), decim=\(decimFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
@@ -354,6 +355,9 @@ public final class DSPPipeline: @unchecked Sendable {
 
     /// Check if squelch is currently open.
     public var isSquelchOpen: Bool { squelch.isOpen }
+
+    /// Smoothed squelch noise metric for diagnostics/UI.
+    public var squelchNoiseLevel: Float { squelch.noiseLevel }
 
     /// Reset all DSP state (call after retune).
     public func resetState() {

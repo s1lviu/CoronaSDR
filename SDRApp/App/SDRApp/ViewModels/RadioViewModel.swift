@@ -43,6 +43,7 @@ final class RadioViewModel {
     var mode: DemodMode = .wfm
     var bandwidthHz: Int = 200_000
     var stepHz: Int = 100_000
+    // UI squelch amount: 0 = open, 1 = tight.
     var squelchLevel: Float = 0
     var gainMode: GainMode = .auto
     var gainValue: Float = 0
@@ -63,14 +64,15 @@ final class RadioViewModel {
     var iqBufferFill: Double = 0
     var audioBufferFill: Double = 0
     var currentFPS: Double = 0
+    var squelchNoiseLevel: Float = 0
 
     // Spectrum
     let spectrumProcessor = SpectrumProcessor()
 
     // MARK: - Subsystems
 
-    let iqBuffer = IQRingBuffer(capacity: 2 * 1_024_000) // ~1 sec at 1MSPS 8-bit IQ
-    let audioBuffer = AudioRingBuffer(capacity: 48000)     // 1 sec at 48kHz
+    let iqBuffer = IQRingBuffer(capacity: 4 * 1_024_000) // ~2 sec at 1MSPS 8-bit IQ
+    let audioBuffer = AudioRingBuffer(capacity: 96_000)    // 2 sec at 48kHz
     let connection: RTLTCPConnection
     let dspPipeline: DSPPipeline
     let audioEngine: SDRAudioEngine
@@ -173,7 +175,7 @@ final class RadioViewModel {
         dspPipeline.mode = mode
         dspPipeline.bandwidthHz = bandwidthHz
         dspPipeline.bfoOffsetHz = bfoOffset
-        dspPipeline.setSquelch(squelchLevel)
+        dspPipeline.setSquelch(squelchThreshold(for: squelchLevel))
 
         // Start audio
         do {
@@ -256,7 +258,7 @@ final class RadioViewModel {
 
     func setSquelch(_ level: Float) {
         squelchLevel = level
-        dspPipeline.setSquelch(level)
+        dspPipeline.setSquelch(squelchThreshold(for: level))
     }
 
     func setBFOOffset(_ hz: Float) {
@@ -295,6 +297,7 @@ final class RadioViewModel {
                 self.iqBufferFill = self.iqBuffer.fillLevel
                 self.audioBufferFill = self.audioBuffer.fillLevel
                 self.currentFPS = self.waterfallRenderer?.currentFPS ?? 0
+                self.squelchNoiseLevel = self.dspPipeline.squelchNoiseLevel
                 self.isConnected = {
                     if case .connected = self.connection.state { return true }
                     return false
@@ -333,6 +336,12 @@ final class RadioViewModel {
 
     private func desiredDirectSamplingMode(for frequencyHz: Int) -> DirectSamplingMode {
         frequencyHz < directSamplingThresholdHz ? .qBranch : .off
+    }
+
+    private func squelchThreshold(for uiLevel: Float) -> Float {
+        let clamped = max(0, min(1, uiLevel))
+        // Invert slider semantics so higher UI level means tighter squelch.
+        return 1 - clamped
     }
 
     private func applyDirectSamplingForCurrentFrequency() {

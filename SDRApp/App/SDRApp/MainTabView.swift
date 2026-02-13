@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var viewModel = RadioViewModel()
 
@@ -37,10 +38,17 @@ struct MainTabView: View {
                 .tag(4)
         }
         .onAppear {
-            viewModel.setRadioTabVisible(selectedTab == 0)
+            updateRadioVisibility()
         }
         .onChange(of: selectedTab) { _, newValue in
-            viewModel.setRadioTabVisible(newValue == 0)
+            viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
         }
+        .onChange(of: scenePhase) { _, _ in
+            updateRadioVisibility()
+        }
+    }
+
+    private func updateRadioVisibility() {
+        viewModel.setRadioTabVisible(selectedTab == 0 && scenePhase == .active)
     }
 }

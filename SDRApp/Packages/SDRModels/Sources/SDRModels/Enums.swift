@@ -46,7 +46,7 @@ public enum DemodMode: String, Codable, CaseIterable, Identifiable, Sendable {
     /// Whether squelch is applicable for this mode.
     public var supportsSquelch: Bool {
         switch self {
-        case .am, .nfm, .wfm: return true
+        case .am, .nfm: return true
         default: return false
         }
     }
