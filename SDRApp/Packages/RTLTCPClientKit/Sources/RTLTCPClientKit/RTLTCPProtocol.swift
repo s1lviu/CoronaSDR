@@ -27,6 +27,13 @@ public enum RTLTCPCommand: UInt8, Sendable {
     }
 }
 
+/// Direct sampling mode for RTL-SDR front-end bypass.
+public enum DirectSamplingMode: UInt32, Sendable, Codable, CaseIterable {
+    case off = 0
+    case iBranch = 1
+    case qBranch = 2
+}
+
 /// Parsed rtl_tcp initial header (12 bytes: magic "RTL0" + tuner type + gain count).
 public struct RTLTCPHeader: Sendable, Equatable {
     public let magic: String

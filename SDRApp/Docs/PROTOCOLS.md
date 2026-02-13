@@ -55,6 +55,8 @@ Each command is 5 bytes: 1 byte command ID + 4 bytes big-endian parameter.
 - Set sample rate (0x02)
 - Set gain mode (0x03)
 - Set gain (0x04)
+- Set AGC mode (0x08)
+- Set direct sampling (0x09)
 - Set freq correction / PPM (0x05)
 - Set bias-tee (0x0E)
 

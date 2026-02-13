@@ -81,9 +81,28 @@ struct RadioView: View {
             Spacer()
 
             if viewModel.isPlaying {
+                if viewModel.isNetworkPoor {
+                    Text("Network Poor")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.red.opacity(0.15))
+                        .foregroundStyle(.red)
+                        .clipShape(Capsule())
+                }
                 Text(String(format: "%.1f Mbps", viewModel.throughputMbps))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+            }
+
+            if viewModel.isDirectSamplingActive {
+                Text("DS Q")
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.15))
+                    .foregroundStyle(.orange)
+                    .clipShape(Capsule())
             }
         }
         .padding(.horizontal)
@@ -234,6 +253,15 @@ struct RadioView: View {
 
     private var controlsSection: some View {
         VStack(spacing: 12) {
+            if viewModel.isDirectSamplingActive {
+                HStack {
+                    Text("Direct Sampling (Q) active for < 24 MHz")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    Spacer()
+                }
+            }
+
             // Gain
             HStack {
                 Text("Gain")

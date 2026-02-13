@@ -4,6 +4,8 @@ struct FrequencyKeypadView: View {
     let frequencyHz: Int
     let onSubmit: (Int) -> Void
 
+    private let directSamplingThresholdHz = 24_000_000
+
     @State private var input = ""
     @State private var unit: FreqUnit = .mhz
     @Environment(\.dismiss) private var dismiss
@@ -61,6 +63,14 @@ struct FrequencyKeypadView: View {
                     }
                 }
                 .padding(.horizontal)
+
+                if let hz = computedHz, hz < directSamplingThresholdHz {
+                    Text("Sub 24 MHz aplicația va activa automat Direct Sampling (Q).")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 // Quick presets
                 ScrollView(.horizontal, showsIndicators: false) {
