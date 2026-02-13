@@ -53,6 +53,12 @@ public struct SpectrumCanvasView: View {
             let w = size.width
             let h = size.height
             let count = bins.count
+            guard count > 1 else {
+                let y = h * (1.0 - CGFloat(bins[0]))
+                let rect = CGRect(x: 0, y: y, width: 2, height: 2)
+                context.fill(Path(ellipseIn: rect), with: .color(lineColor))
+                return
+            }
             let step = w / CGFloat(count - 1)
 
             // Draw spectrum line
