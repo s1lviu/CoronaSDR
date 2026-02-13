@@ -8,6 +8,7 @@ struct FrequencyKeypadView: View {
 
     @State private var input = ""
     @State private var unit: FreqUnit = .mhz
+    @State private var cursorOffset = 0
     @Environment(\.dismiss) private var dismiss
 
     enum FreqUnit: String, CaseIterable {
@@ -31,11 +32,9 @@ struct FrequencyKeypadView: View {
             VStack(spacing: 16) {
                 // Display
                 VStack(spacing: 4) {
-                    Text(input.isEmpty ? "Enter frequency" : input)
-                        .font(.system(size: 32, weight: .bold, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    inputDisplay
                         .padding(.horizontal)
-                        .accessibilityLabel("Frequency input: \(input.isEmpty ? "empty" : input)")
+                        .accessibilityLabel("Frequency input: \(input.isEmpty ? "empty" : input), cursor \(cursorOffset)")
 
                     // Unit picker
                     Picker("Unit", selection: $unit) {
@@ -97,7 +96,64 @@ struct FrequencyKeypadView: View {
                 }
             }
             .onAppear {
-                input = String(format: "%.6f", Double(frequencyHz) / unit.multiplier)
+                unit = suggestedUnit(for: frequencyHz)
+                input = formatValue(Double(frequencyHz) / unit.multiplier)
+                cursorOffset = input.count
+            }
+            .onChange(of: unit) { oldValue, newValue in
+                guard oldValue != newValue else { return }
+                guard let value = Double(input) else {
+                    return
+                }
+                let hz = value * oldValue.multiplier
+                input = formatValue(hz / newValue.multiplier)
+                cursorOffset = input.count
+            }
+        }
+    }
+
+    private var inputDisplay: some View {
+        Group {
+            if input.isEmpty {
+                HStack(spacing: 0) {
+                    Text("|")
+                        .foregroundStyle(.tint)
+                    Text("Enter frequency")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.system(size: 32, weight: .bold, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    cursorOffset = 0
+                }
+            } else {
+                HStack(spacing: 0) {
+                    let chars = Array(input)
+                    ForEach(0...chars.count, id: \.self) { i in
+                        ZStack {
+                            Color.clear
+                                .frame(width: 14, height: 44)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    cursorOffset = i
+                                }
+                            if cursorOffset == i {
+                                Text("|")
+                                    .foregroundStyle(.tint)
+                            }
+                        }
+                        if i < chars.count {
+                            Text(String(chars[i]))
+                                .foregroundStyle(.primary)
+                                .onTapGesture {
+                                    cursorOffset = i + 1
+                                }
+                        }
+                    }
+                }
+                .font(.system(size: 32, weight: .bold, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
     }
@@ -110,17 +166,46 @@ struct FrequencyKeypadView: View {
     private func handleKey(_ key: String) {
         switch key {
         case "DEL":
-            if !input.isEmpty { input.removeLast() }
+            handleDelete()
         case ".":
-            if !input.contains(".") { input += "." }
+            guard !input.contains(".") else { return }
+            insertAtCursor(".")
         default:
-            input += key
+            insertAtCursor(key)
         }
+    }
+
+    private func handleDelete() {
+        guard !input.isEmpty, cursorOffset > 0 else { return }
+        let deleteIndex = input.index(input.startIndex, offsetBy: cursorOffset - 1)
+        input.remove(at: deleteIndex)
+        cursorOffset -= 1
+    }
+
+    private func insertAtCursor(_ token: String) {
+        let safeOffset = max(0, min(cursorOffset, input.count))
+        let idx = input.index(input.startIndex, offsetBy: safeOffset)
+        input.insert(contentsOf: token, at: idx)
+        cursorOffset = min(input.count, cursorOffset + token.count)
     }
 
     private func submitFrequency() {
         guard let hz = computedHz else { return }
         onSubmit(hz)
+    }
+
+    private func suggestedUnit(for hz: Int) -> FreqUnit {
+        if hz >= 1_000_000_000 { return .ghz }
+        if hz >= 1_000_000 { return .mhz }
+        if hz >= 1_000 { return .khz }
+        return .hz
+    }
+
+    private func formatValue(_ value: Double) -> String {
+        let formatted = String(format: "%.6f", value)
+        return formatted
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
     }
 
     private func presetButton(_ label: String, freq: Int) -> some View {
