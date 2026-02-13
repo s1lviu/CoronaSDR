@@ -146,35 +146,83 @@ struct RadioView: View {
     // MARK: - Spectrum + Waterfall
 
     private var spectrumWaterfallSection: some View {
-        VStack(spacing: 0) {
-            // Spectrum
-            SpectrumCanvasView(
-                bins: viewModel.spectrumProcessor.normalizedBins(),
-                peakBins: viewModel.spectrumProcessor.peakHoldEnabled
-                    ? viewModel.spectrumProcessor.peakBins.map { max(0, min(1, ($0 - viewModel.spectrumProcessor.minDB) / (viewModel.spectrumProcessor.maxDB - viewModel.spectrumProcessor.minDB))) }
-                    : [],
-                showPeaks: viewModel.spectrumProcessor.peakHoldEnabled
-            )
-            .frame(height: 120)
-            .background(Color.black)
-            .accessibilityLabel("Spectrum display")
+        VStack(spacing: 8) {
+            spectrumFrequencyScale
 
-            // Waterfall
-            if let renderer = viewModel.waterfallRenderer {
-                WaterfallView(renderer: renderer, isActive: viewModel.isPlaying && viewModel.isRadioTabVisible)
-                    .frame(height: 200)
-                    .accessibilityLabel("Waterfall display")
-            } else {
-                Rectangle()
-                    .fill(Color.black)
-                    .frame(height: 200)
-                    .overlay {
-                        Text("Metal not available")
-                            .foregroundStyle(.gray)
+            ZStack {
+                VStack(spacing: 0) {
+                    // Spectrum
+                    SpectrumCanvasView(
+                        bins: viewModel.spectrumProcessor.normalizedBins(),
+                        peakBins: viewModel.spectrumProcessor.peakHoldEnabled
+                            ? viewModel.spectrumProcessor.peakBins.map { max(0, min(1, ($0 - viewModel.spectrumProcessor.minDB) / (viewModel.spectrumProcessor.maxDB - viewModel.spectrumProcessor.minDB))) }
+                            : [],
+                        showPeaks: viewModel.spectrumProcessor.peakHoldEnabled
+                    )
+                    .frame(height: 120)
+                    .background(Color.black)
+                    .accessibilityLabel("Spectrum display")
+
+                    // Waterfall
+                    if let renderer = viewModel.waterfallRenderer {
+                        WaterfallView(renderer: renderer, isActive: viewModel.isPlaying && viewModel.isRadioTabVisible)
+                            .frame(height: 200)
+                            .accessibilityLabel("Waterfall display")
+                    } else {
+                        Rectangle()
+                            .fill(Color.black)
+                            .frame(height: 200)
+                            .overlay {
+                                Text("Metal not available")
+                                    .foregroundStyle(.gray)
+                            }
                     }
+                }
+
+                waterfallCenterMarker
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            HStack {
+                Text("Span \(formatSpan(spectrumSpanHz))")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Center \(formatAxisFrequency(viewModel.frequencyHz))")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var spectrumFrequencyScale: some View {
+        HStack {
+            Text(formatAxisFrequency(spectrumStartHz))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(formatAxisFrequency(viewModel.frequencyHz))
+                .frame(maxWidth: .infinity, alignment: .center)
+            Text(formatAxisFrequency(spectrumEndHz))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .font(.caption2.monospacedDigit())
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Spectrum scale from \(formatAxisFrequency(spectrumStartHz)) to \(formatAxisFrequency(spectrumEndHz)), center \(formatAxisFrequency(viewModel.frequencyHz))")
+    }
+
+    private var waterfallCenterMarker: some View {
+        GeometryReader { geometry in
+            Path { path in
+                let x = geometry.size.width / 2
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: geometry.size.height))
+            }
+            .stroke(
+                Color.white.opacity(0.35),
+                style: StrokeStyle(lineWidth: 1, dash: [5, 5])
+            )
+        }
+        .allowsHitTesting(false)
     }
 
     // MARK: - Frequency Display
@@ -469,6 +517,37 @@ struct RadioView: View {
     private func formatStep(_ hz: Int) -> String {
         if hz >= 1_000_000 { return String(format: "%.1f MHz", Double(hz) / 1_000_000) }
         if hz >= 1_000 { return String(format: "%.1f kHz", Double(hz) / 1_000) }
+        return "\(hz) Hz"
+    }
+
+    private var spectrumSpanHz: Int {
+        max(1, viewModel.dspPipeline.sampleRate)
+    }
+
+    private var spectrumStartHz: Int {
+        max(0, viewModel.frequencyHz - (spectrumSpanHz / 2))
+    }
+
+    private var spectrumEndHz: Int {
+        spectrumStartHz + spectrumSpanHz
+    }
+
+    private func formatSpan(_ hz: Int) -> String {
+        if hz >= 1_000_000 { return String(format: "%.3f MHz", Double(hz) / 1_000_000) }
+        if hz >= 1_000 { return String(format: "%.1f kHz", Double(hz) / 1_000) }
+        return "\(hz) Hz"
+    }
+
+    private func formatAxisFrequency(_ hz: Int) -> String {
+        if hz >= 1_000_000_000 {
+            return String(format: "%.4f GHz", Double(hz) / 1_000_000_000)
+        }
+        if hz >= 1_000_000 {
+            return String(format: "%.3f MHz", Double(hz) / 1_000_000)
+        }
+        if hz >= 1_000 {
+            return String(format: "%.1f kHz", Double(hz) / 1_000)
+        }
         return "\(hz) Hz"
     }
 }
