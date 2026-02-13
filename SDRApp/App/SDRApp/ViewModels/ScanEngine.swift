@@ -112,7 +112,8 @@ final class ScanEngine {
         endHz: Int,
         stepHz: Int,
         mode: DemodMode,
-        dwellMs: Int = 1000
+        dwellMs: Int = 1000,
+        holdSec: Int = 3
     ) {
         stop()
         state = .scanning
@@ -145,7 +146,21 @@ final class ScanEngine {
                     if self.onSquelchCheck?() == true {
                         // Signal found, hold
                         await MainActor.run { self.state = .holding(frequencyHz: freq) }
-                        try? await Task.sleep(for: .seconds(3))
+                        let holdStart = CFAbsoluteTimeGetCurrent()
+                        while CFAbsoluteTimeGetCurrent() - holdStart < Double(holdSec) {
+                            if Task.isCancelled { return }
+                            if self.skipRequested {
+                                self.skipRequested = false
+                                break
+                            }
+                            if self.onSquelchCheck?() == false {
+                                try? await Task.sleep(for: .milliseconds(500))
+                                if self.onSquelchCheck?() == false {
+                                    break
+                                }
+                            }
+                            try? await Task.sleep(for: .milliseconds(100))
+                        }
                         await MainActor.run { self.state = .scanning }
                         break
                     }
@@ -155,7 +170,10 @@ final class ScanEngine {
                 freq += stepHz
             }
 
-            await MainActor.run { self.state = .idle }
+            await MainActor.run {
+                self.progress = 1
+                self.state = .idle
+            }
         }
     }
 
@@ -164,6 +182,7 @@ final class ScanEngine {
     func pause() {
         state = .paused
         scanTask?.cancel()
+        scanTask = nil
     }
 
     func stop() {
