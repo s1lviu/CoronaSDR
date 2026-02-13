@@ -16,7 +16,7 @@ struct MainTabView: View {
                 }
                 .tag(0)
 
-            StationsView()
+            StationsView(viewModel: viewModel)
                 .tabItem {
                     Label("Stations", systemImage: "star.fill")
                 }

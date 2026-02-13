@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 
 struct StationsView: View {
     @Environment(\.modelContext) private var modelContext
+    let viewModel: RadioViewModel
+
     @Query(sort: \Station.name) private var stations: [Station]
     @Query(sort: \Tag.name) private var tags: [Tag]
 
@@ -15,6 +17,7 @@ struct StationsView: View {
     @State private var showingImporter = false
     @State private var showingExporter = false
     @State private var exportCSVContent = ""
+    @State private var playErrorMessage: String?
 
     var filteredStations: [Station] {
         var result = stations
@@ -47,7 +50,10 @@ struct StationsView: View {
                 }
 
                 ForEach(filteredStations) { station in
-                    StationRow(station: station)
+                    StationRow(
+                        station: station,
+                        onPlay: { play(station) }
+                    )
                 }
                 .onDelete(perform: deleteStations)
             }
@@ -72,6 +78,14 @@ struct StationsView: View {
             }
             .sheet(isPresented: $showImportExport) {
                 ImportExportSheet(stations: stations)
+            }
+            .alert("Cannot Start Station", isPresented: Binding(
+                get: { playErrorMessage != nil },
+                set: { if !$0 { playErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(playErrorMessage ?? "Unknown error")
             }
             .overlay {
                 if filteredStations.isEmpty {
@@ -105,45 +119,87 @@ struct StationsView: View {
             modelContext.delete(filteredStations[index])
         }
     }
+
+    private func play(_ station: Station) {
+        guard viewModel.isConnected else {
+            playErrorMessage = "Connect to server first from the Radio tab (Wi-Fi button)."
+            return
+        }
+
+        viewModel.setMode(station.mode)
+        viewModel.setBandwidth(station.bandwidthHz)
+        viewModel.stepHz = station.stepHz
+        viewModel.setSquelch(station.squelch)
+        viewModel.setGain(mode: station.gainMode, value: station.gainValue)
+        viewModel.setPPM(station.ppm)
+        viewModel.setFrequency(station.frequencyHz)
+        viewModel.startListening()
+
+        station.lastUsedAt = Date()
+        station.updatedAt = Date()
+        try? modelContext.save()
+    }
 }
 
 struct StationRow: View {
     let station: Station
+    let onPlay: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(station.name)
                     .font(.headline)
-                Spacer()
-                Text(station.mode.displayName)
-                    .font(.caption.bold())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(.tint.opacity(0.2))
-                    .clipShape(Capsule())
-            }
 
-            Text(formatFrequency(station.frequencyHz))
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
+                Text(formatFrequency(station.frequencyHz))
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
 
-            if !station.tags.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(station.tags) { tag in
-                        Text(tag.name)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color(.systemGray5))
-                            .clipShape(Capsule())
+                if !station.tags.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(station.tags) { tag in
+                            Text(tag.name)
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color(.systemGray5))
+                                .clipShape(Capsule())
+                        }
                     }
                 }
             }
+
+            Spacer(minLength: 8)
+            actionCluster
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onPlay()
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(station.name), \(formatFrequency(station.frequencyHz)), \(station.mode.displayName)")
+    }
+
+    private var actionCluster: some View {
+        VStack(spacing: 8) {
+            Button {
+                onPlay()
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Play \(station.name)")
+
+            Text(station.mode.displayName)
+                .font(.subheadline.bold())
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(.tint.opacity(0.2))
+                .clipShape(Capsule())
+        }
     }
 
     private func formatFrequency(_ hz: Int) -> String {
