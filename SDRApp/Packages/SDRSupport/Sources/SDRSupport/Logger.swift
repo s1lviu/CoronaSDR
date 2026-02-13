@@ -1,3 +1,4 @@
+import Foundation
 import os
 
 /// Centralized logging categories for the SDR app.
@@ -12,4 +13,24 @@ public enum SDRLogger {
     public static let scan = Logger(subsystem: subsystem, category: "Scan")
     public static let data = Logger(subsystem: subsystem, category: "Data")
     public static let general = Logger(subsystem: subsystem, category: "General")
+}
+
+/// Runtime toggle for verbose debug prints.
+public enum SDRDebug {
+    private nonisolated(unsafe) static var verboseLogsEnabled = false
+    private static let lock = NSLock()
+
+    public static func setEnabled(_ enabled: Bool) {
+        lock.lock()
+        verboseLogsEnabled = enabled
+        lock.unlock()
+    }
+
+    public static func print(_ message: @autoclosure () -> String) {
+        lock.lock()
+        let isEnabled = verboseLogsEnabled
+        lock.unlock()
+        guard isEnabled else { return }
+        Swift.print(message())
+    }
 }

@@ -80,7 +80,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
         self.reconnectPolicy = policy
         self.reconnectAttempt = 0
         self.state = .connecting
-        print("🔌 connectInternal: state=connecting, host=\(host):\(port)")
+        SDRDebug.print("🔌 connectInternal: state=connecting, host=\(host):\(port)")
 
         SDRLogger.network.info("Connecting to \(host):\(port)")
 
@@ -98,25 +98,25 @@ public final class RTLTCPConnection: @unchecked Sendable {
         conn.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
             guard self.connection === conn else { return }
-            print("🔌 NWConnection state: \(state)")
+            SDRDebug.print("🔌 NWConnection state: \(state)")
             switch state {
             case .ready:
                 SDRLogger.network.info("TCP connected, reading header")
-                print("🔌 TCP ready, reading header")
+                SDRDebug.print("🔌 TCP ready, reading header")
                 DispatchQueue.main.async { self.state = .validatingHeader }
                 self.readHeader(conn)
             case .failed(let error):
                 SDRLogger.network.error("Connection failed: \(error)")
-                print("🔌 TCP failed: \(error)")
+                SDRDebug.print("🔌 TCP failed: \(error)")
                 DispatchQueue.main.async {
                     self.state = .failed(error.localizedDescription)
                     self.attemptReconnect()
                 }
             case .waiting(let error):
                 SDRLogger.network.warning("Connection waiting: \(error)")
-                print("🔌 TCP waiting: \(error)")
+                SDRDebug.print("🔌 TCP waiting: \(error)")
             default:
-                print("🔌 NWConnection other state: \(state)")
+                SDRDebug.print("🔌 NWConnection other state: \(state)")
                 break
             }
         }
@@ -288,11 +288,11 @@ public final class RTLTCPConnection: @unchecked Sendable {
             }
 
             SDRLogger.network.info("Header valid: tuner=\(header.tunerType.displayName), gains=\(header.gainCount)")
-            print("🔌 Header valid: \(header.tunerType.displayName), setting state=connected")
+            SDRDebug.print("🔌 Header valid: \(header.tunerType.displayName), setting state=connected")
             self.header = header
             DispatchQueue.main.async {
                 self.state = .connected(header)
-                print("🔌 State set to connected on main thread")
+                SDRDebug.print("🔌 State set to connected on main thread")
             }
             self.reconnectAttempt = 0
             self.reconnectTask = nil

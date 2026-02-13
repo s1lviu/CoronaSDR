@@ -32,6 +32,22 @@ public final class SettingsStore {
         didSet { defaults.set(lastMode, forKey: "lastMode") }
     }
 
+    public var lastStepHz: Int {
+        didSet { defaults.set(lastStepHz, forKey: "lastStepHz") }
+    }
+
+    public var lastBandwidthHz: Int {
+        didSet { defaults.set(lastBandwidthHz, forKey: "lastBandwidthHz") }
+    }
+
+    public var lastSquelchLevel: Float {
+        didSet { defaults.set(lastSquelchLevel, forKey: "lastSquelchLevel") }
+    }
+
+    public var lastBFOOffset: Float {
+        didSet { defaults.set(lastBFOOffset, forKey: "lastBFOOffset") }
+    }
+
     public var lastGainMode: String {
         didSet { defaults.set(lastGainMode, forKey: "lastGainMode") }
     }
@@ -79,6 +95,10 @@ public final class SettingsStore {
         self.lastServerPort = defaults.object(forKey: "lastServerPort") != nil ? defaults.integer(forKey: "lastServerPort") : 1234
         self.lastFrequencyHz = defaults.object(forKey: "lastFrequencyHz") != nil ? defaults.integer(forKey: "lastFrequencyHz") : 100_000_000
         self.lastMode = defaults.string(forKey: "lastMode") ?? "WFM"
+        self.lastStepHz = defaults.object(forKey: "lastStepHz") != nil ? defaults.integer(forKey: "lastStepHz") : 100_000
+        self.lastBandwidthHz = defaults.object(forKey: "lastBandwidthHz") != nil ? defaults.integer(forKey: "lastBandwidthHz") : 200_000
+        self.lastSquelchLevel = defaults.object(forKey: "lastSquelchLevel") != nil ? defaults.float(forKey: "lastSquelchLevel") : 0
+        self.lastBFOOffset = defaults.object(forKey: "lastBFOOffset") != nil ? defaults.float(forKey: "lastBFOOffset") : 0
         self.lastGainMode = defaults.string(forKey: "lastGainMode") ?? "Auto"
         self.lastGainValue = defaults.float(forKey: "lastGainValue")
         self.lastPPM = defaults.float(forKey: "lastPPM")

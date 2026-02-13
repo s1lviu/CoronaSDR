@@ -25,9 +25,8 @@ vertex VertexOut waterfallVertexShader(uint vertexID [[vertex_id]]) {
     return out;
 }
 
-// Color map: convert dB value (0.0-1.0 normalized) to color
 // Classic waterfall: blue -> cyan -> green -> yellow -> red -> white
-float4 waterfallColorMap(float value) {
+float4 waterfallColorClassic(float value) {
     float4 color;
 
     if (value < 0.2) {
@@ -55,11 +54,45 @@ float4 waterfallColorMap(float value) {
     return color;
 }
 
+// Thermal waterfall: black -> deep red -> orange -> yellow -> white
+float4 waterfallColorThermal(float value) {
+    if (value < 0.25) {
+        float t = value / 0.25;
+        return float4(0.25 * t, 0.02 * t, 0.0, 1.0);
+    } else if (value < 0.5) {
+        float t = (value - 0.25) / 0.25;
+        return float4(0.25 + 0.6 * t, 0.02 + 0.18 * t, 0.0, 1.0);
+    } else if (value < 0.75) {
+        float t = (value - 0.5) / 0.25;
+        return float4(0.85 + 0.15 * t, 0.2 + 0.55 * t, 0.05 * t, 1.0);
+    } else {
+        float t = (value - 0.75) / 0.25;
+        return float4(1.0, 0.75 + 0.25 * t, 0.05 + 0.95 * t, 1.0);
+    }
+}
+
+// Grayscale waterfall: black -> white
+float4 waterfallColorGrayscale(float value) {
+    return float4(value, value, value, 1.0);
+}
+
+float4 waterfallColorMap(float value, uint scheme) {
+    switch (scheme) {
+        case 1:
+            return waterfallColorThermal(value);
+        case 2:
+            return waterfallColorGrayscale(value);
+        default:
+            return waterfallColorClassic(value);
+    }
+}
+
 // Waterfall fragment shader
 // Reads from a float texture (single-channel, normalized dB values)
 // and applies a color map.
 struct WaterfallUniforms {
     float scrollOffset; // Current scroll row offset (0.0 - 1.0)
+    uint colorScheme;   // 0=classic, 1=thermal, 2=grayscale
 };
 
 fragment float4 waterfallFragmentShader(
@@ -77,7 +110,7 @@ fragment float4 waterfallFragmentShader(
     uv.y = fract(uniforms.scrollOffset - uv.y);
 
     float value = waterfallTexture.sample(texSampler, uv).r;
-    return waterfallColorMap(value);
+    return waterfallColorMap(value, uniforms.colorScheme);
 }
 
 // Spectrum line vertex shader

@@ -1,12 +1,14 @@
 import SwiftUI
 import SDRModels
 import SDRRender
+import SDRSupport
 
 struct RadioView: View {
     @Environment(SettingsStore.self) private var settings
     var viewModel: RadioViewModel
     @State private var showFrequencyKeypad = false
     @State private var showConnectionSheet = false
+    @State private var didRestoreRadioDefaults = false
 
     var body: some View {
         NavigationStack {
@@ -53,7 +55,35 @@ struct RadioView: View {
                     .presentationDetents([.medium])
             }
             .onAppear {
+                restoreRadioDefaultsIfNeeded()
                 autoConnect()
+            }
+            .onChange(of: viewModel.frequencyHz) { _, newFrequency in
+                settings.lastFrequencyHz = newFrequency
+            }
+            .onChange(of: viewModel.mode) { _, newMode in
+                settings.lastMode = newMode.rawValue
+            }
+            .onChange(of: viewModel.stepHz) { _, newStepHz in
+                settings.lastStepHz = newStepHz
+            }
+            .onChange(of: viewModel.bandwidthHz) { _, newBandwidthHz in
+                settings.lastBandwidthHz = newBandwidthHz
+            }
+            .onChange(of: viewModel.squelchLevel) { _, newSquelchLevel in
+                settings.lastSquelchLevel = newSquelchLevel
+            }
+            .onChange(of: viewModel.bfoOffset) { _, newBFOOffset in
+                settings.lastBFOOffset = newBFOOffset
+            }
+            .onChange(of: viewModel.gainMode) { _, newGainMode in
+                settings.lastGainMode = newGainMode.rawValue
+            }
+            .onChange(of: viewModel.gainValue) { _, newGainValue in
+                settings.lastGainValue = newGainValue
+            }
+            .onChange(of: viewModel.ppm) { _, newPPM in
+                settings.lastPPM = newPPM
             }
         }
     }
@@ -405,9 +435,35 @@ struct RadioView: View {
         // Only auto-connect if not already connected/connecting
         if case .disconnected = viewModel.connectionState,
            !settings.lastServerHost.isEmpty {
-            print("📻 autoConnect to \(settings.lastServerHost):\(settings.lastServerPort)")
+            SDRDebug.print("📻 autoConnect to \(settings.lastServerHost):\(settings.lastServerPort)")
             viewModel.connect(host: settings.lastServerHost, port: UInt16(settings.lastServerPort))
         }
+    }
+
+    private func restoreRadioDefaultsIfNeeded() {
+        guard !didRestoreRadioDefaults else { return }
+        didRestoreRadioDefaults = true
+
+        viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
+        viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
+        viewModel.applySpectrumPeakHold(settings.spectrumPeakHold)
+        viewModel.applyDeemphasis(settings.deemphasis)
+
+        if let restoredMode = DemodMode(rawValue: settings.lastMode) {
+            viewModel.setMode(restoredMode)
+        }
+
+        viewModel.stepHz = max(1, settings.lastStepHz)
+        viewModel.setBandwidth(max(500, settings.lastBandwidthHz))
+        viewModel.setSquelch(max(0, min(1, settings.lastSquelchLevel)))
+        viewModel.setBFOOffset(max(-5_000, min(5_000, settings.lastBFOOffset)))
+
+        if let restoredGainMode = GainMode(rawValue: settings.lastGainMode) {
+            viewModel.setGain(mode: restoredGainMode, value: settings.lastGainValue)
+        }
+
+        viewModel.setPPM(settings.lastPPM)
+        viewModel.setFrequency(max(1_000, settings.lastFrequencyHz))
     }
 
     private func formatStep(_ hz: Int) -> String {

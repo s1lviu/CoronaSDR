@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import SDRModels
+import SDRSupport
 import os
 
 private let logger = Logger(subsystem: "com.sdrapp.ios", category: "App")
@@ -13,6 +14,8 @@ struct SDRAppMain: App {
     @State private var settingsStore = SettingsStore()
 
     init() {
+        SDRDebug.setEnabled(UserDefaults.standard.bool(forKey: "debugLogsEnabled"))
+
         // Install signal/exception handlers so we see crashes in console
         NSSetUncaughtExceptionHandler { exception in
             logger.fault("UNCAUGHT EXCEPTION: \(exception.name.rawValue): \(exception.reason ?? "nil")")
@@ -35,7 +38,7 @@ struct SDRAppMain: App {
         }
 
         logger.info("SDRApp init starting")
-        print("📻 SDRApp init starting")
+        SDRDebug.print("📻 SDRApp init starting")
 
         do {
             let schema = Schema([Station.self, Tag.self, ServerProfile.self, SampleProfile.self])
@@ -43,16 +46,16 @@ struct SDRAppMain: App {
             modelContainer = try ModelContainer(for: schema, configurations: [config])
             containerError = nil
             logger.info("ModelContainer created successfully")
-            print("✅ ModelContainer created")
+            SDRDebug.print("✅ ModelContainer created")
         } catch {
             modelContainer = nil
             containerError = error.localizedDescription
             logger.error("ModelContainer failed: \(error.localizedDescription)")
-            print("❌ ModelContainer failed: \(error)")
+            SDRDebug.print("❌ ModelContainer failed: \(error)")
         }
 
         logger.info("SDRApp init complete")
-        print("📻 SDRApp init complete")
+        SDRDebug.print("📻 SDRApp init complete")
     }
 
     var body: some Scene {

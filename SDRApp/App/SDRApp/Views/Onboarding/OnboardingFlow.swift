@@ -1,6 +1,7 @@
 import SwiftUI
 import SDRModels
 import RTLTCPClientKit
+import SDRSupport
 
 struct OnboardingFlow: View {
     @Environment(SettingsStore.self) private var settings
@@ -172,23 +173,23 @@ struct OnboardingFlow: View {
         isTesting = true
         testResult = nil
 
-        print("🔌 Testing connection to \(host):\(portNum)")
+        SDRDebug.print("🔌 Testing connection to \(host):\(portNum)")
         let conn = RTLTCPConnection(iqBuffer: IQRingBuffer(capacity: 1024))
         Task {
-            print("🔌 testConnection starting...")
+            SDRDebug.print("🔌 testConnection starting...")
             let result = await conn.testConnection(host: host, port: portNum)
-            print("🔌 testConnection returned: \(result)")
+            SDRDebug.print("🔌 testConnection returned: \(result)")
             await MainActor.run {
                 isTesting = false
                 switch result {
                 case .success(let header):
                     testSuccess = true
                     testResult = "Connected! Tuner: \(header.tunerType.displayName), \(header.gainCount) gain steps"
-                    print("✅ Test success: \(header.tunerType.displayName)")
+                    SDRDebug.print("✅ Test success: \(header.tunerType.displayName)")
                 case .failure(let error):
                     testSuccess = false
                     testResult = "Failed: \(error.localizedDescription)"
-                    print("❌ Test failed: \(error.localizedDescription)")
+                    SDRDebug.print("❌ Test failed: \(error.localizedDescription)")
                 }
             }
         }
