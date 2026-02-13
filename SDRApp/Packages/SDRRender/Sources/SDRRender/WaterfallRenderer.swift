@@ -24,7 +24,8 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     private var spectrumBuffer: MTLBuffer?
     private var spectrumBufferCapacity: Int = 0
     private var spectrumSampleCount: Int = 0
-    private var showSpectrum: Bool = true
+    // Spectrum is rendered in a dedicated top view; keep waterfall clean.
+    private var showSpectrum: Bool = false
     private var renderingActive: Bool = true
 
     // FPS tracking
