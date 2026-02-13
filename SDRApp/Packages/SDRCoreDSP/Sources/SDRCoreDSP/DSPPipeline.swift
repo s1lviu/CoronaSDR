@@ -59,6 +59,10 @@ public final class DSPPipeline: @unchecked Sendable {
 
     // Block size for processing (in IQ sample pairs = 2 bytes each for 8-bit IQ)
     private let blockSize: Int = 16384 // bytes (8192 IQ samples)
+    // IQ refill hysteresis: if stream jitters, wait for a healthier chunk before resuming DSP.
+    private let iqRefillLowWaterBytes: Int = 32_768
+    private let iqRefillResumeBytes: Int = 131_072
+    private let iqStarvationGraceSeconds: CFTimeInterval = 0.08
 
     public init(iqBuffer: IQRingBuffer, audioBuffer: AudioRingBuffer, sampleRate: Int = 1_024_000) {
         self.iqBuffer = iqBuffer
@@ -112,14 +116,33 @@ public final class DSPPipeline: @unchecked Sendable {
 
         var blockCount = 0
         var lastLogTime = CFAbsoluteTimeGetCurrent()
+        var waitingForRefill = false
+        var starvationSince: CFAbsoluteTime?
 
         while isRunning {
             let available = iqBuffer.availableForReading
 
+            if waitingForRefill {
+                if available < iqRefillResumeBytes {
+                    Thread.sleep(forTimeInterval: 0.002)
+                    continue
+                }
+                waitingForRefill = false
+                starvationSince = nil
+            }
+
             if available < blockSize {
-                Thread.sleep(forTimeInterval: 0.001)
+                if starvationSince == nil {
+                    starvationSince = CFAbsoluteTimeGetCurrent()
+                } else if available <= iqRefillLowWaterBytes,
+                          let starvationSince,
+                          CFAbsoluteTimeGetCurrent() - starvationSince >= iqStarvationGraceSeconds {
+                    waitingForRefill = true
+                }
+                Thread.sleep(forTimeInterval: 0.0015)
                 continue
             }
+            starvationSince = nil
 
             // Read IQ data
             let bytesRead = iqBuffer.read(into: rawBlock, maxCount: blockSize)
