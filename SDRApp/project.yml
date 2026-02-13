@@ -1,0 +1,71 @@
+name: SDRApp
+options:
+  bundleIdPrefix: com.sdrapp
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  SDRAppPackages:
+    path: .
+
+targets:
+  SDRApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: App/SDRApp
+        type: group
+    dependencies:
+      - package: SDRAppPackages
+        product: RTLTCPClientKit
+      - package: SDRAppPackages
+        product: SDRCoreDSP
+      - package: SDRAppPackages
+        product: SDRRender
+      - package: SDRAppPackages
+        product: AudioEngineKit
+      - package: SDRAppPackages
+        product: SDRModels
+      - package: SDRAppPackages
+        product: SDRSupport
+    info:
+      path: App/SDRApp/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: ""
+          UIImageName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIBackgroundModes:
+          - audio
+        NSLocalNetworkUsageDescription: "Connect to SDR server on your local network"
+        NSBonjourServices:
+          - "_rtltcp._tcp"
+          - "_hfp._tcp"
+          - "_rsp._tcp"
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - sdrapp
+            CFBundleURLName: com.sdrapp.ios
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sdrapp.ios
+        INFOPLIST_FILE: App/SDRApp/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTED_PLATFORMS: "iphoneos"
+        SUPPORTS_MACCATALYST: "NO"
+        ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: "NO"
+    entitlements:
+      path: App/SDRApp/SDRApp.entitlements
