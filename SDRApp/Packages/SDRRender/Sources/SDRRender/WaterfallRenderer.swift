@@ -227,7 +227,6 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     public func draw(in view: MTKView) {
-        guard renderingActive else { return }
         guard let drawable = view.currentDrawable,
               let renderPassDesc = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer(),
