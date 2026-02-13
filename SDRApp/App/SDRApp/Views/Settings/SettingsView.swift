@@ -10,7 +10,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Display") {
-                    Picker("Waterfall Colors", selection: $settings.waterfallColorScheme) {
+                    Picker("Waterfall Palette", selection: $settings.waterfallColorScheme) {
                         Text("Classic").tag("classic")
                         Text("Thermal").tag("thermal")
                         Text("Grayscale").tag("grayscale")
@@ -21,21 +21,29 @@ struct SettingsView: View {
                 }
 
                 Section("Audio") {
-                    Picker("De-emphasis", selection: $settings.deemphasis) {
+                    Picker("FM De-emphasis", selection: $settings.deemphasis) {
                         Text("50 \u{00B5}s (Europe)").tag(50)
                         Text("75 \u{00B5}s (Americas)").tag(75)
                     }
+
+                    Text("Used by FM demodulation modes (NFM/WFM).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                Section("Network Profile") {
-                    Picker("Sample Rate", selection: $settings.selectedSampleProfileLabel) {
+                Section("Performance") {
+                    Picker("Processing Profile", selection: $settings.selectedSampleProfileLabel) {
                         Text("Low (1.024 MSPS)").tag("Low")
                         Text("Medium (2.048 MSPS)").tag("Medium")
                         Text("High (2.4 MSPS)").tag("High")
                     }
+
+                    Text("Lower profiles reduce CPU/GPU load, heat, and battery usage.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                Section("Connection") {
+                Section("Server") {
                     HStack {
                         Text("Last Server")
                         Spacer()
@@ -44,9 +52,13 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Debug") {
+                Section("Diagnostics") {
                     Toggle("Debug Logs", isOn: $settings.debugLogsEnabled)
                         .accessibilityLabel("Enable debug logging")
+
+                    Text("Enable only while troubleshooting; can impact performance.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("About") {
@@ -58,8 +70,8 @@ struct SettingsView: View {
                     }
                 }
 
-                Section {
-                    Button("Reset Onboarding", role: .destructive) {
+                Section("Advanced") {
+                    Button("Run Onboarding Again") {
                         settings.hasCompletedOnboarding = false
                     }
                 }
