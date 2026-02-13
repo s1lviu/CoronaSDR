@@ -1,4 +1,4 @@
-# SDR Radio - Server Setup Guide
+# CoronaSDR - Server Setup Guide
 
 ## What You Need
 

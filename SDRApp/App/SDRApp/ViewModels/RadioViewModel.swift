@@ -403,7 +403,7 @@ final class RadioViewModel {
     private func updateNowPlaying() {
         let freqStr = formatFrequency(frequencyHz)
         audioEngine.nowPlayingTitle = "\(freqStr) \(mode.displayName)"
-        audioEngine.nowPlayingSubtitle = "SDR Radio"
+        audioEngine.nowPlayingSubtitle = "CoronaSDR"
     }
 
     // MARK: - Diagnostics

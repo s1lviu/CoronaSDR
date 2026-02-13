@@ -1,11 +1,11 @@
 import Foundation
 import SDRModels
 
-/// Handles deep links via custom URL scheme: sdrapp://
+/// Handles deep links via custom URL scheme: coronasdr://
 /// Examples:
-///   sdrapp://tune?freq=100000000&mode=WFM
-///   sdrapp://start
-///   sdrapp://stop
+///   coronasdr://tune?freq=100000000&mode=WFM
+///   coronasdr://start
+///   coronasdr://stop
 enum DeepLinkHandler {
     enum DeepLinkAction {
         case tune(frequencyHz: Int, mode: DemodMode?)
@@ -14,7 +14,7 @@ enum DeepLinkHandler {
     }
 
     static func parse(url: URL) -> DeepLinkAction? {
-        guard url.scheme == "sdrapp" else { return nil }
+        guard url.scheme == "coronasdr" else { return nil }
 
         switch url.host {
         case "tune":

@@ -11,142 +11,236 @@ struct OnboardingFlow: View {
     @State private var testResult: String?
     @State private var isTesting = false
     @State private var testSuccess = false
+    @FocusState private var focusedField: Field?
 
     private let discovery = ServiceDiscovery()
 
+    private enum Field: Hashable {
+        case host
+        case port
+    }
+
     var body: some View {
         NavigationStack {
-            Group {
-                switch step {
-                case 0:
-                    welcomeStep
-                case 1:
-                    serverSetupStep
-                default:
-                    EmptyView()
+            ZStack {
+                onboardingBackground
+                Group {
+                    switch step {
+                    case 0:
+                        welcomeStep
+                    case 1:
+                        serverSetupStep
+                    default:
+                        EmptyView()
+                    }
                 }
             }
-            .navigationTitle("Welcome to SDR Radio")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if step == 1 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            focusedField = nil
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                step = 0
+                            }
+                        } label: {
+                            Label("Back", systemImage: "chevron.left")
+                        }
+                    }
+                }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedField = nil
+                    }
+                }
+            }
         }
     }
 
     // MARK: - Step 1: Welcome
 
     private var welcomeStep: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: 24) {
+                stepIndicator(current: 1, total: 2)
+                    .padding(.top, 12)
 
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.system(size: 80))
-                .foregroundStyle(.tint)
+                VStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(red: 0.16, green: 0.54, blue: 0.44), Color(red: 0.10, green: 0.37, blue: 0.30)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 120, height: 120)
+                            .shadow(color: Color.black.opacity(0.12), radius: 16, x: 0, y: 10)
 
-            Text("SDR Radio")
-                .font(.largeTitle.bold())
+                        Image(systemName: "antenna.radiowaves.left.and.right")
+                            .font(.system(size: 50, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
 
-            VStack(spacing: 12) {
-                infoRow(icon: "server.rack", text: "You need an rtl_tcp server running on a Raspberry Pi or PC on your local network.")
-                infoRow(icon: "wifi", text: "This app connects over Wi-Fi (wired Ethernet to server recommended).")
-                infoRow(icon: "antenna.radiowaves.left.and.right", text: "Supports RTL-SDR dongles via rtl_tcp protocol.")
-            }
-            .padding()
+                    Text("CoronaSDR")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
 
-            Spacer()
+                    Text("Listen to SDR with a clean, stable experience. Start by connecting to your local `rtl_tcp` server.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+                }
 
-            Button {
-                withAnimation { step = 1 }
-            } label: {
-                Text("Set Up Connection")
+                VStack(spacing: 12) {
+                    infoCard(icon: "server.rack", title: "Local server", text: "You need an `rtl_tcp` server running on Raspberry Pi, Linux, or macOS.")
+                    infoCard(icon: "wifi", title: "Stable network", text: "Your phone and server should be on the same local network.")
+                    infoCard(icon: "dot.radiowaves.left.and.right", title: "RTL-SDR ready", text: "Works with RTL-SDR dongles using the `rtl_tcp` protocol.")
+                }
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        step = 1
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("Set up connection")
+                        Image(systemName: "arrow.right")
+                    }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.horizontal)
-            .padding(.bottom)
+            .padding(.bottom, 24)
         }
+        .scrollIndicators(.hidden)
     }
 
     // MARK: - Step 2: Server Setup
 
     private var serverSetupStep: some View {
-        VStack(spacing: 20) {
-            Form {
-                Section("Server Address") {
-                    TextField("IP Address (e.g. 192.168.1.100)", text: $host)
-                        .keyboardType(.decimalPad)
-                        .textContentType(.URL)
-                        .autocorrectionDisabled()
-                        .accessibilityLabel("Server IP address")
+        ScrollView {
+            VStack(spacing: 20) {
+                stepIndicator(current: 2, total: 2)
+                    .padding(.top, 12)
 
-                    TextField("Port", text: $port)
-                        .keyboardType(.numberPad)
-                        .accessibilityLabel("Server port")
-                }
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Server Connection")
+                        .font(.title3.bold())
 
-                if !discovery.discoveredServers.isEmpty {
-                    Section("Discovered Servers") {
-                        ForEach(discovery.discoveredServers) { server in
-                            Button {
-                                host = server.host
-                                port = String(server.port)
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(server.name)
-                                            .font(.headline)
-                                        Text("\(server.host):\(server.port)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                    Image(systemName: "arrow.right.circle")
-                                }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Host or IP")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        TextField("ex: 192.168.1.100", text: $host)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                            .focused($focusedField, equals: .host)
+                            .submitLabel(.next)
+                            .onSubmit {
+                                focusedField = .port
                             }
-                            .accessibilityLabel("Select server \(server.name)")
-                        }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(.background)
+                            )
                     }
-                }
 
-                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Port")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        TextField("1234", text: $port)
+                            .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .port)
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(.background)
+                            )
+                    }
+
                     Button {
+                        focusedField = nil
                         testConnectionAction()
                     } label: {
-                        HStack {
+                        HStack(spacing: 8) {
                             if isTesting {
                                 ProgressView()
-                                    .padding(.trailing, 4)
+                                    .controlSize(.small)
                             }
                             Text(isTesting ? "Testing..." : "Test Connection")
                         }
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
                     }
-                    .disabled(host.isEmpty || isTesting)
-                    .accessibilityLabel("Test connection to server")
-
-                    if let result = testResult {
-                        HStack {
-                            Image(systemName: testSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundStyle(testSuccess ? .green : .red)
-                            Text(result)
-                                .font(.caption)
-                        }
-                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isTesting)
                 }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.regularMaterial)
+                )
+
+                if let result = testResult {
+                    statusCard(text: result, success: testSuccess)
+                }
+
+                discoveredServersSection
             }
-
-            if testSuccess {
-                Button {
-                    saveAndFinish()
-                } label: {
-                    Text("Start Listening")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.horizontal)
+            .padding(.horizontal)
+            .padding(.bottom, 120)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                focusedField = nil
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 10) {
+                if testSuccess {
+                    Button {
+                        focusedField = nil
+                        saveAndFinish()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("Start Listening")
+                            Image(systemName: "play.fill")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                } else {
+                        Text("Test your connection before continuing.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            .background(.ultraThinMaterial)
+        }
         .onAppear {
+            if host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                host = settings.lastServerHost
+            }
+            if port.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                port = String(settings.lastServerPort)
+            }
             discovery.startBrowsing()
         }
         .onDisappear {
@@ -156,28 +250,168 @@ struct OnboardingFlow: View {
 
     // MARK: - Helpers
 
-    private func infoRow(icon: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(width: 30)
-            Text(text)
-                .font(.subheadline)
+    private var onboardingBackground: some View {
+        ZStack {
+            Color(uiColor: .systemGroupedBackground)
+            Circle()
+                .fill(Color(red: 0.16, green: 0.54, blue: 0.44).opacity(0.12))
+                .frame(width: 320, height: 320)
+                .offset(x: 140, y: -250)
+                .blur(radius: 10)
+            Circle()
+                .fill(Color(red: 0.10, green: 0.37, blue: 0.30).opacity(0.10))
+                .frame(width: 280, height: 280)
+                .offset(x: -170, y: 320)
+                .blur(radius: 14)
+        }
+        .ignoresSafeArea()
+    }
+
+    private func stepIndicator(current: Int, total: Int) -> some View {
+        HStack(spacing: 10) {
+            ForEach(1...total, id: \.self) { index in
+                Capsule(style: .continuous)
+                    .fill(index == current ? Color.accentColor : Color.secondary.opacity(0.25))
+                    .frame(width: index == current ? 28 : 16, height: 8)
+            }
+
+            Spacer()
+
+                Text("Step \(current) of \(total)")
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
         }
     }
 
+    private func infoCard(icon: String, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color(red: 0.10, green: 0.37, blue: 0.30))
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(text)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.regularMaterial)
+        )
+    }
+
+    private var discoveredServersSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            discoveredServersHeader
+
+            if discovery.discoveredServers.isEmpty {
+                Text("No servers found via Bonjour. You can still enter the server address manually.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                discoveredServersList
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.regularMaterial)
+        )
+    }
+
+    private var discoveredServersHeader: some View {
+        HStack {
+            Text("Discovered Servers")
+                .font(.headline)
+            Spacer()
+            if discovery.isBrowsing {
+                Label("Scanning", systemImage: "dot.radiowaves.left.and.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var discoveredServersList: some View {
+        VStack(spacing: 8) {
+            ForEach(discovery.discoveredServers) { server in
+                discoveredServerRow(server)
+            }
+        }
+    }
+
+    private func discoveredServerRow(_ server: DiscoveredServer) -> some View {
+        Button {
+            host = server.host
+            port = String(server.port)
+            focusedField = nil
+        } label: {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(server.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text("\(server.host):\(server.port)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.down.left.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.accentColor)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.background.opacity(0.7))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Select server \(server.name)")
+    }
+
+    private func statusCard(text: String, success: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundStyle(success ? .green : .red)
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill((success ? Color.green : Color.red).opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke((success ? Color.green : Color.red).opacity(0.25), lineWidth: 1)
+        )
+    }
+
     private func testConnectionAction() {
-        guard let portNum = UInt16(port), !host.isEmpty else { return }
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let portNum = UInt16(port), !trimmedHost.isEmpty else { return }
         isTesting = true
+        testSuccess = false
         testResult = nil
 
-        SDRDebug.print("🔌 Testing connection to \(host):\(portNum)")
+        host = trimmedHost
+        SDRDebug.print("🔌 Testing connection to \(trimmedHost):\(portNum)")
         let conn = RTLTCPConnection(iqBuffer: IQRingBuffer(capacity: 1024))
         Task {
             SDRDebug.print("🔌 testConnection starting...")
-            let result = await conn.testConnection(host: host, port: portNum)
+            let result = await conn.testConnection(host: trimmedHost, port: portNum)
             SDRDebug.print("🔌 testConnection returned: \(result)")
             await MainActor.run {
                 isTesting = false

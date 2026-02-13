@@ -93,7 +93,7 @@ public final class DSPPipeline: @unchecked Sendable {
         let thread = Thread { [weak self] in
             self?.dspLoop()
         }
-        thread.name = "com.sdrapp.dsp"
+        thread.name = "yo6say.coronasdr.dsp"
         thread.qualityOfService = .userInitiated
         thread.start()
         dspThread = thread

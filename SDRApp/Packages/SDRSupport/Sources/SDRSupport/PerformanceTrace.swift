@@ -4,7 +4,7 @@ import os
 /// Lightweight performance tracing using os.signpost.
 /// Integrates with Instruments.
 public final class PerformanceTrace: @unchecked Sendable {
-    private static let pointsOfInterest = OSLog(subsystem: "com.sdrapp.ios", category: .pointsOfInterest)
+    private static let pointsOfInterest = OSLog(subsystem: "yo6say.coronasdr", category: .pointsOfInterest)
 
     public enum TraceName: String {
         case connectLatency = "connect_latency"

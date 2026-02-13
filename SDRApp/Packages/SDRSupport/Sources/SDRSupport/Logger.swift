@@ -4,7 +4,7 @@ import os
 /// Centralized logging categories for the SDR app.
 /// Uses os.Logger for structured, performant logging.
 public enum SDRLogger {
-    private static let subsystem = "com.sdrapp.ios"
+    private static let subsystem = "yo6say.coronasdr"
 
     public static let network = Logger(subsystem: subsystem, category: "Network")
     public static let dsp = Logger(subsystem: subsystem, category: "DSP")

@@ -30,7 +30,7 @@ struct RadioView: View {
                 .padding(.bottom, 28)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("SDR Radio")
+            .navigationTitle("CoronaSDR")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
