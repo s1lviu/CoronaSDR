@@ -330,17 +330,17 @@ struct RadioView: View {
                         .frame(width: 10, height: 10)
                         .accessibilityLabel(viewModel.dspPipeline.isSquelchOpen ? "Squelch open" : "Squelch closed")
 
-                    Text("\(Int(viewModel.squelchLevel * 100))")
+                    Text(viewModel.squelchThresholdDBFS.map { String(format: "%.1f dBFS", $0) } ?? "OPEN")
                         .font(.caption.monospacedDigit())
-                        .frame(width: 28)
+                        .frame(width: 84, alignment: .trailing)
                 }
 
                 HStack {
-                    Text("0=open, 100=tight")
+                    Text("Prag squelch in dBFS (0 = open).")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(String(format: "Noise %.3f", viewModel.squelchNoiseLevel))
+                    Text(String(format: "Noise %.1f dBFS", viewModel.squelchNoiseDBFS))
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
