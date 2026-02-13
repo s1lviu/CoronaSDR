@@ -8,6 +8,31 @@ import SDRCoreDSP
 import AudioEngineKit
 import SDRRender
 
+private final class FFTFrameMailbox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var latestBins: [Float]?
+
+    func push(_ bins: [Float]) {
+        lock.lock()
+        latestBins = bins
+        lock.unlock()
+    }
+
+    func popLatest() -> [Float]? {
+        lock.lock()
+        let bins = latestBins
+        latestBins = nil
+        lock.unlock()
+        return bins
+    }
+
+    func clear() {
+        lock.lock()
+        latestBins = nil
+        lock.unlock()
+    }
+}
+
 /// Main view model coordinating all SDR subsystems.
 @Observable
 @MainActor
@@ -27,6 +52,7 @@ final class RadioViewModel {
     var isConnected: Bool = false
     var isPlaying: Bool = false
     var connectionState: ConnectionState = .disconnected
+    var isRadioTabVisible: Bool = true
     var isDirectSamplingActive: Bool = false
     var directSamplingMode: DirectSamplingMode = .off
     var isNetworkPoor: Bool = false
@@ -55,8 +81,11 @@ final class RadioViewModel {
     var waterfallRenderer: WaterfallRenderer?
 
     private var diagnosticsTimer: Timer?
+    private var fftUITimer: Timer?
     private let directSamplingThresholdHz = 24_000_000
     private let iqBytesPerSamplePair: Double = 2.0
+    private let fftMailbox = FFTFrameMailbox()
+    private var dspFFTHandler: (([Float], Int) -> Void)?
     private var poorNetworkStreak: Int = 0
     private var goodNetworkStreak: Int = 0
     private var lastIQUnderrunCount: Int = 0
@@ -67,16 +96,13 @@ final class RadioViewModel {
         dspPipeline = DSPPipeline(iqBuffer: iqBuffer, audioBuffer: audioBuffer)
         audioEngine = SDRAudioEngine(audioBuffer: audioBuffer)
 
-        // Setup FFT callback (called from DSP thread — dispatch to main)
-        dspPipeline.onFFTFrame = { [weak self] bins, _ in
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.spectrumProcessor.update(bins: bins)
-                let normalized = self.spectrumProcessor.normalizedBins()
-                self.waterfallRenderer?.addWaterfallRow(normalized)
-                self.waterfallRenderer?.updateSpectrumBins(normalized)
-            }
+        // DSP pushes FFT frames into mailbox; UI pulls at a fixed frame rate.
+        let mailbox = self.fftMailbox
+        let fftHandler: ([Float], Int) -> Void = { bins, _ in
+            mailbox.push(bins)
         }
+        self.dspFFTHandler = fftHandler
+        dspPipeline.onFFTFrame = fftHandler
 
         // Lock screen callbacks
         audioEngine.onPlayPause = { [weak self] in
@@ -96,7 +122,10 @@ final class RadioViewModel {
         // Create Metal renderer
         if let device = MTLCreateSystemDefaultDevice() {
             waterfallRenderer = WaterfallRenderer(device: device)
+            waterfallRenderer?.setRenderingActive(false)
         }
+
+        startFFTUITimer()
     }
 
     // MARK: - Connection
@@ -159,6 +188,10 @@ final class RadioViewModel {
         dspPipeline.start()
 
         isPlaying = true
+        if isRadioTabVisible {
+            dspPipeline.onFFTFrame = dspFFTHandler
+        }
+        waterfallRenderer?.setRenderingActive(isRadioTabVisible)
         updateNowPlaying()
     }
 
@@ -169,6 +202,9 @@ final class RadioViewModel {
         iqBuffer.flush()
         audioBuffer.flush()
         isPlaying = false
+        dspPipeline.onFFTFrame = nil
+        waterfallRenderer?.setRenderingActive(false)
+        fftMailbox.clear()
         resetNetworkQualityState(hint: "Idle")
     }
 
@@ -228,6 +264,18 @@ final class RadioViewModel {
         dspPipeline.bfoOffsetHz = hz
     }
 
+    func setRadioTabVisible(_ isVisible: Bool) {
+        isRadioTabVisible = isVisible
+        let shouldRender = isVisible && isPlaying
+        waterfallRenderer?.setRenderingActive(shouldRender)
+        if shouldRender {
+            dspPipeline.onFFTFrame = dspFFTHandler
+        } else {
+            dspPipeline.onFFTFrame = nil
+            fftMailbox.clear()
+        }
+    }
+
     // MARK: - Now Playing
 
     private func updateNowPlaying() {
@@ -255,6 +303,30 @@ final class RadioViewModel {
                 self.updateNetworkQuality()
             }
         }
+        if let diagnosticsTimer {
+            RunLoop.main.add(diagnosticsTimer, forMode: .common)
+        }
+    }
+
+    private func startFFTUITimer() {
+        fftUITimer?.invalidate()
+        fftUITimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.drainLatestFFTFrameForUI()
+            }
+        }
+        if let fftUITimer {
+            RunLoop.main.add(fftUITimer, forMode: .common)
+        }
+    }
+
+    private func drainLatestFFTFrameForUI() {
+        guard isPlaying, isRadioTabVisible else { return }
+        guard let bins = fftMailbox.popLatest() else { return }
+        spectrumProcessor.update(bins: bins)
+        let normalized = spectrumProcessor.normalizedBins()
+        waterfallRenderer?.addWaterfallRow(normalized)
+        waterfallRenderer?.updateSpectrumBins(normalized)
     }
 
     // MARK: - Helpers

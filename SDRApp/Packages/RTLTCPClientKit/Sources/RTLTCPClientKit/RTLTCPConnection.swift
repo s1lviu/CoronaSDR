@@ -60,7 +60,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
     private var settleDiscardBytes: Int = 0
     private var isSettling: Bool = false
 
-    private let networkQueue = DispatchQueue(label: "com.sdrapp.network", qos: .userInteractive)
+    private let networkQueue = DispatchQueue(label: "com.sdrapp.network", qos: .userInitiated)
 
     public init(iqBuffer: IQRingBuffer) {
         self.iqBuffer = iqBuffer

@@ -47,6 +47,10 @@ public final class DSPPipeline: @unchecked Sendable {
     // FFT output callback
     public var onFFTFrame: (([Float], Int) -> Void)? // (bins, fftSize)
 
+    // Reused work buffers to avoid per-block allocations in the hot loop.
+    private var realWork: [Float] = []
+    private var imagWork: [Float] = []
+
     // Processing state
     private var dspThread: Thread?
     private var isRunning: Bool = false
@@ -85,7 +89,7 @@ public final class DSPPipeline: @unchecked Sendable {
             self?.dspLoop()
         }
         thread.name = "com.sdrapp.dsp"
-        thread.qualityOfService = .userInteractive
+        thread.qualityOfService = .userInitiated
         thread.start()
         dspThread = thread
 
@@ -127,27 +131,39 @@ public final class DSPPipeline: @unchecked Sendable {
             )
             guard sampleCount > 0 else { continue }
 
-            // Trim buffers to actual count
-            var real = Array(complexBuf.real.prefix(sampleCount))
-            var imag = Array(complexBuf.imag.prefix(sampleCount))
+            if realWork.count != sampleCount {
+                realWork = [Float](repeating: 0, count: sampleCount)
+                imagWork = [Float](repeating: 0, count: sampleCount)
+            }
+
+            realWork.withUnsafeMutableBufferPointer { dst in
+                complexBuf.real.withUnsafeBufferPointer { src in
+                    dst.baseAddress!.update(from: src.baseAddress!, count: sampleCount)
+                }
+            }
+            imagWork.withUnsafeMutableBufferPointer { dst in
+                complexBuf.imag.withUnsafeBufferPointer { src in
+                    dst.baseAddress!.update(from: src.baseAddress!, count: sampleCount)
+                }
+            }
 
             // DC blocker
             if dcBlockEnabled {
-                iqDcBlocker.process(real: &real, imag: &imag)
+                iqDcBlocker.process(real: &realWork, imag: &imagWork)
             }
 
             // NCO mix (if needed for offset tuning or BFO)
             if bfoOffsetHz != 0 {
                 ncoMixer.setFrequency(bfoOffsetHz, sampleRate: Float(sampleRate))
-                ncoMixer.mix(real: &real, imag: &imag, count: sampleCount)
+                ncoMixer.mix(real: &realWork, imag: &imagWork, count: sampleCount)
             }
 
             // FFT (before channelization, on full bandwidth)
-            computeFFT(real: real, imag: imag)
+            computeFFT(real: realWork, imag: imagWork)
 
             // Channel filter + decimate
-            let filteredI = channelFilterI.process(real)
-            let filteredQ = channelFilterQ.process(imag)
+            let filteredI = channelFilterI.process(realWork)
+            let filteredQ = channelFilterQ.process(imagWork)
 
             // Demodulate
             var audio = demodulator.demodulate(real: filteredI, imag: filteredQ)

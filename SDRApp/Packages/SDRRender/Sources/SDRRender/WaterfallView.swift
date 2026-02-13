@@ -4,9 +4,11 @@ import MetalKit
 /// SwiftUI wrapper for the Metal waterfall + spectrum view.
 public struct WaterfallView: UIViewRepresentable {
     let renderer: WaterfallRenderer
+    let isActive: Bool
 
-    public init(renderer: WaterfallRenderer) {
+    public init(renderer: WaterfallRenderer, isActive: Bool = true) {
         self.renderer = renderer
+        self.isActive = isActive
     }
 
     public func makeUIView(context: Context) -> MTKView {
@@ -16,14 +18,16 @@ public struct WaterfallView: UIViewRepresentable {
         view.preferredFramesPerSecond = renderer.targetFPS
         view.colorPixelFormat = .bgra8Unorm
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        view.enableSetNeedsDisplay = false
-        view.isPaused = false
+        view.enableSetNeedsDisplay = !isActive
+        view.isPaused = !isActive
 
         return view
     }
 
     public func updateUIView(_ uiView: MTKView, context: Context) {
         uiView.preferredFramesPerSecond = renderer.targetFPS
+        uiView.enableSetNeedsDisplay = !isActive
+        uiView.isPaused = !isActive
     }
 }
 
