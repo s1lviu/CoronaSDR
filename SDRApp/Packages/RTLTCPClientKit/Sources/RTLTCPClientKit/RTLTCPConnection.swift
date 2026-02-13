@@ -1,0 +1,403 @@
+import Foundation
+import Network
+import Observation
+import Synchronization
+import SDRSupport
+import SDRModels
+
+/// Connection state for the RTL-TCP client.
+public enum ConnectionState: Sendable, Equatable {
+    case disconnected
+    case connecting
+    case validatingHeader
+    case connected(RTLTCPHeader)
+    case reconnecting(attempt: Int)
+    case failed(String)
+}
+
+/// Sendable helper that ensures a continuation is resumed exactly once.
+private final class TestConnectionHelper: Sendable {
+    private let state = Mutex<(resumed: Bool, continuation: CheckedContinuation<Result<RTLTCPHeader, Error>, Never>?)>((false, nil))
+
+    func setContinuation(_ cont: CheckedContinuation<Result<RTLTCPHeader, Error>, Never>) {
+        state.withLock { $0.continuation = cont }
+    }
+
+    func resumeOnce(_ result: Result<RTLTCPHeader, Error>) {
+        state.withLock { s in
+            guard !s.resumed, let cont = s.continuation else { return }
+            s.resumed = true
+            s.continuation = nil
+            cont.resume(returning: result)
+        }
+    }
+}
+
+/// RTL-TCP client that manages the TCP connection, validates the header,
+/// sends commands, and pushes received IQ data into the ring buffer.
+@Observable
+public final class RTLTCPConnection: @unchecked Sendable {
+    public var state: ConnectionState = .disconnected
+    public private(set) var header: RTLTCPHeader?
+
+    private var connection: NWConnection?
+    private var pathMonitor: NWPathMonitor?
+    private let iqBuffer: IQRingBuffer
+
+    // Reconnect state
+    private var reconnectAttempt = 0
+    private var reconnectTask: Task<Void, Never>?
+    private var lastHost: String = ""
+    private var lastPort: UInt16 = 0
+    private var reconnectPolicy: ReconnectPolicy = .exponentialBackoff
+
+    // Throughput tracking
+    private var bytesReceived: Int = 0
+    private var lastThroughputCheck: CFAbsoluteTime = 0
+    public var throughputBytesPerSec: Double = 0
+
+    // Settle window: discard samples after retune
+    private var settleDiscardBytes: Int = 0
+    private var isSettling: Bool = false
+
+    private let networkQueue = DispatchQueue(label: "com.sdrapp.network", qos: .userInteractive)
+
+    public init(iqBuffer: IQRingBuffer) {
+        self.iqBuffer = iqBuffer
+    }
+
+    deinit {
+        disconnect()
+    }
+
+    // MARK: - Connect / Disconnect
+
+    /// Connect to an rtl_tcp server.
+    public func connect(host: String, port: UInt16, policy: ReconnectPolicy = .exponentialBackoff) {
+        disconnect()
+        self.lastHost = host
+        self.lastPort = port
+        self.reconnectPolicy = policy
+        self.reconnectAttempt = 0
+        self.state = .connecting
+        print("🔌 connectInternal: state=connecting, host=\(host):\(port)")
+
+        SDRLogger.network.info("Connecting to \(host):\(port)")
+
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+            self.state = .failed("Invalid port: \(port)")
+            return
+        }
+        let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(host), port: nwPort)
+        let params = NWParameters.tcp
+        params.serviceClass = .interactiveVideo
+
+        let conn = NWConnection(to: endpoint, using: params)
+
+        conn.stateUpdateHandler = { [weak self] state in
+            guard let self else { return }
+            print("🔌 NWConnection state: \(state)")
+            switch state {
+            case .ready:
+                SDRLogger.network.info("TCP connected, reading header")
+                print("🔌 TCP ready, reading header")
+                DispatchQueue.main.async { self.state = .validatingHeader }
+                self.readHeader(conn)
+            case .failed(let error):
+                SDRLogger.network.error("Connection failed: \(error)")
+                print("🔌 TCP failed: \(error)")
+                DispatchQueue.main.async {
+                    self.state = .failed(error.localizedDescription)
+                    self.attemptReconnect()
+                }
+            case .waiting(let error):
+                SDRLogger.network.warning("Connection waiting: \(error)")
+                print("🔌 TCP waiting: \(error)")
+            default:
+                print("🔌 NWConnection other state: \(state)")
+                break
+            }
+        }
+
+        conn.start(queue: networkQueue)
+        self.connection = conn
+        startPathMonitor()
+    }
+
+    /// Disconnect and clean up.
+    public func disconnect() {
+        reconnectAttempt = 0
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        pathMonitor?.cancel()
+        pathMonitor = nil
+        connection?.cancel()
+        connection = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.state = .disconnected
+        }
+        header = nil
+    }
+
+    // MARK: - Test Connection
+
+    /// Test connection: connect, validate header, report result, then disconnect.
+    public func testConnection(host: String, port: UInt16) async -> Result<RTLTCPHeader, Error> {
+        guard let nwPort = NWEndpoint.Port(rawValue: port) else {
+            return .failure(NSError(domain: "RTLTCPConnection", code: -3,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid port"]))
+        }
+
+        let helper = TestConnectionHelper()
+        return await withCheckedContinuation { continuation in
+            helper.setContinuation(continuation)
+
+            let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(host), port: nwPort)
+            let params = NWParameters.tcp
+            let conn = NWConnection(to: endpoint, using: params)
+
+            conn.stateUpdateHandler = { [helper] state in
+                switch state {
+                case .ready:
+                    conn.receive(minimumIncompleteLength: 12, maximumLength: 12) { data, _, _, error in
+                        defer { conn.cancel() }
+                        if let error {
+                            helper.resumeOnce(.failure(error))
+                            return
+                        }
+                        guard let data, let header = RTLTCPHeader(data: data), header.isValid else {
+                            helper.resumeOnce(.failure(
+                                NSError(domain: "RTLTCPConnection", code: -1,
+                                        userInfo: [NSLocalizedDescriptionKey: "Invalid server header (expected RTL0)"])
+                            ))
+                            return
+                        }
+                        helper.resumeOnce(.success(header))
+                    }
+                case .failed(let error):
+                    conn.cancel()
+                    helper.resumeOnce(.failure(error))
+                case .waiting(let error):
+                    conn.cancel()
+                    helper.resumeOnce(.failure(error))
+                default:
+                    break
+                }
+            }
+
+            conn.start(queue: self.networkQueue)
+
+            // Timeout after 5s
+            DispatchQueue.global().asyncAfter(deadline: .now() + 5) { [helper] in
+                conn.cancel()
+                helper.resumeOnce(.failure(
+                    NSError(domain: "RTLTCPConnection", code: -2,
+                            userInfo: [NSLocalizedDescriptionKey: "Connection timeout (5s)"])
+                ))
+            }
+        }
+    }
+
+    // MARK: - Commands
+
+    /// Send a command to the server.
+    public func sendCommand(_ command: RTLTCPCommand, parameter: UInt32) {
+        guard let connection, case .connected = state else { return }
+        let data = command.encode(parameter: parameter)
+        connection.send(content: data, completion: .contentProcessed { error in
+            if let error {
+                SDRLogger.network.error("Command send failed: \(error)")
+            }
+        })
+    }
+
+    /// Set frequency in Hz.
+    public func setFrequency(_ hz: UInt32) {
+        sendCommand(.setFrequency, parameter: hz)
+        beginSettleWindow()
+    }
+
+    /// Set sample rate in Hz.
+    public func setSampleRate(_ hz: UInt32) {
+        sendCommand(.setSampleRate, parameter: hz)
+        beginSettleWindow()
+    }
+
+    /// Set gain mode (0 = auto, 1 = manual).
+    public func setGainMode(_ mode: GainMode) {
+        sendCommand(.setGainMode, parameter: mode == .auto ? 0 : 1)
+    }
+
+    /// Set gain in tenths of dB.
+    public func setGain(_ tenthsDb: UInt32) {
+        sendCommand(.setGain, parameter: tenthsDb)
+    }
+
+    /// Set PPM correction.
+    public func setPPM(_ ppm: Int32) {
+        sendCommand(.setFrequencyCorrection, parameter: UInt32(bitPattern: ppm))
+    }
+
+    /// Set bias-tee (0 = off, 1 = on).
+    public func setBiasTee(_ enabled: Bool) {
+        sendCommand(.setBiasTee, parameter: enabled ? 1 : 0)
+    }
+
+    // MARK: - Private
+
+    private func readHeader(_ conn: NWConnection) {
+        conn.receive(minimumIncompleteLength: 12, maximumLength: 12) { [weak self] data, _, _, error in
+            guard let self else { return }
+            if let error {
+                SDRLogger.network.error("Header read failed: \(error)")
+                DispatchQueue.main.async {
+                    self.state = .failed("Header read failed: \(error.localizedDescription)")
+                }
+                return
+            }
+            guard let data, let header = RTLTCPHeader(data: data), header.isValid else {
+                SDRLogger.network.error("Invalid RTL-TCP header")
+                DispatchQueue.main.async {
+                    self.state = .failed("Invalid server: expected RTL0 header")
+                }
+                conn.cancel()
+                return
+            }
+
+            SDRLogger.network.info("Header valid: tuner=\(header.tunerType.displayName), gains=\(header.gainCount)")
+            print("🔌 Header valid: \(header.tunerType.displayName), setting state=connected")
+            self.header = header
+            DispatchQueue.main.async {
+                self.state = .connected(header)
+                print("🔌 State set to connected on main thread")
+            }
+            self.reconnectAttempt = 0
+            self.reconnectTask = nil
+            self.lastThroughputCheck = CFAbsoluteTimeGetCurrent()
+            self.bytesReceived = 0
+            self.startReceiveLoop(conn)
+        }
+    }
+
+    private func startReceiveLoop(_ conn: NWConnection) {
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 262_144) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+
+            if let data, !data.isEmpty {
+                self.bytesReceived += data.count
+
+                // Update throughput
+                let now = CFAbsoluteTimeGetCurrent()
+                let elapsed = now - self.lastThroughputCheck
+                if elapsed >= 1.0 {
+                    let throughput = Double(self.bytesReceived) / elapsed
+                    DispatchQueue.main.async {
+                        self.throughputBytesPerSec = throughput
+                    }
+                    self.bytesReceived = 0
+                    self.lastThroughputCheck = now
+                }
+
+                // Handle settle window
+                if self.isSettling {
+                    self.settleDiscardBytes -= data.count
+                    if self.settleDiscardBytes <= 0 {
+                        self.isSettling = false
+                    }
+                    // Don't write to buffer during settle
+                } else {
+                    self.iqBuffer.write(data)
+                }
+            }
+
+            if isComplete {
+                SDRLogger.network.info("Connection completed (server closed)")
+                DispatchQueue.main.async {
+                    self.state = .failed("Server closed connection")
+                    self.attemptReconnect()
+                }
+                return
+            }
+
+            if let error {
+                SDRLogger.network.error("Receive error: \(error)")
+                DispatchQueue.main.async {
+                    self.state = .failed(error.localizedDescription)
+                    self.attemptReconnect()
+                }
+                return
+            }
+
+            // Continue receiving
+            self.startReceiveLoop(conn)
+        }
+    }
+
+    /// Begin settle window: flush buffer and discard incoming data for ~150ms.
+    private func beginSettleWindow() {
+        iqBuffer.flush()
+        settleDiscardBytes = 300_000
+        isSettling = true
+    }
+
+    // MARK: - Reconnect
+
+    private func attemptReconnect() {
+        guard reconnectPolicy != .never else { return }
+        guard reconnectTask == nil else { return }
+
+        reconnectAttempt += 1
+        let attempt = reconnectAttempt
+
+        if attempt > 10 {
+            SDRLogger.network.error("Max reconnect attempts reached")
+            return
+        }
+
+        let delay: Double
+        switch reconnectPolicy {
+        case .immediate:
+            delay = 0.5
+        case .exponentialBackoff:
+            let base = min(pow(2.0, Double(attempt - 1)) * 0.5, 8.0)
+            let jitter = Double.random(in: 0...(base * 0.25))
+            delay = base + jitter
+        case .never:
+            return
+        }
+
+        SDRLogger.network.info("Reconnecting in \(String(format: "%.1f", delay))s (attempt \(attempt))")
+
+        DispatchQueue.main.async {
+            self.state = .reconnecting(attempt: attempt)
+        }
+
+        reconnectTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self else { return }
+            self.reconnectTask = nil
+            self.connect(host: self.lastHost, port: self.lastPort, policy: self.reconnectPolicy)
+        }
+    }
+
+    // MARK: - Path Monitor
+
+    private func startPathMonitor() {
+        pathMonitor?.cancel()
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard let self else { return }
+            if path.status == .unsatisfied {
+                SDRLogger.network.warning("Network path unsatisfied")
+            } else if path.status == .satisfied {
+                // If we were in a failed state, try reconnecting
+                if case .failed = self.state {
+                    SDRLogger.network.info("Network path restored, attempting reconnect")
+                    self.attemptReconnect()
+                }
+            }
+        }
+        monitor.start(queue: networkQueue)
+        self.pathMonitor = monitor
+    }
+}

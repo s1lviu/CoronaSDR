@@ -1,0 +1,502 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		19BB732F7B9FD7AD96437E75 /* ConnectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FD861437E64C5125AA46FA7 /* ConnectionSheet.swift */; };
+		1F7B7449161C3C222A3613A3 /* AudioEngineKit in Frameworks */ = {isa = PBXBuildFile; productRef = A6D6374A4E82BBA5CA4C0714 /* AudioEngineKit */; };
+		252E000497F0F8BE8636C4A9 /* ScanEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FF586376D91BB5E1C35564 /* ScanEngine.swift */; };
+		2673A3A3768D2D14EE275DD6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4045ACD32DF83D525829CC6D /* ContentView.swift */; };
+		4503EE67357708B816D27FC0 /* AddStationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDBBC0E16158D2DD3D1DA651 /* AddStationView.swift */; };
+		5DB399C817C5DE7B8BEBD01E /* FrequencyKeypadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E2E49296C71FC7C82FC5057 /* FrequencyKeypadView.swift */; };
+		69A4145227FECD9A337B3F8F /* SDRCoreDSP in Frameworks */ = {isa = PBXBuildFile; productRef = 87AF0BD3E07133FB1436B989 /* SDRCoreDSP */; };
+		738EF6A2DDC2894295D5E605 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F820473995F2496C57264BE /* SettingsView.swift */; };
+		74E21F21AD1C3E7195319104 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B1F231526F2B88B3627A97D /* ScanView.swift */; };
+		80779B6ACA35E2C32948F2D6 /* SDRRender in Frameworks */ = {isa = PBXBuildFile; productRef = 00BCE60DE6F850FB9532808E /* SDRRender */; };
+		82B3CBF70BB78B42529D87E1 /* SDRSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 0F9830598337B923E0FC784B /* SDRSupport */; };
+		90A68F9E13A4001787E74B46 /* ImportExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F923B149D0A72BEFEC98CBCA /* ImportExportSheet.swift */; };
+		9C41A2619D0040822F055ACA /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5609D54ADD09E826AA37304 /* MainTabView.swift */; };
+		BFBD0EBA7DDE8A2003573993 /* RadioViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EC2F77DF3E0C5572DDD56AE /* RadioViewModel.swift */; };
+		CEDFD8615B16A2F931B9CA44 /* SDRModels in Frameworks */ = {isa = PBXBuildFile; productRef = 3857E701C482125053393C1E /* SDRModels */; };
+		D11ACF52A02D99777E79EA90 /* StationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB2BC74D0EEF523AC1565B8 /* StationsView.swift */; };
+		E18F422490436E4999A76C71 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02239B1C6ABD3DD65B5F4E2B /* DeepLinkHandler.swift */; };
+		E9FBD949E8D7239F6606B913 /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7504085DCA1D9EEC5EC79559 /* OnboardingFlow.swift */; };
+		EE4FF2947821E1B166E372F8 /* SDRAppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83E39C0DFAB045761E96F3A /* SDRAppMain.swift */; };
+		F0A0DC5245B5EA741AE84B68 /* RTLTCPClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = BF61446BAA8D26775C1D9071 /* RTLTCPClientKit */; };
+		F27DA313956312A7CA4BA469 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 176D7A307D9CC5D9E9AD9226 /* DiagnosticsView.swift */; };
+		F342404B6EE3E43D5718F493 /* RadioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8657C60D4B71C76F18B82EE1 /* RadioView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		02239B1C6ABD3DD65B5F4E2B /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
+		0E2E49296C71FC7C82FC5057 /* FrequencyKeypadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyKeypadView.swift; sourceTree = "<group>"; };
+		176D7A307D9CC5D9E9AD9226 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		2A9E7BD207D5AB7E71A24F9C /* SDRApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SDRApp.entitlements; sourceTree = "<group>"; };
+		2F820473995F2496C57264BE /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3032717CAE96D941FEDA4461 /* SDRApp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SDRApp; path = .; sourceTree = SOURCE_ROOT; };
+		3EC2F77DF3E0C5572DDD56AE /* RadioViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioViewModel.swift; sourceTree = "<group>"; };
+		4045ACD32DF83D525829CC6D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4B1F231526F2B88B3627A97D /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		679F5C66B2EFF2C2055D7F44 /* SDRApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SDRApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7504085DCA1D9EEC5EC79559 /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
+		7FD861437E64C5125AA46FA7 /* ConnectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionSheet.swift; sourceTree = "<group>"; };
+		8657C60D4B71C76F18B82EE1 /* RadioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioView.swift; sourceTree = "<group>"; };
+		93FF586376D91BB5E1C35564 /* ScanEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanEngine.swift; sourceTree = "<group>"; };
+		9BB2BC74D0EEF523AC1565B8 /* StationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationsView.swift; sourceTree = "<group>"; };
+		A5609D54ADD09E826AA37304 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		A83E39C0DFAB045761E96F3A /* SDRAppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDRAppMain.swift; sourceTree = "<group>"; };
+		BD9BE6B53FB2214DA6F5AF03 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F923B149D0A72BEFEC98CBCA /* ImportExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportExportSheet.swift; sourceTree = "<group>"; };
+		FDBBC0E16158D2DD3D1DA651 /* AddStationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStationView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1C6BE9AE1B4FC2B9C377283 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0A0DC5245B5EA741AE84B68 /* RTLTCPClientKit in Frameworks */,
+				69A4145227FECD9A337B3F8F /* SDRCoreDSP in Frameworks */,
+				80779B6ACA35E2C32948F2D6 /* SDRRender in Frameworks */,
+				1F7B7449161C3C222A3613A3 /* AudioEngineKit in Frameworks */,
+				CEDFD8615B16A2F931B9CA44 /* SDRModels in Frameworks */,
+				82B3CBF70BB78B42529D87E1 /* SDRSupport in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0FB7E67AF58D86B86ADE0DA6 /* Radio */ = {
+			isa = PBXGroup;
+			children = (
+				7FD861437E64C5125AA46FA7 /* ConnectionSheet.swift */,
+				0E2E49296C71FC7C82FC5057 /* FrequencyKeypadView.swift */,
+				8657C60D4B71C76F18B82EE1 /* RadioView.swift */,
+				4B1F231526F2B88B3627A97D /* ScanView.swift */,
+			);
+			path = Radio;
+			sourceTree = "<group>";
+		};
+		345577C7063D3489D50E0509 /* SDRApp */ = {
+			isa = PBXGroup;
+			children = (
+				4045ACD32DF83D525829CC6D /* ContentView.swift */,
+				02239B1C6ABD3DD65B5F4E2B /* DeepLinkHandler.swift */,
+				BD9BE6B53FB2214DA6F5AF03 /* Info.plist */,
+				A5609D54ADD09E826AA37304 /* MainTabView.swift */,
+				2A9E7BD207D5AB7E71A24F9C /* SDRApp.entitlements */,
+				A83E39C0DFAB045761E96F3A /* SDRAppMain.swift */,
+				903B0A62334235B11B917743 /* Resources */,
+				5EE4B69110CC59288CFCB4E2 /* ViewModels */,
+				B1CD56933603477055EB9193 /* Views */,
+			);
+			name = SDRApp;
+			path = App/SDRApp;
+			sourceTree = "<group>";
+		};
+		3E60BDFA2E6ABBC4148268A7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				679F5C66B2EFF2C2055D7F44 /* SDRApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		462204FA266625C964690072 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				7504085DCA1D9EEC5EC79559 /* OnboardingFlow.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		5EE4B69110CC59288CFCB4E2 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				3EC2F77DF3E0C5572DDD56AE /* RadioViewModel.swift */,
+				93FF586376D91BB5E1C35564 /* ScanEngine.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		6986310427C6862289ECC620 /* Stations */ = {
+			isa = PBXGroup;
+			children = (
+				FDBBC0E16158D2DD3D1DA651 /* AddStationView.swift */,
+				F923B149D0A72BEFEC98CBCA /* ImportExportSheet.swift */,
+				9BB2BC74D0EEF523AC1565B8 /* StationsView.swift */,
+			);
+			path = Stations;
+			sourceTree = "<group>";
+		};
+		7D020955F30A62538E1C1765 = {
+			isa = PBXGroup;
+			children = (
+				E3B712950682DD69A7B4BF32 /* Packages */,
+				345577C7063D3489D50E0509 /* SDRApp */,
+				3E60BDFA2E6ABBC4148268A7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		892621CB4A9E60D83BBF13D6 /* Diagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				176D7A307D9CC5D9E9AD9226 /* DiagnosticsView.swift */,
+			);
+			path = Diagnostics;
+			sourceTree = "<group>";
+		};
+		903B0A62334235B11B917743 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A4DD43E8E33FAD3B93B321CF /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				2F820473995F2496C57264BE /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		B1CD56933603477055EB9193 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				892621CB4A9E60D83BBF13D6 /* Diagnostics */,
+				462204FA266625C964690072 /* Onboarding */,
+				0FB7E67AF58D86B86ADE0DA6 /* Radio */,
+				A4DD43E8E33FAD3B93B321CF /* Settings */,
+				6986310427C6862289ECC620 /* Stations */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		E3B712950682DD69A7B4BF32 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				3032717CAE96D941FEDA4461 /* SDRApp */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8622CEC30CE2D14173CBA5EB /* SDRApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F72454246B81433BABB10453 /* Build configuration list for PBXNativeTarget "SDRApp" */;
+			buildPhases = (
+				A12433C289D40430D110B98B /* Sources */,
+				A1C6BE9AE1B4FC2B9C377283 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SDRApp;
+			packageProductDependencies = (
+				BF61446BAA8D26775C1D9071 /* RTLTCPClientKit */,
+				87AF0BD3E07133FB1436B989 /* SDRCoreDSP */,
+				00BCE60DE6F850FB9532808E /* SDRRender */,
+				A6D6374A4E82BBA5CA4C0714 /* AudioEngineKit */,
+				3857E701C482125053393C1E /* SDRModels */,
+				0F9830598337B923E0FC784B /* SDRSupport */,
+			);
+			productName = SDRApp;
+			productReference = 679F5C66B2EFF2C2055D7F44 /* SDRApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2948970772382257338177CD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					8622CEC30CE2D14173CBA5EB = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = A698BE22641AFECCD3541A02 /* Build configuration list for PBXProject "SDRApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7D020955F30A62538E1C1765;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				3F18865BB665230E898105C4 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8622CEC30CE2D14173CBA5EB /* SDRApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A12433C289D40430D110B98B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4503EE67357708B816D27FC0 /* AddStationView.swift in Sources */,
+				19BB732F7B9FD7AD96437E75 /* ConnectionSheet.swift in Sources */,
+				2673A3A3768D2D14EE275DD6 /* ContentView.swift in Sources */,
+				E18F422490436E4999A76C71 /* DeepLinkHandler.swift in Sources */,
+				F27DA313956312A7CA4BA469 /* DiagnosticsView.swift in Sources */,
+				5DB399C817C5DE7B8BEBD01E /* FrequencyKeypadView.swift in Sources */,
+				90A68F9E13A4001787E74B46 /* ImportExportSheet.swift in Sources */,
+				9C41A2619D0040822F055ACA /* MainTabView.swift in Sources */,
+				E9FBD949E8D7239F6606B913 /* OnboardingFlow.swift in Sources */,
+				F342404B6EE3E43D5718F493 /* RadioView.swift in Sources */,
+				BFBD0EBA7DDE8A2003573993 /* RadioViewModel.swift in Sources */,
+				EE4FF2947821E1B166E372F8 /* SDRAppMain.swift in Sources */,
+				252E000497F0F8BE8636C4A9 /* ScanEngine.swift in Sources */,
+				74E21F21AD1C3E7195319104 /* ScanView.swift in Sources */,
+				738EF6A2DDC2894295D5E605 /* SettingsView.swift in Sources */,
+				D11ACF52A02D99777E79EA90 /* StationsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2E930FE45DC63C030DE991FA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = App/SDRApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sdrapp.ios;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		85D461A11397A84C5067A1EE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		86891C761475EF79E3248116 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B68EEF3C76281EAF6AD7B30F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = App/SDRApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sdrapp.ios;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A698BE22641AFECCD3541A02 /* Build configuration list for PBXProject "SDRApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				86891C761475EF79E3248116 /* Debug */,
+				85D461A11397A84C5067A1EE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F72454246B81433BABB10453 /* Build configuration list for PBXNativeTarget "SDRApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B68EEF3C76281EAF6AD7B30F /* Debug */,
+				2E930FE45DC63C030DE991FA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		3F18865BB665230E898105C4 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		00BCE60DE6F850FB9532808E /* SDRRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRRender;
+		};
+		0F9830598337B923E0FC784B /* SDRSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRSupport;
+		};
+		3857E701C482125053393C1E /* SDRModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRModels;
+		};
+		87AF0BD3E07133FB1436B989 /* SDRCoreDSP */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRCoreDSP;
+		};
+		A6D6374A4E82BBA5CA4C0714 /* AudioEngineKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AudioEngineKit;
+		};
+		BF61446BAA8D26775C1D9071 /* RTLTCPClientKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RTLTCPClientKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 2948970772382257338177CD /* Project object */;
+}
