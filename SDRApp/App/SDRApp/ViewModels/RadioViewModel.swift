@@ -71,8 +71,9 @@ final class RadioViewModel {
 
     // MARK: - Subsystems
 
-    let iqBuffer = IQRingBuffer(capacity: 4 * 1_024_000) // ~2 sec at 1MSPS 8-bit IQ
-    let audioBuffer = AudioRingBuffer(capacity: 96_000)    // 2 sec at 48kHz
+    // Larger jitter buffers reduce audible dropouts when iOS briefly deprioritizes background work.
+    let iqBuffer = IQRingBuffer(capacity: 12 * 1_024_000) // ~6 sec at 1MSPS 8-bit IQ, ~2.5 sec at 2.4MSPS
+    let audioBuffer = AudioRingBuffer(capacity: 240_000)   // 5 sec at 48kHz
     let connection: RTLTCPConnection
     let dspPipeline: DSPPipeline
     let audioEngine: SDRAudioEngine

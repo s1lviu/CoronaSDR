@@ -61,6 +61,8 @@ public final class RTLTCPConnection: @unchecked Sendable {
     private var isSettling: Bool = false
 
     private let networkQueue = DispatchQueue(label: "com.sdrapp.network", qos: .userInitiated)
+    private let streamReceiveMinLength = 4_096
+    private let streamReceiveMaxLength = 262_144
 
     public init(iqBuffer: IQRingBuffer) {
         self.iqBuffer = iqBuffer
@@ -303,7 +305,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
     }
 
     private func startReceiveLoop(_ conn: NWConnection) {
-        conn.receive(minimumIncompleteLength: 1, maximumLength: 262_144) { [weak self] data, _, isComplete, error in
+        conn.receive(minimumIncompleteLength: streamReceiveMinLength, maximumLength: streamReceiveMaxLength) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             guard self.connection === conn else { return }
 
