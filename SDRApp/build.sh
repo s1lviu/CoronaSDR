@@ -16,8 +16,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build"
 APP_PATH="${BUILD_DIR}/Debug-iphoneos/SDRApp.app"
 BUNDLE_ID="com.sdrapp.ios"
-TEAM_ID="${TEAM_ID:-}"
-SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:-Apple Development}"
+TEAM_ID="DDJCP893KF"
 CRASH_DIR="${PROJECT_DIR}/CrashLogs"
 
 # Auto-detect device
@@ -40,26 +39,16 @@ do_build() {
     cd "$PROJECT_DIR"
     mkdir -p "$BUILD_DIR"
 
-    local xcodebuild_cmd=(
-        xcodebuild
-        -target SDRApp
-        -sdk iphoneos
-        -arch arm64
-        ONLY_ACTIVE_ARCH=YES
-        -configuration Debug
-    )
-
-    if [ -n "$TEAM_ID" ]; then
-        xcodebuild_cmd+=(
-            DEVELOPMENT_TEAM="$TEAM_ID"
-            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
-            CODE_SIGNING_ALLOWED=YES
-        )
-    fi
-
-    xcodebuild_cmd+=(build)
-
-    "${xcodebuild_cmd[@]}" 2>&1 | tee "${BUILD_DIR}/build.log" | grep -E '(error:|warning:|BUILD|Signing|fatal)'
+    xcodebuild \
+        -target SDRApp \
+        -sdk iphoneos \
+        -arch arm64 \
+        DEVELOPMENT_TEAM="$TEAM_ID" \
+        CODE_SIGN_IDENTITY="Apple Development" \
+        CODE_SIGNING_ALLOWED=YES \
+        ONLY_ACTIVE_ARCH=YES \
+        -configuration Debug \
+        build 2>&1 | tee "${BUILD_DIR}/build.log" | grep -E '(error:|warning:|BUILD|Signing|fatal)'
 
     local status=${PIPESTATUS[0]}
     if [ $status -ne 0 ]; then
