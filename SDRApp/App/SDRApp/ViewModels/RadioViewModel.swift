@@ -278,6 +278,15 @@ final class RadioViewModel {
         dspPipeline.setSquelch(squelchThreshold(for: level))
     }
 
+    var squelchThresholdDBFS: Float? {
+        guard squelchLevel > 0 else { return nil }
+        return linearToDBFS(squelchThreshold(for: squelchLevel))
+    }
+
+    var squelchNoiseDBFS: Float {
+        linearToDBFS(squelchNoiseLevel)
+    }
+
     func setBFOOffset(_ hz: Float) {
         bfoOffset = hz
         dspPipeline.bfoOffsetHz = hz
@@ -388,8 +397,19 @@ final class RadioViewModel {
 
     private func squelchThreshold(for uiLevel: Float) -> Float {
         let clamped = max(0, min(1, uiLevel))
-        // Invert slider semantics so higher UI level means tighter squelch.
-        return 1 - clamped
+        // UI semantics:
+        // - 0.0 => always open
+        // - 1.0 => tightest squelch (but not forced-open due to zero threshold edge case)
+        if clamped <= 0 { return 0 }
+
+        // Invert slider so higher UI means tighter (lower threshold),
+        // and keep a small floor to avoid threshold == 0.
+        return max(0.001, 1 - clamped)
+    }
+
+    private func linearToDBFS(_ value: Float) -> Float {
+        let clamped = max(1e-9, value)
+        return 20 * log10(clamped)
     }
 
     private func applyDirectSamplingForCurrentFrequency() {
