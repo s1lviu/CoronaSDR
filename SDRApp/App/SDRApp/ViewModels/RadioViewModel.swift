@@ -27,6 +27,10 @@ final class RadioViewModel {
     var isConnected: Bool = false
     var isPlaying: Bool = false
     var connectionState: ConnectionState = .disconnected
+    var isDirectSamplingActive: Bool = false
+    var directSamplingMode: DirectSamplingMode = .off
+    var isNetworkPoor: Bool = false
+    var networkQualityHint: String = "Idle"
 
     // Diagnostics
     var throughputMbps: Double = 0
@@ -51,6 +55,12 @@ final class RadioViewModel {
     var waterfallRenderer: WaterfallRenderer?
 
     private var diagnosticsTimer: Timer?
+    private let directSamplingThresholdHz = 24_000_000
+    private let iqBytesPerSamplePair: Double = 2.0
+    private var poorNetworkStreak: Int = 0
+    private var goodNetworkStreak: Int = 0
+    private var lastIQUnderrunCount: Int = 0
+    private var lastAudioUnderrunCount: Int = 0
 
     init() {
         connection = RTLTCPConnection(iqBuffer: iqBuffer)
@@ -118,9 +128,11 @@ final class RadioViewModel {
         print("📻 startListening: connected, proceeding")
 
         // Send initial commands
+        applyDirectSamplingForCurrentFrequency()
         connection.setFrequency(UInt32(frequencyHz))
         connection.setSampleRate(UInt32(dspPipeline.sampleRate))
         connection.setGainMode(gainMode)
+        connection.setAGCMode(gainMode == .auto)
         if gainMode == .manual {
             connection.setGain(UInt32(gainValue * 10))
         }
@@ -157,12 +169,14 @@ final class RadioViewModel {
         iqBuffer.flush()
         audioBuffer.flush()
         isPlaying = false
+        resetNetworkQualityState(hint: "Idle")
     }
 
     // MARK: - Tuning
 
     func setFrequency(_ hz: Int) {
         frequencyHz = hz
+        applyDirectSamplingForCurrentFrequency()
         connection.setFrequency(UInt32(hz))
         dspPipeline.resetState()
         updateNowPlaying()
@@ -193,6 +207,7 @@ final class RadioViewModel {
         self.gainMode = mode
         self.gainValue = value
         connection.setGainMode(mode)
+        connection.setAGCMode(mode == .auto)
         if mode == .manual {
             connection.setGain(UInt32(value * 10))
         }
@@ -237,11 +252,75 @@ final class RadioViewModel {
                     return false
                 }()
                 self.connectionState = self.connection.state
+                self.updateNetworkQuality()
             }
         }
     }
 
     // MARK: - Helpers
+
+    private func desiredDirectSamplingMode(for frequencyHz: Int) -> DirectSamplingMode {
+        frequencyHz < directSamplingThresholdHz ? .qBranch : .off
+    }
+
+    private func applyDirectSamplingForCurrentFrequency() {
+        let mode = desiredDirectSamplingMode(for: frequencyHz)
+        directSamplingMode = mode
+        isDirectSamplingActive = mode != .off
+        connection.setDirectSampling(mode)
+    }
+
+    private func updateNetworkQuality() {
+        guard isPlaying else {
+            resetNetworkQualityState(hint: "Idle")
+            return
+        }
+
+        let iqUnderruns = iqBuffer.underrunCount
+        let audioUnderruns = audioBuffer.underrunCount
+        let hadNewUnderrun = iqUnderruns > lastIQUnderrunCount || audioUnderruns > lastAudioUnderrunCount
+        lastIQUnderrunCount = iqUnderruns
+        lastAudioUnderrunCount = audioUnderruns
+
+        let expectedThroughputBytes = Double(dspPipeline.sampleRate) * iqBytesPerSamplePair
+        let lowThroughput = connection.throughputBytesPerSec < expectedThroughputBytes * 0.65
+        let lowIQBuffer = iqBufferFill < 0.10
+        let lowAudioBuffer = audioBufferFill < 0.05
+
+        var issueHint: String?
+        if hadNewUnderrun {
+            issueHint = "Underruns detected"
+        } else if lowIQBuffer || lowAudioBuffer {
+            issueHint = "Buffers draining"
+        } else if lowThroughput {
+            issueHint = "Low TCP throughput"
+        }
+
+        if let issueHint {
+            poorNetworkStreak += 1
+            goodNetworkStreak = 0
+            networkQualityHint = issueHint
+            if poorNetworkStreak >= 3 {
+                isNetworkPoor = true
+            }
+        } else {
+            goodNetworkStreak += 1
+            poorNetworkStreak = 0
+            if goodNetworkStreak >= 4 {
+                isNetworkPoor = false
+                networkQualityHint = "Good"
+            }
+        }
+    }
+
+    private func resetNetworkQualityState(hint: String) {
+        isNetworkPoor = false
+        networkQualityHint = hint
+        poorNetworkStreak = 0
+        goodNetworkStreak = 0
+        lastIQUnderrunCount = iqBuffer.underrunCount
+        lastAudioUnderrunCount = audioBuffer.underrunCount
+    }
 
     func formatFrequency(_ hz: Int) -> String {
         if hz >= 1_000_000_000 {

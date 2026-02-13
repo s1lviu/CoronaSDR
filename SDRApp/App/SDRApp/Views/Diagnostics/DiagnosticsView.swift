@@ -10,6 +10,9 @@ struct DiagnosticsView: View {
                 Section("Connection") {
                     diagRow("Status", value: viewModel.isConnected ? "Connected" : "Disconnected")
                     diagRow("Throughput", value: String(format: "%.2f Mbps", viewModel.throughputMbps))
+                    diagRow("Network Quality", value: viewModel.isNetworkPoor ? "Poor" : "Good")
+                    diagRow("Network Hint", value: viewModel.networkQualityHint)
+                    diagRow("Direct Sampling", value: viewModel.isDirectSamplingActive ? "Q-branch" : "Off")
                 }
 
                 Section("Buffers") {

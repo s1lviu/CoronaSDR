@@ -233,6 +233,16 @@ public final class RTLTCPConnection: @unchecked Sendable {
         sendCommand(.setGain, parameter: tenthsDb)
     }
 
+    /// Set RTL2832 AGC mode (0 = off, 1 = on).
+    public func setAGCMode(_ enabled: Bool) {
+        sendCommand(.setAGCMode, parameter: enabled ? 1 : 0)
+    }
+
+    /// Set direct sampling mode (0 = off, 1 = I, 2 = Q).
+    public func setDirectSampling(_ mode: DirectSamplingMode) {
+        sendCommand(.setDirectSampling, parameter: mode.rawValue)
+    }
+
     /// Set PPM correction.
     public func setPPM(_ ppm: Int32) {
         sendCommand(.setFrequencyCorrection, parameter: UInt32(bitPattern: ppm))

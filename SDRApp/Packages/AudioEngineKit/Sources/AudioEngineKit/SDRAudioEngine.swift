@@ -25,6 +25,11 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private let audioBuffer: AudioRingBuffer
     private let sampleRate: Double = 48000
     private var isInterrupted: Bool = false
+    private var shouldResumeAfterInterruption: Bool = false
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
+    private var mediaServicesResetObserver: NSObjectProtocol?
+    private var remoteCommandsConfigured: Bool = false
 
     // Callbacks for lock screen remote commands
     public var onPlayPause: (() -> Void)?
@@ -33,6 +38,10 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
     public init(audioBuffer: AudioRingBuffer) {
         self.audioBuffer = audioBuffer
+    }
+
+    deinit {
+        removeObservers()
     }
 
     /// Configure audio session for playback.
@@ -45,6 +54,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
         setupInterruptionHandling()
         setupRouteChangeHandling()
+        setupMediaServicesResetHandling()
         setupRemoteCommands()
 
         SDRLogger.audio.info("Audio session configured: rate=\(session.sampleRate), bufferDuration=\(session.ioBufferDuration)")
@@ -86,7 +96,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
     /// Stop audio playback.
     public func stop() {
-        guard isPlaying else { return }
+        guard isPlaying || sourceNode != nil else { return }
 
         engine.stop()
         if let sourceNode {
@@ -102,7 +112,8 @@ public final class SDRAudioEngine: @unchecked Sendable {
     // MARK: - Interruption Handling
 
     private func setupInterruptionHandling() {
-        _ = NotificationCenter.default.addObserver(
+        guard interruptionObserver == nil else { return }
+        interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
             object: AVAudioSession.sharedInstance(),
             queue: .main
@@ -116,16 +127,18 @@ public final class SDRAudioEngine: @unchecked Sendable {
             case .began:
                 SDRLogger.audio.info("Audio interruption began")
                 self.isInterrupted = true
+                self.shouldResumeAfterInterruption = self.isPlaying
+                if self.isPlaying {
+                    self.engine.pause()
+                    self.isPlaying = false
+                    self.updateNowPlaying()
+                }
             case .ended:
                 SDRLogger.audio.info("Audio interruption ended")
                 self.isInterrupted = false
-                if let optionsValue = info[AVAudioSessionInterruptionOptionKey] as? UInt {
-                    let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                    if options.contains(.shouldResume) {
-                        try? self.engine.start()
-                        self.isPlaying = true
-                    }
-                }
+                let optionsValue = (info[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                self.resumeAfterInterruptionIfNeeded(options: options)
             @unknown default:
                 break
             }
@@ -133,7 +146,8 @@ public final class SDRAudioEngine: @unchecked Sendable {
     }
 
     private func setupRouteChangeHandling() {
-        _ = NotificationCenter.default.addObserver(
+        guard routeChangeObserver == nil else { return }
+        routeChangeObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
             queue: .main
@@ -153,9 +167,34 @@ public final class SDRAudioEngine: @unchecked Sendable {
         }
     }
 
+    private func setupMediaServicesResetHandling() {
+        guard mediaServicesResetObserver == nil else { return }
+        mediaServicesResetObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            let shouldResume = self.isPlaying || self.shouldResumeAfterInterruption
+            do {
+                try self.configureSession()
+                if shouldResume, self.sourceNode != nil {
+                    try self.engine.start()
+                    self.isPlaying = true
+                    self.updateNowPlaying()
+                }
+                SDRLogger.audio.info("Audio media services were reset and session was reconfigured")
+            } catch {
+                SDRLogger.audio.error("Failed to recover after media services reset: \(error)")
+            }
+        }
+    }
+
     // MARK: - Remote Commands (Lock Screen)
 
     private func setupRemoteCommands() {
+        guard !remoteCommandsConfigured else { return }
+        remoteCommandsConfigured = true
         let center = MPRemoteCommandCenter.shared()
 
         center.playCommand.isEnabled = true
@@ -186,6 +225,39 @@ public final class SDRAudioEngine: @unchecked Sendable {
         _ = center.previousTrackCommand.addTarget { [weak self] _ in
             self?.onPreviousStation?()
             return .success
+        }
+    }
+
+    private func resumeAfterInterruptionIfNeeded(options: AVAudioSession.InterruptionOptions) {
+        let shouldResume = shouldResumeAfterInterruption || options.contains(.shouldResume)
+        shouldResumeAfterInterruption = false
+        guard shouldResume else { return }
+
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setActive(true)
+            if sourceNode != nil {
+                try engine.start()
+                isPlaying = true
+                updateNowPlaying()
+            }
+        } catch {
+            SDRLogger.audio.error("Failed to resume audio after interruption: \(error)")
+        }
+    }
+
+    private func removeObservers() {
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+            self.interruptionObserver = nil
+        }
+        if let routeChangeObserver {
+            NotificationCenter.default.removeObserver(routeChangeObserver)
+            self.routeChangeObserver = nil
+        }
+        if let mediaServicesResetObserver {
+            NotificationCenter.default.removeObserver(mediaServicesResetObserver)
+            self.mediaServicesResetObserver = nil
         }
     }
 

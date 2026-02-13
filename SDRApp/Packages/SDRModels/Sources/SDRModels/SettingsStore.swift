@@ -9,83 +9,83 @@ public final class SettingsStore {
     // MARK: - Onboarding
 
     public var hasCompletedOnboarding: Bool {
-        get { defaults.bool(forKey: "hasCompletedOnboarding") }
-        set { defaults.set(newValue, forKey: "hasCompletedOnboarding") }
+        didSet { defaults.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
     }
 
     // MARK: - Last Server
 
     public var lastServerHost: String {
-        get { defaults.string(forKey: "lastServerHost") ?? "" }
-        set { defaults.set(newValue, forKey: "lastServerHost") }
+        didSet { defaults.set(lastServerHost, forKey: "lastServerHost") }
     }
 
     public var lastServerPort: Int {
-        get { defaults.object(forKey: "lastServerPort") != nil ? defaults.integer(forKey: "lastServerPort") : 1234 }
-        set { defaults.set(newValue, forKey: "lastServerPort") }
+        didSet { defaults.set(lastServerPort, forKey: "lastServerPort") }
     }
 
     // MARK: - Radio Defaults
 
     public var lastFrequencyHz: Int {
-        get { defaults.object(forKey: "lastFrequencyHz") != nil ? defaults.integer(forKey: "lastFrequencyHz") : 100_000_000 }
-        set { defaults.set(newValue, forKey: "lastFrequencyHz") }
+        didSet { defaults.set(lastFrequencyHz, forKey: "lastFrequencyHz") }
     }
 
     public var lastMode: String {
-        get { defaults.string(forKey: "lastMode") ?? "WFM" }
-        set { defaults.set(newValue, forKey: "lastMode") }
+        didSet { defaults.set(lastMode, forKey: "lastMode") }
     }
 
     public var lastGainMode: String {
-        get { defaults.string(forKey: "lastGainMode") ?? "Auto" }
-        set { defaults.set(newValue, forKey: "lastGainMode") }
+        didSet { defaults.set(lastGainMode, forKey: "lastGainMode") }
     }
 
     public var lastGainValue: Float {
-        get { defaults.float(forKey: "lastGainValue") }
-        set { defaults.set(newValue, forKey: "lastGainValue") }
+        didSet { defaults.set(lastGainValue, forKey: "lastGainValue") }
     }
 
     public var lastPPM: Float {
-        get { defaults.float(forKey: "lastPPM") }
-        set { defaults.set(newValue, forKey: "lastPPM") }
+        didSet { defaults.set(lastPPM, forKey: "lastPPM") }
     }
 
     // MARK: - Sample Profile
 
     public var selectedSampleProfileLabel: String {
-        get { defaults.string(forKey: "selectedSampleProfileLabel") ?? "Low" }
-        set { defaults.set(newValue, forKey: "selectedSampleProfileLabel") }
+        didSet { defaults.set(selectedSampleProfileLabel, forKey: "selectedSampleProfileLabel") }
     }
 
     // MARK: - Display
 
     public var waterfallColorScheme: String {
-        get { defaults.string(forKey: "waterfallColorScheme") ?? "classic" }
-        set { defaults.set(newValue, forKey: "waterfallColorScheme") }
+        didSet { defaults.set(waterfallColorScheme, forKey: "waterfallColorScheme") }
     }
 
     public var spectrumPeakHold: Bool {
-        get { defaults.bool(forKey: "spectrumPeakHold") }
-        set { defaults.set(newValue, forKey: "spectrumPeakHold") }
+        didSet { defaults.set(spectrumPeakHold, forKey: "spectrumPeakHold") }
     }
 
     // MARK: - Audio
 
     public var deemphasis: Int {
-        get { defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75 }
-        set { defaults.set(newValue, forKey: "deemphasis") }
+        didSet { defaults.set(deemphasis, forKey: "deemphasis") }
     }
 
     // MARK: - Debug
 
     public var debugLogsEnabled: Bool {
-        get { defaults.bool(forKey: "debugLogsEnabled") }
-        set { defaults.set(newValue, forKey: "debugLogsEnabled") }
+        didSet { defaults.set(debugLogsEnabled, forKey: "debugLogsEnabled") }
     }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
+        self.lastServerHost = defaults.string(forKey: "lastServerHost") ?? ""
+        self.lastServerPort = defaults.object(forKey: "lastServerPort") != nil ? defaults.integer(forKey: "lastServerPort") : 1234
+        self.lastFrequencyHz = defaults.object(forKey: "lastFrequencyHz") != nil ? defaults.integer(forKey: "lastFrequencyHz") : 100_000_000
+        self.lastMode = defaults.string(forKey: "lastMode") ?? "WFM"
+        self.lastGainMode = defaults.string(forKey: "lastGainMode") ?? "Auto"
+        self.lastGainValue = defaults.float(forKey: "lastGainValue")
+        self.lastPPM = defaults.float(forKey: "lastPPM")
+        self.selectedSampleProfileLabel = defaults.string(forKey: "selectedSampleProfileLabel") ?? "Low"
+        self.waterfallColorScheme = defaults.string(forKey: "waterfallColorScheme") ?? "classic"
+        self.spectrumPeakHold = defaults.bool(forKey: "spectrumPeakHold")
+        self.deemphasis = defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75
+        self.debugLogsEnabled = defaults.bool(forKey: "debugLogsEnabled")
     }
 }
