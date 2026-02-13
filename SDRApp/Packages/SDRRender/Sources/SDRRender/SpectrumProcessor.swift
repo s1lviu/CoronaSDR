@@ -47,6 +47,9 @@ public final class SpectrumProcessor {
 
         // Peak hold
         if peakHoldEnabled {
+            if peakBins.count != count {
+                peakBins = smoothed
+            }
             for i in 0..<count {
                 if smoothed[i] > peakBins[i] {
                     peakBins[i] = smoothed[i]

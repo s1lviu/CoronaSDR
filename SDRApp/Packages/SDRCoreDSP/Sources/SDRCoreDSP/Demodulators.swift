@@ -25,7 +25,8 @@ public final class AMDemodulator: Demodulator {
     public init() {}
 
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
-        let count = real.count
+        let count = min(real.count, imag.count)
+        guard count > 0 else { return [] }
         var output = [Float](repeating: 0, count: count)
 
         // Magnitude: sqrt(I^2 + Q^2)
@@ -93,7 +94,8 @@ public final class FMDemodulator: Demodulator {
     }
 
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
-        let count = real.count
+        let count = min(real.count, imag.count)
+        guard count > 0 else { return [] }
         var output = [Float](repeating: 0, count: count)
         
         // Local state capture for loop
@@ -151,7 +153,8 @@ public final class SSBDemodulator: Demodulator {
     }
 
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
-        let count = real.count
+        let count = min(real.count, imag.count)
+        guard count > 0 else { return [] }
         var output = [Float](repeating: 0, count: count)
         
         for i in 0..<count {

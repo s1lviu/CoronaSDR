@@ -165,6 +165,9 @@ public final class DSPPipeline: @unchecked Sendable {
             // Channel filter + decimate
             let filteredI = channelFilterI.process(realWork)
             let filteredQ = channelFilterQ.process(imagWork)
+            if filteredI.count != filteredQ.count {
+                SDRDebug.print("⚠️ IQ channel length mismatch: I=\(filteredI.count) Q=\(filteredQ.count)")
+            }
 
             // Demodulate
             var audio = demodulator.demodulate(real: filteredI, imag: filteredQ)
