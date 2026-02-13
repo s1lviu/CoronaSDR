@@ -93,9 +93,11 @@ public final class RTLTCPConnection: @unchecked Sendable {
         params.serviceClass = .interactiveVideo
 
         let conn = NWConnection(to: endpoint, using: params)
+        self.connection = conn
 
         conn.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
+            guard self.connection === conn else { return }
             print("🔌 NWConnection state: \(state)")
             switch state {
             case .ready:
@@ -120,19 +122,20 @@ public final class RTLTCPConnection: @unchecked Sendable {
         }
 
         conn.start(queue: networkQueue)
-        self.connection = conn
         startPathMonitor()
     }
 
     /// Disconnect and clean up.
     public func disconnect() {
+        reconnectPolicy = .never
         reconnectAttempt = 0
         reconnectTask?.cancel()
         reconnectTask = nil
         pathMonitor?.cancel()
         pathMonitor = nil
-        connection?.cancel()
+        let conn = connection
         connection = nil
+        conn?.cancel()
         DispatchQueue.main.async { [weak self] in
             self?.state = .disconnected
         }
@@ -143,6 +146,10 @@ public final class RTLTCPConnection: @unchecked Sendable {
 
     /// Test connection: connect, validate header, report result, then disconnect.
     public func testConnection(host: String, port: UInt16) async -> Result<RTLTCPHeader, Error> {
+        if isConnected(to: host, port: port), let header {
+            return .success(header)
+        }
+
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             return .failure(NSError(domain: "RTLTCPConnection", code: -3,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid port"]))
@@ -253,11 +260,17 @@ public final class RTLTCPConnection: @unchecked Sendable {
         sendCommand(.setBiasTee, parameter: enabled ? 1 : 0)
     }
 
+    public func isConnected(to host: String, port: UInt16) -> Bool {
+        guard case .connected = state else { return false }
+        return lastHost == host && lastPort == port
+    }
+
     // MARK: - Private
 
     private func readHeader(_ conn: NWConnection) {
         conn.receive(minimumIncompleteLength: 12, maximumLength: 12) { [weak self] data, _, _, error in
             guard let self else { return }
+            guard self.connection === conn else { return }
             if let error {
                 SDRLogger.network.error("Header read failed: \(error)")
                 DispatchQueue.main.async {
@@ -292,6 +305,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
     private func startReceiveLoop(_ conn: NWConnection) {
         conn.receive(minimumIncompleteLength: 1, maximumLength: 262_144) { [weak self] data, _, isComplete, error in
             guard let self else { return }
+            guard self.connection === conn else { return }
 
             if let data, !data.isEmpty {
                 self.bytesReceived += data.count
@@ -354,6 +368,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
 
     private func attemptReconnect() {
         guard reconnectPolicy != .never else { return }
+        guard connection != nil else { return }
         guard reconnectTask == nil else { return }
 
         reconnectAttempt += 1
