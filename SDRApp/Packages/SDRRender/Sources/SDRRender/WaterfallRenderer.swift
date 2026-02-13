@@ -7,6 +7,17 @@ import SDRSupport
 /// Each FFT frame becomes one row in a scrolling texture.
 /// Scrolling is done via texture coordinate offset (no CPU-side image shifts).
 public final class WaterfallRenderer: NSObject, MTKViewDelegate {
+    private enum ColorScheme: UInt32 {
+        case classic = 0
+        case thermal = 1
+        case grayscale = 2
+    }
+
+    private struct WaterfallUniforms {
+        var scrollOffset: Float
+        var colorScheme: UInt32
+    }
+
     public let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     private var waterfallPipeline: MTLRenderPipelineState?
@@ -27,6 +38,7 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     // Spectrum is rendered in a dedicated top view; keep waterfall clean.
     private var showSpectrum: Bool = false
     private var renderingActive: Bool = true
+    private var colorScheme: ColorScheme = .classic
 
     // FPS tracking
     private var frameCount: Int = 0
@@ -56,10 +68,10 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     private func buildPipelines() {
         guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else {
             SDRLogger.ui.error("Failed to load Metal shader library")
-            print("❌ Metal: Failed to load shader library from bundle")
+            SDRDebug.print("❌ Metal: Failed to load shader library from bundle")
             return
         }
-        print("✅ Metal: Shader library loaded")
+        SDRDebug.print("✅ Metal: Shader library loaded")
 
         // Waterfall pipeline
         let waterfallDesc = MTLRenderPipelineDescriptor()
@@ -69,10 +81,10 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
 
         do {
             waterfallPipeline = try device.makeRenderPipelineState(descriptor: waterfallDesc)
-            print("✅ Metal: Waterfall pipeline created")
+            SDRDebug.print("✅ Metal: Waterfall pipeline created")
         } catch {
             SDRLogger.ui.error("Failed to create waterfall pipeline: \(error)")
-            print("❌ Metal: Waterfall pipeline failed: \(error)")
+            SDRDebug.print("❌ Metal: Waterfall pipeline failed: \(error)")
         }
 
         // Spectrum pipeline
@@ -86,10 +98,10 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
 
         do {
             spectrumPipeline = try device.makeRenderPipelineState(descriptor: spectrumDesc)
-            print("✅ Metal: Spectrum pipeline created")
+            SDRDebug.print("✅ Metal: Spectrum pipeline created")
         } catch {
             SDRLogger.ui.error("Failed to create spectrum pipeline: \(error)")
-            print("❌ Metal: Spectrum pipeline failed: \(error)")
+            SDRDebug.print("❌ Metal: Spectrum pipeline failed: \(error)")
         }
     }
 
@@ -118,7 +130,18 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
                                   bytesPerRow: bytesPerRow)
                 }
             }
-            print("✅ Metal: Waterfall texture created and cleared (\(textureWidth)x\(textureHeight))")
+            SDRDebug.print("✅ Metal: Waterfall texture created and cleared (\(textureWidth)x\(textureHeight))")
+        }
+    }
+
+    public func setColorScheme(named schemeName: String) {
+        switch schemeName.lowercased() {
+        case "thermal":
+            colorScheme = .thermal
+        case "grayscale":
+            colorScheme = .grayscale
+        default:
+            colorScheme = .classic
         }
     }
 
@@ -165,7 +188,7 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             let minV = rowData.min() ?? 0
             let maxV = rowData.max() ?? 0
             let avgV = rowData.reduce(0, +) / Float(rowData.count)
-            print("🌊 Waterfall row \(rowsWritten): min=\(String(format: "%.3f", minV)) max=\(String(format: "%.3f", maxV)) avg=\(String(format: "%.3f", avgV)) bins=\(bins.count)")
+            SDRDebug.print("🌊 Waterfall row \(rowsWritten): min=\(String(format: "%.3f", minV)) max=\(String(format: "%.3f", maxV)) avg=\(String(format: "%.3f", avgV)) bins=\(bins.count)")
         }
     }
 
@@ -217,8 +240,8 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             encoder.setRenderPipelineState(pipeline)
             encoder.setFragmentTexture(texture, index: 0)
 
-            var uniforms = scrollOffset
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Float>.stride, index: 0)
+            var uniforms = WaterfallUniforms(scrollOffset: scrollOffset, colorScheme: colorScheme.rawValue)
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<WaterfallUniforms>.stride, index: 0)
 
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
         }

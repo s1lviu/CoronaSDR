@@ -133,7 +133,7 @@ final class RadioViewModel {
     // MARK: - Connection
 
     func connect(host: String, port: UInt16) {
-        print("📻 RadioViewModel.connect(\(host):\(port))")
+        SDRDebug.print("📻 RadioViewModel.connect(\(host):\(port))")
         connection.connect(host: host, port: port)
         startDiagnosticsTimer()
     }
@@ -168,12 +168,12 @@ final class RadioViewModel {
     // MARK: - Listening
 
     func startListening() {
-        print("📻 startListening called, connection.state=\(connection.state)")
+        SDRDebug.print("📻 startListening called, connection.state=\(connection.state)")
         guard case .connected = connection.state else {
-            print("📻 startListening: NOT connected, aborting")
+            SDRDebug.print("📻 startListening: NOT connected, aborting")
             return
         }
-        print("📻 startListening: connected, proceeding")
+        SDRDebug.print("📻 startListening: connected, proceeding")
 
         // Send initial commands
         applyDirectSamplingForCurrentFrequency()
@@ -281,6 +281,37 @@ final class RadioViewModel {
     func setBFOOffset(_ hz: Float) {
         bfoOffset = hz
         dspPipeline.bfoOffsetHz = hz
+    }
+
+    func applySampleProfile(label: String) {
+        let profile = sampleProfile(for: label)
+        dspPipeline.setSampleRate(profile.sampleRate)
+        dspPipeline.setFFTSize(profile.fftSize)
+        waterfallRenderer?.targetFPS = profile.uiFps
+
+        if isConnected {
+            connection.setSampleRate(UInt32(profile.sampleRate))
+        }
+
+        if isPlaying {
+            iqBuffer.flush()
+            audioBuffer.flush()
+        }
+    }
+
+    func applySpectrumPeakHold(_ enabled: Bool) {
+        spectrumProcessor.peakHoldEnabled = enabled
+        if !enabled {
+            spectrumProcessor.peakBins = []
+        }
+    }
+
+    func applyWaterfallColorScheme(_ schemeName: String) {
+        waterfallRenderer?.setColorScheme(named: schemeName)
+    }
+
+    func applyDeemphasis(_ microseconds: Int) {
+        dspPipeline.setDeemphasisUs(microseconds)
     }
 
     func setRadioTabVisible(_ isVisible: Bool) {
@@ -418,6 +449,17 @@ final class RadioViewModel {
         goodNetworkStreak = 0
         lastIQUnderrunCount = iqBuffer.underrunCount
         lastAudioUnderrunCount = audioBuffer.underrunCount
+    }
+
+    private func sampleProfile(for label: String) -> (sampleRate: Int, fftSize: Int, uiFps: Int) {
+        switch label {
+        case "Medium":
+            return (2_048_000, 4096, 20)
+        case "High":
+            return (2_400_000, 4096, 30)
+        default:
+            return (1_024_000, 2048, 15)
+        }
     }
 
     func formatFrequency(_ hz: Int) -> String {

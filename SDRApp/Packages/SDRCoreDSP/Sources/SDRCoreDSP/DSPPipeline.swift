@@ -12,7 +12,7 @@ public final class DSPPipeline: @unchecked Sendable {
     public var mode: DemodMode = .nfm {
         didSet {
             if mode != oldValue {
-                rebuildDemodChain()
+                rebuildDemodChain(preservingBandwidth: false)
             }
         }
     }
@@ -77,7 +77,7 @@ public final class DSPPipeline: @unchecked Sendable {
             targetFill: targetAudioFill
         )
 
-        rebuildDemodChain()
+        rebuildDemodChain(preservingBandwidth: false)
     }
 
     // MARK: - Start / Stop
@@ -94,7 +94,7 @@ public final class DSPPipeline: @unchecked Sendable {
         thread.start()
         dspThread = thread
 
-        print("🎛️ DSP pipeline started: mode=\(mode.rawValue), sampleRate=\(sampleRate), bw=\(bandwidthHz)")
+        SDRDebug.print("🎛️ DSP pipeline started: mode=\(mode.rawValue), sampleRate=\(sampleRate), bw=\(bandwidthHz)")
         SDRLogger.dsp.info("DSP pipeline started")
     }
 
@@ -189,9 +189,9 @@ public final class DSPPipeline: @unchecked Sendable {
             let now = CFAbsoluteTimeGetCurrent()
             if now - lastLogTime >= 2.0 {
                 let bps = Double(blockCount * blockSize) / (now - lastLogTime)
-                print("🎛️ DSP: \(blockCount) blocks, \(String(format: "%.1f", bps/1024))KB/s, " +
-                      "IQ→\(sampleCount) filt→\(filteredI.count) demod→\(audio.count) resamp→\(resampled.count), " +
-                      "audioFill=\(String(format: "%.1f%%", currentFill*100)), ratio=\(String(format: "%.6f", adjustedRatio))")
+                SDRDebug.print("🎛️ DSP: \(blockCount) blocks, \(String(format: "%.1f", bps/1024))KB/s, " +
+                               "IQ→\(sampleCount) filt→\(filteredI.count) demod→\(audio.count) resamp→\(resampled.count), " +
+                               "audioFill=\(String(format: "%.1f%%", currentFill*100)), ratio=\(String(format: "%.6f", adjustedRatio))")
                 blockCount = 0
                 lastLogTime = now
             }
@@ -281,7 +281,9 @@ public final class DSPPipeline: @unchecked Sendable {
 
     // MARK: - Rebuild
 
-    private func rebuildDemodChain() {
+    private func rebuildDemodChain(preservingBandwidth: Bool) {
+        let requestedBandwidth = bandwidthHz
+
         // First rebuild filters to get the correct intermediate rate
         rebuildFilters()
 
@@ -292,29 +294,33 @@ public final class DSPPipeline: @unchecked Sendable {
         switch mode {
         case .am:
             demodulator = AMDemodulator()
-            bandwidthHz = 10_000
+            if !preservingBandwidth { bandwidthHz = 10_000 }
         case .nfm:
             demodulator = FMDemodulator(sampleRate: intermediateRate, deviation: 5000, deemphasisUs: deemphasisUs)
-            bandwidthHz = 12_500
+            if !preservingBandwidth { bandwidthHz = 12_500 }
         case .wfm:
             demodulator = FMDemodulator(sampleRate: intermediateRate, deviation: 75000, deemphasisUs: deemphasisUs)
-            bandwidthHz = 200_000
+            if !preservingBandwidth { bandwidthHz = 200_000 }
         case .usb:
             demodulator = SSBDemodulator(isUSB: true)
-            bandwidthHz = 2_400
+            if !preservingBandwidth { bandwidthHz = 2_400 }
         case .lsb:
             demodulator = SSBDemodulator(isUSB: false)
-            bandwidthHz = 2_400
+            if !preservingBandwidth { bandwidthHz = 2_400 }
         case .cw:
             demodulator = CWDemodulator()
-            bandwidthHz = 500
+            if !preservingBandwidth { bandwidthHz = 500 }
+        }
+
+        if preservingBandwidth {
+            bandwidthHz = requestedBandwidth
         }
 
         // Rebuild filters again with updated bandwidth
         rebuildFilters()
 
         SDRLogger.dsp.info("Demod chain rebuilt: \(self.mode.rawValue), intermediateRate=\(intermediateRate)")
-        print("🔊 Demod: \(self.mode.rawValue), intermediate=\(intermediateRate)Hz, decim=\(decimFactor)")
+        SDRDebug.print("🔊 Demod: \(self.mode.rawValue), intermediate=\(intermediateRate)Hz, decim=\(decimFactor)")
     }
 
     private var intermediateTarget: Int {
@@ -345,7 +351,27 @@ public final class DSPPipeline: @unchecked Sendable {
         driftCompensator = DriftCompensator(baseRatio: newBaseRatio, targetFill: targetAudioFill)
 
         SDRLogger.dsp.info("Filters rebuilt: bw=\(self.bandwidthHz)Hz, decim=\(decimFactor), intermediate=\(intermediateRate)Hz")
-        print("🔧 Filters: bw=\(self.bandwidthHz)Hz, taps=\(numTaps), decim=\(decimFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
+        SDRDebug.print("🔧 Filters: bw=\(self.bandwidthHz)Hz, taps=\(numTaps), decim=\(decimFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
+    }
+
+    /// Update IQ sample rate and rebuild the DSP chain.
+    public func setSampleRate(_ hz: Int) {
+        let clamped = max(256_000, hz)
+        guard sampleRate != clamped else { return }
+        sampleRate = clamped
+        rebuildDemodChain(preservingBandwidth: true)
+        resetState()
+    }
+
+    /// Update FM de-emphasis time constant and rebuild FM demodulators.
+    public func setDeemphasisUs(_ microseconds: Int) {
+        let clamped = Float(max(25, min(200, microseconds)))
+        guard deemphasisUs != clamped else { return }
+        deemphasisUs = clamped
+        if mode == .nfm || mode == .wfm {
+            rebuildDemodChain(preservingBandwidth: true)
+            resetState()
+        }
     }
 
     /// Update squelch threshold.
