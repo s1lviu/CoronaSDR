@@ -12,9 +12,15 @@ public final class SpectrumProcessor {
     private var smoothedBins: [Float] = []
     private let smoothingAlpha: Float = 0.3 // EMA factor
     private let peakDecayRate: Float = 0.2  // dB per update
+    private var floorProbeBins: [Float] = []
 
-    public var minDB: Float = -100
-    public var maxDB: Float = -20
+    // Display window (dBFS): renderer maps [minDB ... maxDB] to [0 ... 1].
+    // Industry-standard behavior: keep a fixed dynamic range and move level based on noise floor.
+    public var minDB: Float = -110
+    public var maxDB: Float = -50
+    public var dynamicRangeDB: Float = 60
+    public var autoLevelEnabled: Bool = true
+    public var levelHeadroomDB: Float = 4
 
     public init() {}
 
@@ -44,6 +50,7 @@ public final class SpectrumProcessor {
 
         smoothedBins = smoothed
         currentBins = smoothed
+        updateDisplayWindow(using: smoothed)
 
         // Peak hold
         if peakHoldEnabled {
@@ -62,11 +69,54 @@ public final class SpectrumProcessor {
 
     /// Normalize bins to 0.0–1.0 range for rendering.
     public func normalizedBins() -> [Float] {
-        let range = maxDB - minDB
-        guard range > 0 else { return currentBins.map { _ in Float(0.5) } }
-
+        let range = max(1, maxDB - minDB)
         return currentBins.map { bin in
             max(0, min(1, (bin - minDB) / range))
         }
+    }
+
+    private func updateDisplayWindow(using bins: [Float]) {
+        let clampedRange = max(20, min(120, dynamicRangeDB))
+
+        if !autoLevelEnabled {
+            maxDB = minDB + clampedRange
+            return
+        }
+
+        guard let estimatedFloor = estimateNoiseFloor(from: bins) else {
+            maxDB = minDB + clampedRange
+            return
+        }
+
+        let targetMinDB = estimatedFloor - levelHeadroomDB
+        let delta = targetMinDB - minDB
+
+        // Fast attack when floor rises, slower release when it falls.
+        let alpha: Float = delta > 0 ? 0.35 : 0.08
+        minDB += delta * alpha
+        maxDB = minDB + clampedRange
+    }
+
+    private func estimateNoiseFloor(from bins: [Float]) -> Float? {
+        guard !bins.isEmpty else { return nil }
+
+        // Downsample before sorting to reduce per-frame CPU while staying robust.
+        let stride = max(1, bins.count / 512)
+        floorProbeBins.removeAll(keepingCapacity: true)
+        floorProbeBins.reserveCapacity((bins.count / stride) + 1)
+
+        var index = 0
+        while index < bins.count {
+            floorProbeBins.append(bins[index])
+            index += stride
+        }
+
+        guard !floorProbeBins.isEmpty else { return nil }
+        floorProbeBins.sort()
+
+        // 20th percentile is a stable proxy for floor without being dominated by peaks.
+        let percentile: Float = 0.20
+        let percentileIndex = Int((Float(floorProbeBins.count - 1) * percentile).rounded(.down))
+        return floorProbeBins[max(0, min(percentileIndex, floorProbeBins.count - 1))]
     }
 }
