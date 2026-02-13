@@ -22,11 +22,14 @@
 #ifndef __LIQUID_H__
 #define __LIQUID_H__
 
+// FORCE STRUCT DEFINITION FOR SWIFT COMPATIBILITY
+#define LIQUID_USE_COMPLEX_H 0
+
 #ifdef __cplusplus
 extern "C" {
-#   define LIQUID_USE_COMPLEX_H 0
+// #   define LIQUID_USE_COMPLEX_H 0
 #else
-#   define LIQUID_USE_COMPLEX_H 1
+// #   define LIQUID_USE_COMPLEX_H 1
 #endif // __cplusplus
 
 // common headers

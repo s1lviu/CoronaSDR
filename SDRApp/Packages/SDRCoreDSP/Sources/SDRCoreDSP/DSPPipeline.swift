@@ -277,10 +277,10 @@ public final class DSPPipeline: @unchecked Sendable {
             demodulator = AMDemodulator()
             bandwidthHz = 10_000
         case .nfm:
-            demodulator = FMDemodulator(sampleRate: intermediateRate, deemphasisUs: deemphasisUs)
+            demodulator = FMDemodulator(sampleRate: intermediateRate, deviation: 5000, deemphasisUs: deemphasisUs)
             bandwidthHz = 12_500
         case .wfm:
-            demodulator = FMDemodulator(sampleRate: intermediateRate, deemphasisUs: deemphasisUs)
+            demodulator = FMDemodulator(sampleRate: intermediateRate, deviation: 75000, deemphasisUs: deemphasisUs)
             bandwidthHz = 200_000
         case .usb:
             demodulator = SSBDemodulator(isUSB: true)

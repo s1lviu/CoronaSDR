@@ -1,5 +1,6 @@
 import Foundation
 import Accelerate
+import CLiquidDSP
 
 /// Protocol for all demodulators.
 public protocol Demodulator {
@@ -8,9 +9,10 @@ public protocol Demodulator {
     func reset()
 }
 
-// MARK: - AM Demodulator
+// MARK: - AM Demodulator (Envelope)
 
 /// AM envelope demodulator: output = sqrt(I^2 + Q^2) with DC removal and AGC.
+/// Kept as simple envelope detection for robustness against tuning errors.
 public final class AMDemodulator: Demodulator {
     private let dcBlocker = DCBlocker()
     private let agc = AGC(targetLevel: 0.3, attackRate: 0.005, decayRate: 0.00005)
@@ -56,128 +58,136 @@ public final class AMDemodulator: Demodulator {
     }
 }
 
-// MARK: - FM Demodulator (NFM / WFM)
+// MARK: - FM Demodulator (liquid-dsp)
 
-/// FM quadrature demodulator with optional de-emphasis.
+/// FM demodulator using liquid-dsp's freqdem object.
+/// Provides superior PLL-based demodulation.
+/// Includes post-demodulation de-emphasis filter.
 public final class FMDemodulator: Demodulator {
-    private var prevI: Float = 0
-    private var prevQ: Float = 0
+    private var q: freqdem
     private let gain: Float
-
-    // De-emphasis filter state
+    
+    // De-emphasis state
     private var deemphPrev: Float = 0
     private let deemphAlpha: Float
 
-    public init(sampleRate: Float, deemphasisUs: Float = 75.0) {
-        // FM demod gain: normalize output to ~1.0
-        // For NFM with deviation ~5kHz, gain = sampleRate / (2π * deviation)
-        self.gain = 1.0 / .pi
-
-        // De-emphasis: single-pole IIR
+    /// Create FM demodulator.
+    /// - Parameters:
+    ///   - sampleRate: The sample rate of the input IQ stream (e.g. 48000 or 240000).
+    ///   - deviation: The frequency deviation in Hz (e.g. 5000 for NFM, 75000 for WFM).
+    ///   - deemphasisUs: De-emphasis time constant in microseconds (default 75 for US/KR, 50 for EU).
+    public init(sampleRate: Float, deviation: Float, deemphasisUs: Float = 75.0) {
+        // kf = deviation / sample_rate
+        let kf = deviation / sampleRate
+        self.q = freqdem_create(kf)
+        self.gain = 1.0 
+        
+        // De-emphasis: alpha = 1 - exp(-1 / (sampleRate * tau))
         // tau = deemphasis_us * 1e-6
-        // alpha = 1 - exp(-1 / (sampleRate * tau))
         let tau = deemphasisUs * 1e-6
         self.deemphAlpha = 1.0 - exp(-1.0 / (sampleRate * tau))
+    }
+    
+    deinit {
+        freqdem_destroy(q)
     }
 
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
         let count = real.count
         var output = [Float](repeating: 0, count: count)
-
-        // Quadrature demodulation: atan2(Q[n]*I[n-1] - I[n]*Q[n-1], I[n]*I[n-1] + Q[n]*Q[n-1])
-        // Approximation: (Q[n]*I[n-1] - I[n]*Q[n-1]) / (I[n]^2 + Q[n]^2) for small angles
-        var pI = prevI
-        var pQ = prevQ
-
+        
+        // Local state capture for loop
+        var prev = deemphPrev
+        let alpha = deemphAlpha
+        
         for i in 0..<count {
-            let curI = real[i]
-            let curQ = imag[i]
-
-            // Cross product / dot product approximation
-            let cross = curQ * pI - curI * pQ
-            let dot = curI * pI + curQ * pQ
-
-            output[i] = atan2f(cross, dot) * gain
-
-            pI = curI
-            pQ = curQ
+            // Construct complex sample
+            var sample = liquid_float_complex(real: real[i], imag: imag[i])
+            var outSample: Float = 0
+            
+            // Demodulate
+            freqdem_demodulate(q, sample, &outSample)
+            
+            // De-emphasis (IIR single pole)
+            // y[n] = y[n-1] + alpha * (x[n] - y[n-1])
+            prev = prev + alpha * (outSample - prev)
+            output[i] = prev
         }
-
-        prevI = pI
-        prevQ = pQ
-
-        // De-emphasis
-        applyDeemphasis(&output)
+        
+        deemphPrev = prev
 
         return output
     }
 
-    private func applyDeemphasis(_ samples: inout [Float]) {
-        var prev = deemphPrev
-        for i in 0..<samples.count {
-            prev = prev + deemphAlpha * (samples[i] - prev)
-            samples[i] = prev
-        }
-        deemphPrev = prev
-    }
-
     public func reset() {
-        prevI = 0
-        prevQ = 0
+        freqdem_reset(q)
         deemphPrev = 0
     }
 }
 
-// MARK: - SSB Demodulator
+// MARK: - SSB Demodulator (liquid-dsp)
 
-/// SSB (USB/LSB) demodulator.
-/// For USB: output = real part (after frequency shift if BFO applied).
-/// For LSB: conjugate then real part.
+/// SSB (USB/LSB) demodulator using liquid-dsp's ampmodem.
+/// Correctly rejects the unwanted sideband using complex filtering.
 public final class SSBDemodulator: Demodulator {
-    public let isUSB: Bool
+    private var q: ampmodem
     private let agc = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.0001)
-
+    
     public var agcEnabled: Bool {
         get { agc.isEnabled }
         set { agc.isEnabled = newValue }
     }
 
     public init(isUSB: Bool) {
-        self.isUSB = isUSB
+        // ampmodem_create(modulation_index, type, suppressed_carrier)
+        // For SSB, modulation_index is typically 1.0 (or ignored).
+        // suppressed_carrier = 1 (true) for SSB.
+        let type = isUSB ? LIQUID_AMPMODEM_USB : LIQUID_AMPMODEM_LSB
+        self.q = ampmodem_create(0.5, type, 1)
+    }
+    
+    deinit {
+        ampmodem_destroy(q)
     }
 
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
-        // SSB: take the real part of the analytic signal.
-        // For USB: real part directly.
-        // For LSB: conjugate (negate Q) then real part = same as real part.
-        // The difference is handled by the BFO/NCO offset direction in the channelizer.
-        var output = real
+        let count = real.count
+        var output = [Float](repeating: 0, count: count)
+        
+        for i in 0..<count {
+            var sample = liquid_float_complex(real: real[i], imag: imag[i])
+            var outSample: Float = 0
+            
+            // For ampmodem demodulate, it takes complex input (IQ) and gives real audio output
+            ampmodem_demodulate(q, sample, &outSample)
+            
+            output[i] = outSample
+        }
 
         agc.process(&output)
-
         return output
     }
 
     public func reset() {
+        ampmodem_reset(q)
         agc.reset()
     }
 }
 
 // MARK: - CW Demodulator
 
-/// CW demodulator: essentially SSB with a narrow filter and sidetone.
+/// CW demodulator: uses USB demodulation + narrow filter (handled in pipeline) + BFO.
+/// We reuse SSBDemodulator(USB) as the base, since CW is essentially SSB with a tone.
 public final class CWDemodulator: Demodulator {
-    private let agc = AGC(targetLevel: 0.4, attackRate: 0.01, decayRate: 0.0005)
+    private let ssbDemod = SSBDemodulator(isUSB: true)
 
     public init() {}
 
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
-        var output = real
-        agc.process(&output)
-        return output
+        return ssbDemod.demodulate(real: real, imag: imag)
     }
 
     public func reset() {
-        agc.reset()
+        ssbDemod.reset()
     }
 }
