@@ -243,16 +243,18 @@ final class RadioViewModel {
 
     // MARK: - Scan
 
-    func startListScan(frequencies: [(hz: Int, mode: DemodMode)], dwellMs: Int, holdSec: Int) {
-        guard isConnected else { return }
+    func startListScan(frequencies: [(hz: Int, mode: DemodMode)], dwellMs: Int, holdSec: Int) -> Bool {
+        guard case .connected = connection.state else { return false }
         if !isPlaying {
             startListening()
+            guard isPlaying else { return false }
         }
         scanEngine.startListScan(
             frequencies: frequencies,
             dwellMs: max(100, dwellMs),
             holdSec: max(1, holdSec)
         )
+        return true
     }
 
     func startRangeScan(
@@ -262,10 +264,11 @@ final class RadioViewModel {
         mode: DemodMode,
         dwellMs: Int,
         holdSec: Int
-    ) {
-        guard isConnected else { return }
+    ) -> Bool {
+        guard case .connected = connection.state else { return false }
         if !isPlaying {
             startListening()
+            guard isPlaying else { return false }
         }
         scanEngine.startRangeScan(
             startHz: startHz,
@@ -275,6 +278,7 @@ final class RadioViewModel {
             dwellMs: max(100, dwellMs),
             holdSec: max(1, holdSec)
         )
+        return true
     }
 
     func stopScan() {
