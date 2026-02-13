@@ -4,10 +4,10 @@ import SDRModels
 import SDRSupport
 import os
 
-private let logger = Logger(subsystem: "com.sdrapp.ios", category: "App")
+private let logger = Logger(subsystem: "yo6say.coronasdr", category: "App")
 
 @main
-struct SDRAppMain: App {
+struct CoronaSDRApp: App {
     let modelContainer: ModelContainer?
     private let containerError: String?
 
@@ -37,8 +37,8 @@ struct SDRAppMain: App {
             Thread.callStackSymbols.forEach { print($0) }
         }
 
-        logger.info("SDRApp init starting")
-        SDRDebug.print("📻 SDRApp init starting")
+        logger.info("CoronaSDR init starting")
+        SDRDebug.print("📻 CoronaSDR init starting")
 
         do {
             let schema = Schema([Station.self, Tag.self, ServerProfile.self, SampleProfile.self])
@@ -54,8 +54,8 @@ struct SDRAppMain: App {
             SDRDebug.print("❌ ModelContainer failed: \(error)")
         }
 
-        logger.info("SDRApp init complete")
-        SDRDebug.print("📻 SDRApp init complete")
+        logger.info("CoronaSDR init complete")
+        SDRDebug.print("📻 CoronaSDR init complete")
     }
 
     var body: some Scene {

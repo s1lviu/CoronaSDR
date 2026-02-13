@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# SDRApp Build, Install & Debug Script
+# CoronaSDR Build, Install & Debug Script
 # Usage:
 #   ./build.sh              — Build, install, and launch on device
 #   ./build.sh build        — Build only
@@ -14,8 +14,8 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build"
-APP_PATH="${BUILD_DIR}/Debug-iphoneos/SDRApp.app"
-BUNDLE_ID="com.sdrapp.ios"
+APP_PATH="${BUILD_DIR}/Debug-iphoneos/CoronaSDR.app"
+BUNDLE_ID="yo6say.coronasdr"
 TEAM_ID="DDJCP893KF"
 CRASH_DIR="${PROJECT_DIR}/CrashLogs"
 
@@ -35,12 +35,12 @@ get_device_id() {
 }
 
 do_build() {
-    echo "=== Building SDRApp ==="
+    echo "=== Building CoronaSDR ==="
     cd "$PROJECT_DIR"
     mkdir -p "$BUILD_DIR"
 
     xcodebuild \
-        -target SDRApp \
+        -target CoronaSDR \
         -sdk iphoneos \
         -arch arm64 \
         DEVELOPMENT_TEAM="$TEAM_ID" \
@@ -80,7 +80,7 @@ do_launch() {
     local device_id
     device_id=$(get_device_id)
 
-    echo "=== Launching SDRApp ==="
+    echo "=== Launching CoronaSDR ==="
     xcrun devicectl device process launch \
         --device "$device_id" \
         "$BUNDLE_ID" 2>&1
@@ -92,7 +92,7 @@ do_logs() {
     local device_id
     device_id=$(get_device_id)
 
-    echo "=== Launching SDRApp with console attached (Ctrl+C to stop) ==="
+    echo "=== Launching CoronaSDR with console attached (Ctrl+C to stop) ==="
     echo "=== You'll see all print() and os_log output in real-time ==="
     echo ""
 
@@ -120,7 +120,7 @@ do_crash() {
     local crash_src="$HOME/Library/Logs/CrashReporter/MobileDevice"
     if [ -d "$crash_src" ]; then
         echo "Looking in $crash_src ..."
-        find "$crash_src" -name "*SDRApp*" -newer "${CRASH_DIR}/.last_fetch" 2>/dev/null | while read -r f; do
+        find "$crash_src" -name "*CoronaSDR*" -newer "${CRASH_DIR}/.last_fetch" 2>/dev/null | while read -r f; do
             cp "$f" "$CRASH_DIR/"
             echo "  Copied: $(basename "$f")"
         done
@@ -136,8 +136,8 @@ do_crash() {
     local ips_dir="$HOME/Library/Logs/DiagnosticReports"
     if [ -d "$ips_dir" ]; then
         echo ""
-        echo "Recent SDRApp crash reports in DiagnosticReports:"
-        find "$ips_dir" -name "*SDRApp*" -mtime -7 2>/dev/null | while read -r f; do
+        echo "Recent CoronaSDR crash reports in DiagnosticReports:"
+        find "$ips_dir" -name "*CoronaSDR*" -mtime -7 2>/dev/null | while read -r f; do
             cp "$f" "$CRASH_DIR/"
             echo "  $(basename "$f") — $(stat -f '%Sm' "$f")"
         done
@@ -156,11 +156,11 @@ do_crash() {
         head -100 "$latest"
     else
         echo ""
-        echo "No SDRApp crash logs found yet."
+        echo "No CoronaSDR crash logs found yet."
         echo ""
         echo "Tips:"
         echo "  1. Open your iPhone → Settings → Privacy → Analytics & Improvements → Analytics Data"
-        echo "  2. Look for entries starting with 'SDRApp'"
+        echo "  2. Look for entries starting with 'CoronaSDR'"
         echo "  3. Share the crash log via AirDrop/Mail"
         echo ""
         echo "  Or: Open Console.app on Mac, select your iPhone, reproduce the crash,"

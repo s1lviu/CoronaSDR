@@ -13,7 +13,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
     }
 
     // Now Playing info
-    public var nowPlayingTitle: String = "SDR Radio" {
+    public var nowPlayingTitle: String = "CoronaSDR" {
         didSet { updateNowPlaying() }
     }
     public var nowPlayingSubtitle: String = "" {

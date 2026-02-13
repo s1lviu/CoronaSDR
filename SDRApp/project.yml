@@ -1,6 +1,6 @@
-name: SDRApp
+name: CoronaSDR
 options:
-  bundleIdPrefix: com.sdrapp
+  bundleIdPrefix: yo6say
   deploymentTarget:
     iOS: "18.0"
   xcodeVersion: "16.0"
@@ -11,7 +11,7 @@ packages:
     path: .
 
 targets:
-  SDRApp:
+  CoronaSDR:
     type: application
     platform: iOS
     deploymentTarget: "18.0"
@@ -55,11 +55,11 @@ targets:
           - "_rsp._tcp"
         CFBundleURLTypes:
           - CFBundleURLSchemes:
-              - sdrapp
-            CFBundleURLName: com.sdrapp.ios
+              - coronasdr
+            CFBundleURLName: yo6say.coronasdr
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.sdrapp.ios
+        PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr
         INFOPLIST_FILE: App/SDRApp/Info.plist
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "6.0"
