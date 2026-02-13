@@ -142,10 +142,27 @@ final class RadioViewModel {
         stopListening()
         connection.disconnect()
         diagnosticsTimer?.invalidate()
+        diagnosticsTimer = nil
+        isConnected = false
+        connectionState = .disconnected
+        throughputMbps = 0
+        iqBufferFill = 0
+        audioBufferFill = 0
+        currentFPS = 0
+        squelchNoiseLevel = 0
+        resetNetworkQualityState(hint: "Idle")
     }
 
     func testConnection(host: String, port: UInt16) async -> Result<RTLTCPHeader, Error> {
-        await connection.testConnection(host: host, port: port)
+        if connection.isConnected(to: host, port: port) {
+            if case .connected(let header) = connection.state {
+                return .success(header)
+            }
+            if let header = connection.header {
+                return .success(header)
+            }
+        }
+        return await connection.testConnection(host: host, port: port)
     }
 
     // MARK: - Listening

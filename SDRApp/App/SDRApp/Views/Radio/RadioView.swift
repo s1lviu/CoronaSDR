@@ -10,24 +10,24 @@ struct RadioView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Connection status bar
-                connectionBar
-
-                // Spectrum + Waterfall
-                spectrumWaterfallSection
-
-                // Frequency display
-                frequencyDisplay
-
-                // Mode selector
-                modeSelector
-
-                // Controls
-                controlsSection
-
-                Spacer(minLength: 0)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    sectionCard { connectionBar }
+                    sectionCard { spectrumWaterfallSection }
+                    sectionCard {
+                        VStack(spacing: 14) {
+                            frequencyDisplay
+                            Divider()
+                            modeSelector
+                        }
+                    }
+                    sectionCard { controlsSection }
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 28)
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("SDR Radio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -99,8 +99,7 @@ struct RadioView: View {
             }
         }
         .padding(.horizontal)
-        .padding(.vertical, 4)
-        .background(.bar)
+        .padding(.vertical, 2)
     }
 
     private var connectionStatusText: String {
@@ -145,9 +144,7 @@ struct RadioView: View {
                     }
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - Frequency Display
@@ -171,6 +168,7 @@ struct RadioView: View {
                 }
             }
             .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
             .simultaneousGesture(
                 DragGesture(minimumDistance: 10)
                     .onEnded { value in
@@ -184,36 +182,36 @@ struct RadioView: View {
 
             // Step up/down buttons
             HStack(spacing: 20) {
-            Button { viewModel.stepFrequency(up: false) } label: {
-                Image(systemName: "minus.circle.fill")
-                    .font(.title2)
-            }
-            .accessibilityLabel("Decrease frequency")
-
-            // Step size picker
-            Menu {
-                ForEach([100, 1_000, 5_000, 9_000, 10_000, 12_500, 25_000, 50_000, 100_000], id: \.self) { step in
-                    Button(formatStep(step)) {
-                        viewModel.stepHz = step
-                    }
+                Button { viewModel.stepFrequency(up: false) } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title2)
                 }
-            } label: {
-                Text(formatStep(viewModel.stepHz))
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.quaternary)
-                    .clipShape(Capsule())
-            }
-            .accessibilityLabel("Step size")
+                .accessibilityLabel("Decrease frequency")
 
-            Button { viewModel.stepFrequency(up: true) } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
+                // Step size picker
+                Menu {
+                    ForEach([100, 1_000, 5_000, 9_000, 10_000, 12_500, 25_000, 50_000, 100_000], id: \.self) { step in
+                        Button(formatStep(step)) {
+                            viewModel.stepHz = step
+                        }
+                    }
+                } label: {
+                    Text(formatStep(viewModel.stepHz))
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.quaternary)
+                        .clipShape(Capsule())
+                }
+                .accessibilityLabel("Step size")
+
+                Button { viewModel.stepFrequency(up: true) } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                }
+                .accessibilityLabel("Increase frequency")
             }
-            .accessibilityLabel("Increase frequency")
         }
-        } // VStack
     }
 
     // MARK: - Mode Selector
@@ -237,9 +235,8 @@ struct RadioView: View {
                     .accessibilityAddTraits(viewModel.mode == demodMode ? .isSelected : [])
                 }
             }
-            .padding(.horizontal)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 
     // MARK: - Controls
@@ -362,7 +359,19 @@ struct RadioView: View {
                 Spacer()
             }
         }
-        .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private func sectionCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+            }
     }
 
     // MARK: - Toolbar buttons
