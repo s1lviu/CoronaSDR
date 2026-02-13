@@ -20,6 +20,13 @@ public struct WaterfallView: UIViewRepresentable {
         view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         view.enableSetNeedsDisplay = !isActive
         view.isPaused = !isActive
+        view.isOpaque = true
+
+        // Ensure the waterfall has a valid first frame before playback starts.
+        if !isActive {
+            view.setNeedsDisplay()
+            view.draw()
+        }
 
         return view
     }
@@ -28,6 +35,10 @@ public struct WaterfallView: UIViewRepresentable {
         uiView.preferredFramesPerSecond = renderer.targetFPS
         uiView.enableSetNeedsDisplay = !isActive
         uiView.isPaused = !isActive
+        if !isActive {
+            uiView.setNeedsDisplay()
+            uiView.draw()
+        }
     }
 }
 
