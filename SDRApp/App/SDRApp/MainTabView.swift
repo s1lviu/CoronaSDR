@@ -36,5 +36,11 @@ struct MainTabView: View {
                 }
                 .tag(4)
         }
+        .onAppear {
+            viewModel.setRadioTabVisible(selectedTab == 0)
+        }
+        .onChange(of: selectedTab) { _, newValue in
+            viewModel.setRadioTabVisible(newValue == 0)
+        }
     }
 }

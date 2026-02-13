@@ -20,9 +20,12 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     private var scrollOffset: Float = 0
 
     // Spectrum bins for overlay
-    private var spectrumBins: [Float] = []
+    private let spectrumLock = NSLock()
     private var spectrumBuffer: MTLBuffer?
+    private var spectrumBufferCapacity: Int = 0
+    private var spectrumSampleCount: Int = 0
     private var showSpectrum: Bool = true
+    private var renderingActive: Bool = true
 
     // FPS tracking
     private var frameCount: Int = 0
@@ -42,6 +45,11 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
         super.init()
         buildPipelines()
         createWaterfallTexture()
+    }
+
+    /// Enable/disable active rendering (e.g. when radio tab is not visible).
+    public func setRenderingActive(_ isActive: Bool) {
+        renderingActive = isActive
     }
 
     private func buildPipelines() {
@@ -116,7 +124,7 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     /// Add a new FFT row to the waterfall (called from main thread).
     /// Bins should be normalized 0.0–1.0.
     public func addWaterfallRow(_ bins: [Float]) {
-        guard let texture = waterfallTexture, !bins.isEmpty else { return }
+        guard renderingActive, let texture = waterfallTexture, !bins.isEmpty else { return }
 
         // Resample bins to texture width
         var rowData: [Float]
@@ -162,12 +170,32 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
 
     /// Update spectrum overlay bins (normalized 0.0–1.0).
     public func updateSpectrumBins(_ bins: [Float]) {
-        spectrumBins = bins
-        spectrumBuffer = device.makeBuffer(
-            bytes: bins,
-            length: bins.count * MemoryLayout<Float>.stride,
-            options: .storageModeShared
-        )
+        spectrumLock.lock()
+        defer { spectrumLock.unlock() }
+
+        guard !bins.isEmpty else {
+            spectrumSampleCount = 0
+            return
+        }
+
+        let neededBytes = bins.count * MemoryLayout<Float>.stride
+        if spectrumBuffer == nil || spectrumBufferCapacity < bins.count {
+            // Grow buffer geometrically to avoid frequent reallocations.
+            spectrumBufferCapacity = max(bins.count, max(1024, spectrumBufferCapacity * 2))
+            spectrumBuffer = device.makeBuffer(
+                length: spectrumBufferCapacity * MemoryLayout<Float>.stride,
+                options: .storageModeShared
+            )
+        }
+
+        if let spectrumBuffer {
+            bins.withUnsafeBytes { src in
+                spectrumBuffer.contents().copyMemory(from: src.baseAddress!, byteCount: neededBytes)
+            }
+            spectrumSampleCount = bins.count
+        } else {
+            spectrumSampleCount = 0
+        }
     }
 
     // MARK: - MTKViewDelegate
@@ -175,6 +203,7 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     public func draw(in view: MTKView) {
+        guard renderingActive else { return }
         guard let drawable = view.currentDrawable,
               let renderPassDesc = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -194,12 +223,19 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
         }
 
         // Draw spectrum overlay
-        if showSpectrum, let pipeline = spectrumPipeline, let buffer = spectrumBuffer, !spectrumBins.isEmpty {
+        var localSpectrumBuffer: MTLBuffer?
+        var localSpectrumCount = 0
+        spectrumLock.lock()
+        localSpectrumBuffer = spectrumBuffer
+        localSpectrumCount = spectrumSampleCount
+        spectrumLock.unlock()
+
+        if showSpectrum, let pipeline = spectrumPipeline, let buffer = localSpectrumBuffer, localSpectrumCount > 0 {
             encoder.setRenderPipelineState(pipeline)
             encoder.setVertexBuffer(buffer, offset: 0, index: 0)
-            var count = UInt32(spectrumBins.count)
+            var count = UInt32(localSpectrumCount)
             encoder.setVertexBytes(&count, length: MemoryLayout<UInt32>.stride, index: 1)
-            encoder.drawPrimitives(type: .lineStrip, vertexStart: 0, vertexCount: spectrumBins.count)
+            encoder.drawPrimitives(type: .lineStrip, vertexStart: 0, vertexCount: localSpectrumCount)
         }
 
         encoder.endEncoding()

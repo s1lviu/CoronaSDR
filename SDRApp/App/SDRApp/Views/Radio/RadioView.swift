@@ -139,7 +139,7 @@ struct RadioView: View {
 
             // Waterfall
             if let renderer = viewModel.waterfallRenderer {
-                WaterfallView(renderer: renderer)
+                WaterfallView(renderer: renderer, isActive: viewModel.isPlaying && viewModel.isRadioTabVisible)
                     .frame(height: 200)
                     .accessibilityLabel("Waterfall display")
             } else {
