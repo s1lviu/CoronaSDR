@@ -8,7 +8,58 @@ struct RadioView: View {
     var viewModel: RadioViewModel
     @State private var showFrequencyKeypad = false
     @State private var showConnectionSheet = false
+    @State private var helpTopic: ControlHelpTopic?
     @State private var didRestoreRadioDefaults = false
+
+    private enum ControlHelpTopic: String, Identifiable {
+        case step
+        case gain
+        case squelch
+        case bfo
+        case ppm
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .step: return "Step Size"
+            case .gain: return "Gain"
+            case .squelch: return "Squelch (SQL)"
+            case .bfo: return "BFO"
+            case .ppm: return "PPM Correction"
+            }
+        }
+
+        var summary: String {
+            switch self {
+            case .step:
+                return "Step size is how much the frequency changes when you tune with +/- or swipe."
+            case .gain:
+                return "Gain controls tuner amplification before demodulation. Too low loses weak signals, too high adds overload and noise."
+            case .squelch:
+                return "Squelch mutes audio when signal level is below a threshold. Useful for FM scanning to avoid constant noise."
+            case .bfo:
+                return "BFO shifts SSB/CW audio pitch for fine tuning. It helps center speech/tones without changing RF frequency."
+            case .ppm:
+                return "PPM compensates crystal frequency error in the SDR tuner. Use it to align stations exactly on frequency."
+            }
+        }
+
+        var recommended: String {
+            switch self {
+            case .step:
+                return "Typical: WFM 100 kHz, NFM 12.5 kHz, AM 9/10 kHz, SSB/CW 10-100 Hz for fine tuning."
+            case .gain:
+                return "Start with Auto. For weak signals use Manual around 35-49 dB and back off if noise/overload increases."
+            case .squelch:
+                return "For weak-signal work keep SQL near open. For local FM channels raise it until noise just closes."
+            case .bfo:
+                return "For FT8 keep near 0 Hz. For CW/SSB adjust until tone/voice sounds natural and stable."
+            case .ppm:
+                return "Calibrate on a known station; typical values are often within +/-40 PPM depending on dongle temperature."
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -53,6 +104,10 @@ struct RadioView: View {
             .sheet(isPresented: $showConnectionSheet) {
                 ConnectionSheet(viewModel: viewModel)
                     .presentationDetents([.medium])
+            }
+            .sheet(item: $helpTopic) { topic in
+                controlHelpSheet(for: topic)
+                    .presentationDetents([.medium, .large])
             }
             .onAppear {
                 restoreRadioDefaultsIfNeeded()
@@ -242,6 +297,7 @@ struct RadioView: View {
                         Text("Step: \(formatStep(viewModel.stepHz))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        helpButton(.step)
                     }
                 }
             }
@@ -332,9 +388,7 @@ struct RadioView: View {
 
             // Gain
             HStack {
-                Text("Gain")
-                    .font(.caption)
-                    .frame(width: 50, alignment: .leading)
+                controlLabel("Gain", topic: .gain)
 
                 Picker("", selection: Binding(
                     get: { viewModel.gainMode },
@@ -363,9 +417,7 @@ struct RadioView: View {
             // Squelch (for applicable modes)
             if viewModel.mode.supportsSquelch {
                 HStack {
-                    Text("SQL")
-                        .font(.caption)
-                        .frame(width: 50, alignment: .leading)
+                    controlLabel("SQL", topic: .squelch)
 
                     Slider(value: Binding(
                         get: { viewModel.squelchLevel },
@@ -384,22 +436,17 @@ struct RadioView: View {
                 }
 
                 HStack {
-                    Text("Prag squelch in dBFS (0 = open).")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Spacer()
                     Text(String(format: "Noise %.1f dBFS", viewModel.squelchNoiseDBFS))
                         .font(.caption2.monospacedDigit())
                         .foregroundStyle(.secondary)
+                    Spacer()
                 }
             }
 
             // BFO offset (for SSB/CW)
             if viewModel.mode.usesBFO {
                 HStack {
-                    Text("BFO")
-                        .font(.caption)
-                        .frame(width: 50, alignment: .leading)
+                    controlLabel("BFO", topic: .bfo)
 
                     Slider(value: Binding(
                         get: { viewModel.bfoOffset },
@@ -415,9 +462,7 @@ struct RadioView: View {
 
             // PPM
             HStack {
-                Text("PPM")
-                    .font(.caption)
-                    .frame(width: 50, alignment: .leading)
+                controlLabel("PPM", topic: .ppm)
 
                 Slider(value: Binding(
                     get: { viewModel.ppm },
@@ -430,12 +475,6 @@ struct RadioView: View {
                     .frame(width: 40)
             }
 
-            HStack {
-                Text("PPM corrects tuner crystal error (frequency offset).")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
         }
     }
 
@@ -549,5 +588,61 @@ struct RadioView: View {
             return String(format: "%.1f kHz", Double(hz) / 1_000)
         }
         return "\(hz) Hz"
+    }
+
+    private func controlLabel(_ text: String, topic: ControlHelpTopic) -> some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.caption)
+            helpButton(topic)
+        }
+        .frame(width: 72, alignment: .leading)
+    }
+
+    private func helpButton(_ topic: ControlHelpTopic) -> some View {
+        Button {
+            helpTopic = topic
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Help for \(topic.title)")
+    }
+
+    @ViewBuilder
+    private func controlHelpSheet(for topic: ControlHelpTopic) -> some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(topic.summary)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Recommended")
+                            .font(.headline)
+                        Text(topic.recommended)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if topic == .ppm {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Tip")
+                                .font(.headline)
+                            Text("Let the dongle warm up for a few minutes before final PPM calibration. Frequency drift is normal at startup.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .navigationTitle(topic.title)
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }

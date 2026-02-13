@@ -64,7 +64,7 @@ struct FrequencyKeypadView: View {
                 .padding(.horizontal)
 
                 if let hz = computedHz, hz < directSamplingThresholdHz {
-                    Text("Sub 24 MHz aplicația va activa automat Direct Sampling (Q).")
+                    Text("Below 24 MHz, the app automatically enables Direct Sampling (Q).")
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .padding(.horizontal)
