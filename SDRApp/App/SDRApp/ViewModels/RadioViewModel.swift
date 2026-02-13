@@ -77,7 +77,6 @@ final class RadioViewModel {
     let dspPipeline: DSPPipeline
     let audioEngine: SDRAudioEngine
     let discovery = ServiceDiscovery()
-    let diagnostics = DiagnosticsCollector()
     let scanEngine = ScanEngine()
 
     var waterfallRenderer: WaterfallRenderer?
@@ -125,6 +124,21 @@ final class RadioViewModel {
         if let device = MTLCreateSystemDefaultDevice() {
             waterfallRenderer = WaterfallRenderer(device: device)
             waterfallRenderer?.setRenderingActive(false)
+        }
+
+        // Scan callbacks
+        scanEngine.onTune = { [weak self] frequencyHz, mode in
+            guard let self else { return }
+            self.setMode(mode)
+            self.setFrequency(frequencyHz)
+            if !self.isPlaying {
+                self.startListening()
+            }
+        }
+        scanEngine.onSquelchCheck = { [weak self] in
+            guard let self else { return false }
+            guard self.isPlaying, self.mode.supportsSquelch else { return false }
+            return self.dspPipeline.isSquelchOpen
         }
 
         startFFTUITimer()
@@ -225,6 +239,50 @@ final class RadioViewModel {
         waterfallRenderer?.setRenderingActive(false)
         fftMailbox.clear()
         resetNetworkQualityState(hint: "Idle")
+    }
+
+    // MARK: - Scan
+
+    func startListScan(frequencies: [(hz: Int, mode: DemodMode)], dwellMs: Int, holdSec: Int) {
+        guard isConnected else { return }
+        if !isPlaying {
+            startListening()
+        }
+        scanEngine.startListScan(
+            frequencies: frequencies,
+            dwellMs: max(100, dwellMs),
+            holdSec: max(1, holdSec)
+        )
+    }
+
+    func startRangeScan(
+        startHz: Int,
+        endHz: Int,
+        stepHz: Int,
+        mode: DemodMode,
+        dwellMs: Int,
+        holdSec: Int
+    ) {
+        guard isConnected else { return }
+        if !isPlaying {
+            startListening()
+        }
+        scanEngine.startRangeScan(
+            startHz: startHz,
+            endHz: endHz,
+            stepHz: max(1, stepHz),
+            mode: mode,
+            dwellMs: max(100, dwellMs),
+            holdSec: max(1, holdSec)
+        )
+    }
+
+    func stopScan() {
+        scanEngine.stop()
+    }
+
+    func skipScanStep() {
+        scanEngine.skip()
     }
 
     // MARK: - Tuning

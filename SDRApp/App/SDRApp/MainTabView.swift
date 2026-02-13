@@ -22,7 +22,7 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
-            ScanView()
+            ScanView(viewModel: viewModel)
                 .tabItem {
                     Label("Scan", systemImage: "magnifyingglass")
                 }

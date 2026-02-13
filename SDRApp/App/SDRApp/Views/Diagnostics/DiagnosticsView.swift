@@ -8,11 +8,12 @@ struct DiagnosticsView: View {
         NavigationStack {
             List {
                 Section("Connection") {
-                    diagRow("Status", value: viewModel.isConnected ? "Connected" : "Disconnected")
+                    diagRow("Status", value: connectionStatusText)
+                    diagRow("Playback", value: viewModel.isPlaying ? "Active" : "Stopped")
                     diagRow("Throughput", value: String(format: "%.2f Mbps", viewModel.throughputMbps))
-                    diagRow("Network Quality", value: viewModel.isNetworkPoor ? "Poor" : "Good")
+                    diagRow("Network Quality", value: networkQualityText)
                     diagRow("Network Hint", value: viewModel.networkQualityHint)
-                    diagRow("Direct Sampling", value: viewModel.isDirectSamplingActive ? "Q-branch" : "Off")
+                    diagRow("Direct Sampling", value: directSamplingText)
                 }
 
                 Section("Buffers") {
@@ -31,7 +32,7 @@ struct DiagnosticsView: View {
                 }
 
                 Section("Display") {
-                    diagRow("Waterfall FPS", value: String(format: "%.1f", viewModel.currentFPS))
+                    diagRow("Waterfall FPS", value: waterfallFPSText)
                 }
 
                 Section("Hints") {
@@ -39,7 +40,7 @@ struct DiagnosticsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Label("If audio drops, try 'Low' sample rate profile", systemImage: "lightbulb")
+                    Label("If audio drops, use the Low processing profile", systemImage: "lightbulb")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -57,5 +58,44 @@ struct DiagnosticsView: View {
                 .font(.body.monospacedDigit())
                 .accessibilityLabel("\(label): \(value)")
         }
+    }
+
+    private var connectionStatusText: String {
+        switch viewModel.connectionState {
+        case .disconnected:
+            return "Disconnected"
+        case .connecting:
+            return "Connecting..."
+        case .validatingHeader:
+            return "Validating..."
+        case .connected(let header):
+            return "Connected (\(header.tunerType.displayName))"
+        case .reconnecting(let attempt):
+            return "Reconnecting (\(attempt))..."
+        case .failed(let message):
+            return "Error: \(message)"
+        }
+    }
+
+    private var networkQualityText: String {
+        guard viewModel.isPlaying else { return "Idle" }
+        return viewModel.isNetworkPoor ? "Poor" : "Good"
+    }
+
+    private var directSamplingText: String {
+        switch viewModel.directSamplingMode {
+        case .off:
+            return "Off"
+        case .iBranch:
+            return "I-branch"
+        case .qBranch:
+            return "Q-branch"
+        }
+    }
+
+    private var waterfallFPSText: String {
+        guard viewModel.isPlaying else { return "Idle" }
+        guard viewModel.isRadioTabVisible else { return "Paused (Radio tab hidden)" }
+        return String(format: "%.1f", viewModel.currentFPS)
     }
 }
