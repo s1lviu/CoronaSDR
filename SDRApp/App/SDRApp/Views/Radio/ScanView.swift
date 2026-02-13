@@ -62,12 +62,6 @@ struct ScanView: View {
                 timingSection
                 scanControlSection
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if focusedField != nil {
-                    dismissKeyboard()
-                }
-            }
             .scrollDismissesKeyboard(.immediately)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if focusedField != nil {
@@ -118,10 +112,12 @@ struct ScanView: View {
                         Button("Select All") {
                             selectedStationIDs = Set(stations.map(\.id))
                         }
+                        .buttonStyle(.borderless)
                         Spacer()
                         Button("Clear") {
                             selectedStationIDs.removeAll()
                         }
+                        .buttonStyle(.borderless)
                         .foregroundStyle(.red)
                     }
                     .font(.caption)
@@ -238,7 +234,6 @@ struct ScanView: View {
                 } label: {
                     Label("Start Scan", systemImage: "play.fill")
                 }
-                .disabled(!canStartScan)
 
                 if !viewModel.isConnected {
                     Text("Connect to server first.")
@@ -255,16 +250,6 @@ struct ScanView: View {
             return false
         case .scanning, .holding, .paused:
             return true
-        }
-    }
-
-    private var canStartScan: Bool {
-        guard viewModel.isConnected else { return false }
-        switch scanMode {
-        case .list:
-            return !selectedStationIDs.isEmpty
-        case .range:
-            return parseRangeInputs(emitError: false) != nil
         }
     }
 
@@ -288,8 +273,9 @@ struct ScanView: View {
 
     private func startScan() {
         validationError = nil
+        dismissKeyboard()
 
-        guard viewModel.isConnected else {
+        guard case .connected = viewModel.connectionState else {
             validationError = "Connect to server first."
             return
         }
@@ -303,15 +289,18 @@ struct ScanView: View {
                 validationError = "Select at least one station."
                 return
             }
-            viewModel.startListScan(
+            let started = viewModel.startListScan(
                 frequencies: entries,
                 dwellMs: Int(dwellTimeMs.rounded()),
                 holdSec: Int(holdTimeSec.rounded())
             )
+            if !started {
+                validationError = "Could not start scan. Verify connection and audio session."
+            }
 
         case .range:
             guard let range = parseRangeInputs(emitError: true) else { return }
-            viewModel.startRangeScan(
+            let started = viewModel.startRangeScan(
                 startHz: range.startHz,
                 endHz: range.endHz,
                 stepHz: range.stepHz,
@@ -319,6 +308,9 @@ struct ScanView: View {
                 dwellMs: Int(dwellTimeMs.rounded()),
                 holdSec: Int(holdTimeSec.rounded())
             )
+            if !started {
+                validationError = "Could not start scan. Verify connection and audio session."
+            }
         }
     }
 
