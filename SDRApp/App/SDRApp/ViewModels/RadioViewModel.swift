@@ -138,7 +138,8 @@ final class RadioViewModel {
             waterfallRenderer?.setRenderingActive(false)
         }
         dspPipeline.setFFTFrameRate(effectiveUIFPS)
-        waterfallRenderer?.targetFPS = effectiveUIFPS
+        waterfallRenderer?.targetFPS = 60 // Default high for smooth motion
+        waterfallRenderer?.expectedDataInterval = 1.0 / Double(effectiveUIFPS)
         setupPowerAndThermalObservers()
         applyPerformancePolicy()
 
@@ -421,13 +422,6 @@ final class RadioViewModel {
         applyPerformancePolicy()
     }
 
-    func applySpectrumPeakHold(_ enabled: Bool) {
-        spectrumProcessor.peakHoldEnabled = enabled
-        if !enabled {
-            spectrumProcessor.peakBins = []
-        }
-    }
-
     func applyWaterfallColorScheme(_ schemeName: String) {
         waterfallRenderer?.setColorScheme(named: schemeName)
     }
@@ -573,7 +567,10 @@ final class RadioViewModel {
         }
 
         dspPipeline.setFFTFrameRate(targetFPS)
-        waterfallRenderer?.targetFPS = targetFPS
+        // Ensure renderer target FPS is high enough for smooth interpolation, even on Ultra Low.
+        waterfallRenderer?.targetFPS = max(targetFPS, lowPower ? 30 : 60)
+        // Use fixed data interval for interpolation (e.g. 1/12s) to hide jitter.
+        waterfallRenderer?.expectedDataInterval = 1.0 / Double(targetFPS)
 
         if effectiveUIFPS != targetFPS {
             effectiveUIFPS = targetFPS
@@ -649,6 +646,7 @@ final class RadioViewModel {
             spectrumProcessor.update(bins: bins)
             let normalized = spectrumProcessor.normalizedBins()
             waterfallRenderer?.addWaterfallRow(normalized)
+            waterfallRenderer?.updateSpectrumBins(normalized)
             if lastWaterfallRow.count != normalized.count {
                 lastWaterfallRow = normalized
             } else {
@@ -658,8 +656,6 @@ final class RadioViewModel {
                     }
                 }
             }
-        } else if !lastWaterfallRow.isEmpty {
-            waterfallRenderer?.addWaterfallRow(lastWaterfallRow)
         }
     }
 

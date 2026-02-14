@@ -15,9 +15,6 @@ struct SettingsView: View {
                         Text("Thermal").tag("thermal")
                         Text("Grayscale").tag("grayscale")
                     }
-
-                    Toggle("Spectrum Peak Hold", isOn: $settings.spectrumPeakHold)
-                        .accessibilityLabel("Enable spectrum peak hold display")
                 }
 
                 Section("Audio") {

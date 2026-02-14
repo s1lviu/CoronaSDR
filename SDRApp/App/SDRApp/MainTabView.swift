@@ -64,9 +64,6 @@ struct MainTabView: View {
         .onChange(of: settings.waterfallColorScheme) { _, newScheme in
             viewModel.applyWaterfallColorScheme(newScheme)
         }
-        .onChange(of: settings.spectrumPeakHold) { _, isEnabled in
-            viewModel.applySpectrumPeakHold(isEnabled)
-        }
         .onChange(of: settings.deemphasis) { _, newValue in
             viewModel.applyDeemphasis(newValue)
         }
@@ -82,7 +79,6 @@ struct MainTabView: View {
     private func applyRuntimeSettings() {
         viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
         viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
-        viewModel.applySpectrumPeakHold(settings.spectrumPeakHold)
         viewModel.applyDeemphasis(settings.deemphasis)
         SDRDebug.setEnabled(settings.debugLogsEnabled)
     }

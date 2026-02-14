@@ -31,13 +31,24 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     private var scrollOffset: Float = 0
     private var waterfallRowScratch: [Float] = []
 
+    // Smooth scrolling state
+    private var lastRowUpdateTime: CFAbsoluteTime = 0
+    // If > 0, use this fixed interval for interpolation (e.g. 1.0/12.0).
+    // If 0, estimate from incoming data.
+    public var expectedDataInterval: Double = 0.0
+    private var estimatedRowInterval: Double = 0.0833
+
+    // Spectrum interpolation state
+    private var spectrumBuffers: [MTLBuffer?] = [nil, nil]
+    private var spectrumBufferIndex: Int = 0
+    private var lastSpectrumUpdateTime: CFAbsoluteTime = 0
+
     // Spectrum bins for overlay
     private let spectrumLock = NSLock()
-    private var spectrumBuffer: MTLBuffer?
     private var spectrumBufferCapacity: Int = 0
     private var spectrumSampleCount: Int = 0
     // Spectrum is rendered in a dedicated top view; keep waterfall clean.
-    private var showSpectrum: Bool = false
+    public var showSpectrum: Bool = true
     private var renderingActive: Bool = true
     private var colorScheme: ColorScheme = .classic
 
@@ -196,6 +207,19 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             }
         }
 
+        let now = CFAbsoluteTimeGetCurrent()
+        if lastRowUpdateTime > 0 {
+            let delta = now - lastRowUpdateTime
+            // Only update estimate if we don't have a fixed expected interval
+            if expectedDataInterval <= 0 {
+                // Simple exponential moving average for interval estimation
+                estimatedRowInterval = estimatedRowInterval * 0.9 + delta * 0.1
+            } else {
+                estimatedRowInterval = expectedDataInterval
+            }
+        }
+        lastRowUpdateTime = now
+
         currentRow = (currentRow + 1) % textureHeight
         scrollOffset = Float(currentRow) / Float(textureHeight)
 
@@ -221,21 +245,32 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             return
         }
 
+        lastSpectrumUpdateTime = CFAbsoluteTimeGetCurrent()
         let neededBytes = bins.count * MemoryLayout<Float>.stride
-        if spectrumBuffer == nil || spectrumBufferCapacity < bins.count {
-            // Grow buffer geometrically to avoid frequent reallocations.
+        
+        // Check capacity for BOTH buffers
+        if spectrumBuffers[0] == nil || spectrumBuffers[1] == nil || spectrumBufferCapacity < bins.count {
             spectrumBufferCapacity = max(bins.count, max(1024, spectrumBufferCapacity * 2))
-            spectrumBuffer = device.makeBuffer(
-                length: spectrumBufferCapacity * MemoryLayout<Float>.stride,
-                options: .storageModeShared
-            )
+            // Reallocate both buffers to ensure consistent size
+            spectrumBuffers[0] = device.makeBuffer(length: spectrumBufferCapacity * MemoryLayout<Float>.stride, options: .storageModeShared)
+            spectrumBuffers[1] = device.makeBuffer(length: spectrumBufferCapacity * MemoryLayout<Float>.stride, options: .storageModeShared)
+            
+            // If completely new, clear both so we don't interpolate from garbage
+            if let b0 = spectrumBuffers[0], let b1 = spectrumBuffers[1] {
+                b0.contents().initializeMemory(as: UInt8.self, repeating: 0, count: neededBytes)
+                b1.contents().initializeMemory(as: UInt8.self, repeating: 0, count: neededBytes)
+            }
         }
-
-        if let spectrumBuffer {
+        
+        // Swap index: current becomes previous
+        let nextIndex = (spectrumBufferIndex + 1) % 2
+        
+        if let targetBuffer = spectrumBuffers[nextIndex] {
             bins.withUnsafeBytes { src in
-                spectrumBuffer.contents().copyMemory(from: src.baseAddress!, byteCount: neededBytes)
+                targetBuffer.contents().copyMemory(from: src.baseAddress!, byteCount: neededBytes)
             }
             spectrumSampleCount = bins.count
+            spectrumBufferIndex = nextIndex
         } else {
             spectrumSampleCount = 0
         }
@@ -263,7 +298,13 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             encoder.setRenderPipelineState(pipeline)
             encoder.setFragmentTexture(texture, index: 0)
 
-            var uniforms = WaterfallUniforms(scrollOffset: scrollOffset, colorScheme: colorScheme.rawValue)
+            // Calculate smooth scroll offset based on time since last row update
+            let now = CFAbsoluteTimeGetCurrent()
+            let timeSinceLastUpdate = now - lastRowUpdateTime
+            let rowFraction = min(1.0, timeSinceLastUpdate / max(0.001, estimatedRowInterval))
+            let visualScrollOffset = (scrollOffset + Float(rowFraction) / Float(textureHeight)).truncatingRemainder(dividingBy: 1.0)
+
+            var uniforms = WaterfallUniforms(scrollOffset: visualScrollOffset, colorScheme: colorScheme.rawValue)
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<WaterfallUniforms>.stride, index: 0)
 
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
@@ -271,18 +312,34 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
 
         // Draw spectrum overlay (currently disabled for waterfall view).
         if showSpectrum {
-            var localSpectrumBuffer: MTLBuffer?
+            var currentBuffer: MTLBuffer?
+            var prevBuffer: MTLBuffer?
             var localSpectrumCount = 0
+            var interpFactor: Float = 0
+
             spectrumLock.lock()
-            localSpectrumBuffer = spectrumBuffer
+            let currIdx = spectrumBufferIndex
+            let prevIdx = (currIdx + 1) % 2 // previous is the OTHER index
+            
+            currentBuffer = spectrumBuffers[currIdx]
+            prevBuffer = spectrumBuffers[prevIdx]
             localSpectrumCount = spectrumSampleCount
+            
+            let timeSinceUpdate = CFAbsoluteTimeGetCurrent() - lastSpectrumUpdateTime
+            // Calculate interpolation factor
+            let interval = (expectedDataInterval > 0) ? expectedDataInterval : max(0.001, estimatedRowInterval)
+            interpFactor = Float(min(1.0, timeSinceUpdate / interval))
             spectrumLock.unlock()
 
-            if let pipeline = spectrumPipeline, let buffer = localSpectrumBuffer, localSpectrumCount > 0 {
+            if let pipeline = spectrumPipeline, let curr = currentBuffer, let prev = prevBuffer, localSpectrumCount > 0 {
                 encoder.setRenderPipelineState(pipeline)
-                encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+                encoder.setVertexBuffer(curr, offset: 0, index: 0)
+                encoder.setVertexBuffer(prev, offset: 0, index: 1)
+                
                 var count = UInt32(localSpectrumCount)
-                encoder.setVertexBytes(&count, length: MemoryLayout<UInt32>.stride, index: 1)
+                encoder.setVertexBytes(&count, length: MemoryLayout<UInt32>.stride, index: 2)
+                encoder.setVertexBytes(&interpFactor, length: MemoryLayout<Float>.stride, index: 3)
+                
                 encoder.drawPrimitives(type: .lineStrip, vertexStart: 0, vertexCount: localSpectrumCount)
             }
         }
