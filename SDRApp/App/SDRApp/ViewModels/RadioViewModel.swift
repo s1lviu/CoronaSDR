@@ -58,6 +58,7 @@ final class RadioViewModel {
     var isDirectSamplingActive: Bool = false
     var directSamplingMode: DirectSamplingMode = .off
     var isNetworkPoor: Bool = false
+    var isAudioStarving: Bool = false
     var networkQualityHint: String = "Idle"
     var isAppActive: Bool = true
 
@@ -65,6 +66,7 @@ final class RadioViewModel {
     var throughputMbps: Double = 0
     var iqBufferFill: Double = 0
     var audioBufferFill: Double = 0
+    var audioHeadroomMs: Double = 0
     var currentFPS: Double = 0
     var squelchNoiseLevel: Float = 0
 
@@ -90,8 +92,10 @@ final class RadioViewModel {
     private let iqBytesPerSamplePair: Double = 2.0
     private let fftMailbox = FFTFrameMailbox()
     private var dspFFTHandler: (([Float], Int) -> Void)?
-    private var poorNetworkStreak: Int = 0
-    private var goodNetworkStreak: Int = 0
+    private var networkPoorStreak: Int = 0
+    private var networkGoodStreak: Int = 0
+    private var audioPoorStreak: Int = 0
+    private var audioGoodStreak: Int = 0
     private var lastIQUnderrunCount: Int = 0
     private var lastAudioUnderrunCount: Int = 0
     private var preferredSampleRate: Int = 1_024_000
@@ -463,6 +467,8 @@ final class RadioViewModel {
                 self.throughputMbps = self.connection.throughputBytesPerSec * 8 / 1_000_000
                 self.iqBufferFill = self.iqBuffer.fillLevel
                 self.audioBufferFill = self.audioBuffer.fillLevel
+                let audioBufferDurationSec = Double(self.audioBuffer.capacitySamples) / 48_000.0
+                self.audioHeadroomMs = self.audioBufferFill * audioBufferDurationSec * 1000.0
                 self.currentFPS = self.waterfallRenderer?.currentFPS ?? 0
                 self.squelchNoiseLevel = self.dspPipeline.squelchNoiseLevel
                 self.isConnected = {
@@ -697,36 +703,74 @@ final class RadioViewModel {
 
         let iqUnderruns = iqBuffer.underrunCount
         let audioUnderruns = audioBuffer.underrunCount
-        let hadNewUnderrun = iqUnderruns > lastIQUnderrunCount || audioUnderruns > lastAudioUnderrunCount
+        let hadIQUnderrun = iqUnderruns > lastIQUnderrunCount
+        let hadAudioUnderrun = audioUnderruns > lastAudioUnderrunCount
         lastIQUnderrunCount = iqUnderruns
         lastAudioUnderrunCount = audioUnderruns
 
         let expectedThroughputBytes = Double(dspPipeline.sampleRate) * iqBytesPerSamplePair
-        let lowThroughput = connection.throughputBytesPerSec < expectedThroughputBytes * 0.65
-        let lowIQBuffer = iqBufferFill < 0.10
-        let lowAudioBuffer = audioBufferFill < 0.05
+        let lowThroughputWarning = connection.throughputBytesPerSec < expectedThroughputBytes * 0.85
+        let lowThroughputCritical = connection.throughputBytesPerSec < expectedThroughputBytes * 0.70
+        let lowIQBufferWarning = iqBufferFill < 0.15
+        let lowIQBufferCritical = iqBufferFill < 0.07
 
-        var issueHint: String?
-        if hadNewUnderrun {
-            issueHint = "Underruns detected"
-        } else if lowIQBuffer || lowAudioBuffer {
-            issueHint = "Buffers draining"
-        } else if lowThroughput {
-            issueHint = "Low TCP throughput"
+        let lowAudioHeadroomWarning = audioHeadroomMs < 120
+        let lowAudioHeadroomCritical = audioHeadroomMs < 50
+
+        var networkIssueHint: String?
+        if hadIQUnderrun {
+            networkIssueHint = "IQ underruns"
+        } else if lowThroughputCritical {
+            networkIssueHint = "Low TCP throughput"
+        } else if lowThroughputWarning && lowIQBufferCritical {
+            networkIssueHint = "Low throughput + thin IQ buffer"
+        } else if lowThroughputWarning && lowIQBufferWarning {
+            networkIssueHint = "IQ buffer draining"
         }
 
-        if let issueHint {
-            poorNetworkStreak += 1
-            goodNetworkStreak = 0
-            networkQualityHint = issueHint
-            if poorNetworkStreak >= 3 {
+        var audioIssueHint: String?
+        if hadAudioUnderrun {
+            audioIssueHint = "Audio underruns"
+        } else if lowAudioHeadroomCritical {
+            audioIssueHint = "Audio headroom critically low"
+        } else if lowAudioHeadroomWarning {
+            audioIssueHint = "Audio buffer low"
+        }
+
+        if let networkIssueHint {
+            networkPoorStreak += 1
+            networkGoodStreak = 0
+            if networkPoorStreak >= 3 {
                 isNetworkPoor = true
             }
+            networkQualityHint = networkIssueHint
         } else {
-            goodNetworkStreak += 1
-            poorNetworkStreak = 0
-            if goodNetworkStreak >= 4 {
+            networkGoodStreak += 1
+            networkPoorStreak = 0
+            if networkGoodStreak >= 4 {
                 isNetworkPoor = false
+            }
+        }
+
+        if let audioIssueHint {
+            audioPoorStreak += 1
+            audioGoodStreak = 0
+            if audioPoorStreak >= 2 {
+                isAudioStarving = true
+            }
+            if networkIssueHint == nil {
+                networkQualityHint = audioIssueHint
+            }
+        } else {
+            audioGoodStreak += 1
+            audioPoorStreak = 0
+            if audioGoodStreak >= 4 {
+                isAudioStarving = false
+            }
+        }
+
+        if !isNetworkPoor && !isAudioStarving {
+            if networkGoodStreak >= 2 && audioGoodStreak >= 2 {
                 networkQualityHint = "Good"
             }
         }
@@ -734,9 +778,12 @@ final class RadioViewModel {
 
     private func resetNetworkQualityState(hint: String) {
         isNetworkPoor = false
+        isAudioStarving = false
         networkQualityHint = hint
-        poorNetworkStreak = 0
-        goodNetworkStreak = 0
+        networkPoorStreak = 0
+        networkGoodStreak = 0
+        audioPoorStreak = 0
+        audioGoodStreak = 0
         lastIQUnderrunCount = iqBuffer.underrunCount
         lastAudioUnderrunCount = audioBuffer.underrunCount
     }

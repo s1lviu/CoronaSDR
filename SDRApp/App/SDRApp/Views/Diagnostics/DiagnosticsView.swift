@@ -12,13 +12,15 @@ struct DiagnosticsView: View {
                     diagRow("Playback", value: viewModel.isPlaying ? "Active" : "Stopped")
                     diagRow("Throughput", value: String(format: "%.2f Mbps", viewModel.throughputMbps))
                     diagRow("Network Quality", value: networkQualityText)
-                    diagRow("Network Hint", value: viewModel.networkQualityHint)
+                    diagRow("Audio Health", value: audioHealthText)
+                    diagRow("Stream Hint", value: viewModel.networkQualityHint)
                     diagRow("Direct Sampling", value: directSamplingText)
                 }
 
                 Section("Buffers") {
                     diagRow("IQ Buffer Fill", value: String(format: "%.1f%%", viewModel.iqBufferFill * 100))
                     diagRow("Audio Buffer Fill", value: String(format: "%.1f%%", viewModel.audioBufferFill * 100))
+                    diagRow("Audio Headroom", value: String(format: "%.0f ms", viewModel.audioHeadroomMs))
                     diagRow("IQ Overruns", value: "\(viewModel.iqBuffer.overrunCount)")
                     diagRow("IQ Underruns", value: "\(viewModel.iqBuffer.underrunCount)")
                     diagRow("Audio Overruns", value: "\(viewModel.audioBuffer.overrunCount)")
@@ -80,6 +82,11 @@ struct DiagnosticsView: View {
     private var networkQualityText: String {
         guard viewModel.isPlaying else { return "Idle" }
         return viewModel.isNetworkPoor ? "Poor" : "Good"
+    }
+
+    private var audioHealthText: String {
+        guard viewModel.isPlaying else { return "Idle" }
+        return viewModel.isAudioStarving ? "Low Headroom" : "Good"
     }
 
     private var directSamplingText: String {
