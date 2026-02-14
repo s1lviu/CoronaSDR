@@ -72,10 +72,6 @@ public final class SettingsStore {
         didSet { defaults.set(waterfallColorScheme, forKey: "waterfallColorScheme") }
     }
 
-    public var spectrumPeakHold: Bool {
-        didSet { defaults.set(spectrumPeakHold, forKey: "spectrumPeakHold") }
-    }
-
     // MARK: - Audio
 
     public var deemphasis: Int {
@@ -104,7 +100,6 @@ public final class SettingsStore {
         self.lastPPM = defaults.float(forKey: "lastPPM")
         self.selectedSampleProfileLabel = defaults.string(forKey: "selectedSampleProfileLabel") ?? "Low"
         self.waterfallColorScheme = defaults.string(forKey: "waterfallColorScheme") ?? "classic"
-        self.spectrumPeakHold = defaults.bool(forKey: "spectrumPeakHold")
         self.deemphasis = defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75
         self.debugLogsEnabled = defaults.bool(forKey: "debugLogsEnabled")
     }

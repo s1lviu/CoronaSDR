@@ -206,27 +206,15 @@ struct RadioView: View {
 
             ZStack {
                 VStack(spacing: 0) {
-                    // Spectrum
-                    SpectrumCanvasView(
-                        bins: viewModel.spectrumProcessor.normalizedCurrentBins,
-                        peakBins: viewModel.spectrumProcessor.peakHoldEnabled
-                            ? viewModel.spectrumProcessor.normalizedPeakBins
-                            : [],
-                        showPeaks: viewModel.spectrumProcessor.peakHoldEnabled
-                    )
-                    .frame(height: 120)
-                    .background(Color.black)
-                    .accessibilityLabel("Spectrum display")
-
-                    // Waterfall
+                    // Waterfall + Metal Spectrum
                     if let renderer = viewModel.waterfallRenderer {
                         WaterfallView(renderer: renderer, isActive: viewModel.isPlaying && viewModel.isRadioTabVisible)
-                            .frame(height: 200)
-                            .accessibilityLabel("Waterfall display")
+                            .frame(height: 320)
+                            .accessibilityLabel("Spectrum and Waterfall display")
                     } else {
                         Rectangle()
                             .fill(Color.black)
-                            .frame(height: 200)
+                            .frame(height: 320)
                             .overlay {
                                 Text("Metal not available")
                                     .foregroundStyle(.gray)
@@ -531,7 +519,6 @@ struct RadioView: View {
 
         viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
         viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
-        viewModel.applySpectrumPeakHold(settings.spectrumPeakHold)
         viewModel.applyDeemphasis(settings.deemphasis)
 
         if let restoredMode = DemodMode(rawValue: settings.lastMode) {

@@ -20,7 +20,12 @@ vertex VertexOut waterfallVertexShader(uint vertexID [[vertex_id]]) {
     };
 
     VertexOut out;
-    out.position = float4(positions[vertexID], 0, 1);
+    // Waterfall occupies the bottom 200/320 = 62.5%
+    // Map Y from [-1, 1] to [-1, 0.25]
+    float2 pos = positions[vertexID];
+    pos.y = pos.y * 0.625 - 0.375;
+    
+    out.position = float4(pos, 0, 1);
     out.texCoord = texCoords[vertexID];
     return out;
 }
@@ -126,15 +131,23 @@ struct SpectrumVertexOut {
 vertex SpectrumVertexOut spectrumVertexShader(
     uint vertexID [[vertex_id]],
     constant float *bins [[buffer(0)]],
-    constant uint &binCount [[buffer(1)]]
+    constant float *prevBins [[buffer(1)]],
+    constant uint &binCount [[buffer(2)]],
+    constant float &interp [[buffer(3)]]
 ) {
     SpectrumVertexOut out;
 
+    float currentVal = bins[vertexID];
+    float prevVal = prevBins[vertexID];
+    float interpolatedVal = mix(prevVal, currentVal, interp);
+
     float x = float(vertexID) / float(binCount - 1) * 2.0 - 1.0;
-    float y = bins[vertexID] * 2.0 - 1.0; // normalized 0-1 to -1..1
+    // Spectrum occupies the top 120/320 = 37.5%
+    // Map interpolatedVal (0..1) to [0.25, 1.0] (Full range)
+    float y = interpolatedVal * 0.75 + 0.25;
 
     out.position = float4(x, y, 0, 1);
-    out.value = bins[vertexID];
+    out.value = interpolatedVal;
     return out;
 }
 
