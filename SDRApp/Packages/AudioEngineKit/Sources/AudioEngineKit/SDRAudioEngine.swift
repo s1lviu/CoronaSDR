@@ -2,6 +2,9 @@ import AVFoundation
 import MediaPlayer
 import Observation
 import SDRSupport
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Manages AVAudioEngine playback from the AudioRingBuffer.
 /// Handles audio session, lock screen controls, background playback, and interruptions.
@@ -31,6 +34,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private var routeChangeObserver: NSObjectProtocol?
     private var mediaServicesResetObserver: NSObjectProtocol?
     private var remoteCommandsConfigured: Bool = false
+    @ObservationIgnored private let nowPlayingArtwork: MPMediaItemArtwork?
 
     // Callbacks for lock screen remote commands
     public var onPlayPause: (() -> Void)?
@@ -39,6 +43,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
     public init(audioBuffer: AudioRingBuffer) {
         self.audioBuffer = audioBuffer
+        self.nowPlayingArtwork = Self.loadNowPlayingArtwork()
     }
 
     deinit {
@@ -269,11 +274,37 @@ public final class SDRAudioEngine: @unchecked Sendable {
             MPMediaItemPropertyArtist: nowPlayingSubtitle,
             MPNowPlayingInfoPropertyIsLiveStream: true,
         ]
+        if let nowPlayingArtwork {
+            info[MPMediaItemPropertyArtwork] = nowPlayingArtwork
+        }
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     private func clearNowPlaying() {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    private static func loadNowPlayingArtwork() -> MPMediaItemArtwork? {
+        #if canImport(UIKit)
+        let iconNames = [
+            "AppIcon60x60@3x",
+            "AppIcon60x60@2x",
+            "AppIcon76x76@2x",
+            "AppIcon83.5x83.5@2x",
+            "AppIcon60x60"
+        ]
+
+        for name in iconNames {
+            if let image = UIImage(named: name, in: .main, compatibleWith: nil) {
+                return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            }
+            if let url = Bundle.main.url(forResource: name, withExtension: "png"),
+               let image = UIImage(contentsOfFile: url.path) {
+                return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            }
+        }
+        #endif
+        return nil
     }
 }
