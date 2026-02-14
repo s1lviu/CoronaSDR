@@ -34,6 +34,9 @@ public final class AudioRingBuffer: @unchecked Sendable {
         return (h - t + capacity) % capacity
     }
 
+    /// Total ring buffer capacity in samples.
+    public var capacitySamples: Int { capacity }
+
     /// Create audio ring buffer. Capacity in samples (e.g. 48000 for 1 second at 48kHz).
     public init(capacity: Int) {
         self.capacity = capacity

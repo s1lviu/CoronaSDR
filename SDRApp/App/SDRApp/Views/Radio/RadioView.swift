@@ -167,6 +167,14 @@ struct RadioView: View {
                         .background(Color.red.opacity(0.15))
                         .foregroundStyle(.red)
                         .clipShape(Capsule())
+                } else if viewModel.isAudioStarving {
+                    Text("Audio Buffer Low")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundStyle(.orange)
+                        .clipShape(Capsule())
                 }
                 Text(String(format: "%.1f Mbps", viewModel.throughputMbps))
                     .font(.caption.monospacedDigit())
