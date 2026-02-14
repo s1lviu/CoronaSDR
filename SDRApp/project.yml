@@ -69,3 +69,39 @@ targets:
         ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: "NO"
     entitlements:
       path: App/SDRApp/SDRApp.entitlements
+
+  CoronaSDRTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Tests/CoronaSDRTests
+        type: group
+    dependencies:
+      - target: CoronaSDR
+      - package: SDRAppPackages
+        product: RTLTCPClientKit
+      - package: SDRAppPackages
+        product: AudioEngineKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr.tests
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CoronaSDR.app/CoronaSDR"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  CoronaSDR:
+    build:
+      targets:
+        CoronaSDR: all
+
+  CoronaSDRTests:
+    build:
+      targets:
+        CoronaSDRTests: all
+    test:
+      targets:
+        - CoronaSDRTests

@@ -15,9 +15,26 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build"
 APP_PATH="${BUILD_DIR}/Debug-iphoneos/CoronaSDR.app"
+GENERATED_PROJECT="${PROJECT_DIR}/CoronaSDR.xcodeproj"
 BUNDLE_ID="yo6say.coronasdr"
 TEAM_ID="DDJCP893KF"
 CRASH_DIR="${PROJECT_DIR}/CrashLogs"
+
+ensure_generated_project() {
+    local spec_file="${PROJECT_DIR}/project.yml"
+    local pbxproj_file="${GENERATED_PROJECT}/project.pbxproj"
+
+    if ! command -v xcodegen >/dev/null 2>&1; then
+        echo "ERROR: xcodegen is required to generate test scheme/project from project.yml." >&2
+        echo "Install: brew install xcodegen" >&2
+        exit 1
+    fi
+
+    if [ ! -f "$pbxproj_file" ] || [ "$spec_file" -nt "$pbxproj_file" ]; then
+        echo "=== Generating Xcode project from project.yml ==="
+        (cd "$PROJECT_DIR" && xcodegen generate)
+    fi
+}
 
 # Auto-detect device
 get_device_id() {
@@ -32,6 +49,26 @@ get_device_id() {
         exit 1
     fi
     echo "$device_id"
+}
+
+get_test_destination_id() {
+    local destination_id
+
+    destination_id=$(xcodebuild \
+        -project "$GENERATED_PROJECT" \
+        -scheme CoronaSDRTests \
+        -showdestinations 2>/dev/null \
+        | sed -nE 's/.*platform:iOS, arch:arm64, id:([^,]+),.*/\1/p' \
+        | grep -v "dvtdevice" \
+        | head -1)
+
+    if [ -z "$destination_id" ]; then
+        echo "ERROR: No eligible iOS destination found for CoronaSDRTests." >&2
+        echo "Run: xcodebuild -project \"$GENERATED_PROJECT\" -scheme CoronaSDRTests -showdestinations" >&2
+        exit 1
+    fi
+
+    echo "$destination_id"
 }
 
 do_build() {
@@ -174,6 +211,78 @@ do_clean() {
     echo "=== Clean done ==="
 }
 
+do_test() {
+    local device_id
+    local destination_id
+    device_id=$(get_device_id)
+    ensure_generated_project
+    destination_id=$(get_test_destination_id)
+    mkdir -p "$BUILD_DIR"
+
+    echo "=== Running tests on device ${device_id} (xcode destination: ${destination_id}) ==="
+
+    set +e
+    xcodebuild \
+        -project "$GENERATED_PROJECT" \
+        -scheme CoronaSDRTests \
+        -destination "id=${destination_id}" \
+        DEVELOPMENT_TEAM="$TEAM_ID" \
+        CODE_SIGN_IDENTITY="Apple Development" \
+        CODE_SIGNING_ALLOWED=YES \
+        -configuration Debug \
+        test 2>&1 | tee "${BUILD_DIR}/test.log" | grep -E '(error:|warning:|Test Suite|Test Case|\*\* TEST|\*\* BUILD|Failing tests:|Executed)'
+    local status=${PIPESTATUS[0]}
+    set -e
+
+    if [ $status -ne 0 ]; then
+        echo ""
+        echo "=== TESTS FAILED ==="
+        echo "Full log: ${BUILD_DIR}/test.log"
+        echo ""
+        grep -E "(Failing tests:|error:|Test Case '.*' failed)" "${BUILD_DIR}/test.log" | tail -40 || true
+        exit 1
+    fi
+
+    echo "=== TESTS PASSED ==="
+}
+
+do_test_perf() {
+    local device_id
+    local destination_id
+    device_id=$(get_device_id)
+    ensure_generated_project
+    destination_id=$(get_test_destination_id)
+    mkdir -p "$BUILD_DIR"
+
+    echo "=== Running performance tests on device ${device_id} (xcode destination: ${destination_id}) ==="
+
+    set +e
+    xcodebuild \
+        -project "$GENERATED_PROJECT" \
+        -scheme CoronaSDRTests \
+        -destination "id=${destination_id}" \
+        DEVELOPMENT_TEAM="$TEAM_ID" \
+        CODE_SIGN_IDENTITY="Apple Development" \
+        CODE_SIGNING_ALLOWED=YES \
+        -configuration Debug \
+        -only-testing:CoronaSDRTests/IQRingBufferTests/testPerformanceWriteReadRawPath \
+        -only-testing:CoronaSDRTests/AudioRingBufferTests/testPerformanceWriteReadHotPath \
+        test 2>&1 | tee "${BUILD_DIR}/test-perf.log" | grep -E '(error:|warning:|Test Suite|Test Case|\*\* TEST|\*\* BUILD|Failing tests:|Executed|measure)'
+    local status=${PIPESTATUS[0]}
+    set -e
+
+    if [ $status -ne 0 ]; then
+        echo ""
+        echo "=== PERFORMANCE TESTS FAILED ==="
+        echo "Full log: ${BUILD_DIR}/test-perf.log"
+        echo ""
+        grep -E "(Failing tests:|error:|Test Case '.*' failed)" "${BUILD_DIR}/test-perf.log" | tail -40 || true
+        exit 1
+    fi
+
+    echo "=== PERFORMANCE TESTS PASSED ==="
+}
+
 # Main
 case "${1:-}" in
     build)
@@ -190,6 +299,12 @@ case "${1:-}" in
         ;;
     crash)
         do_crash
+        ;;
+    test)
+        do_test
+        ;;
+    test-perf|perf)
+        do_test_perf
         ;;
     clean)
         do_clean
@@ -208,7 +323,7 @@ case "${1:-}" in
         do_launch
         ;;
     *)
-        echo "Usage: $0 {build|install|launch|logs|crash|clean|all|run}"
+        echo "Usage: $0 {build|install|launch|logs|crash|test|test-perf|clean|all|run}"
         echo ""
         echo "  (no args) / run  — Build + install + launch"
         echo "  build            — Build only"
@@ -216,6 +331,8 @@ case "${1:-}" in
         echo "  launch           — Launch on device"
         echo "  logs             — Stream live device logs"
         echo "  crash            — Fetch crash logs"
+        echo "  test             — Run all XCTest tests on connected device"
+        echo "  test-perf|perf   — Run only performance XCTest cases on connected device"
         echo "  clean            — Clean build folder"
         echo "  all              — Clean + build + install + launch + logs"
         exit 1
