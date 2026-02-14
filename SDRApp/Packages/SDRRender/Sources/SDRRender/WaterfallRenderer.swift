@@ -29,6 +29,7 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     private var textureHeight: Int = 512
     private var currentRow: Int = 0
     private var scrollOffset: Float = 0
+    private var waterfallRowScratch: [Float] = []
 
     // Spectrum bins for overlay
     private let spectrumLock = NSLock()
@@ -114,6 +115,7 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
         )
         desc.usage = [.shaderRead, .shaderWrite]
         waterfallTexture = device.makeTexture(descriptor: desc)
+        waterfallRowScratch = [Float](repeating: 0, count: textureWidth)
 
         // Clear texture to 0 (black)
         if let texture = waterfallTexture {
@@ -149,16 +151,22 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     /// Bins should be normalized 0.0–1.0.
     public func addWaterfallRow(_ bins: [Float]) {
         guard renderingActive, let texture = waterfallTexture, !bins.isEmpty else { return }
+        if waterfallRowScratch.count != textureWidth {
+            waterfallRowScratch = [Float](repeating: 0, count: textureWidth)
+        }
 
         // Resample bins to texture width
-        var rowData: [Float]
-        if bins.count == textureWidth {
-            rowData = bins
+        let useDirectBins = bins.count == textureWidth
+        if useDirectBins {
+            // No resampling needed.
         } else if bins.count > textureWidth {
-            rowData = Array(bins.prefix(textureWidth))
+            bins.withUnsafeBufferPointer { src in
+                waterfallRowScratch.withUnsafeMutableBufferPointer { dst in
+                    dst.baseAddress!.update(from: src.baseAddress!, count: textureWidth)
+                }
+            }
         } else {
             // Interpolate bins to texture width
-            rowData = [Float](repeating: 0, count: textureWidth)
             let scale = Float(bins.count - 1) / Float(textureWidth - 1)
             for i in 0..<textureWidth {
                 let srcIdx = Float(i) * scale
@@ -166,17 +174,26 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
                 let frac = srcIdx - Float(idx)
                 let s0 = bins[min(idx, bins.count - 1)]
                 let s1 = bins[min(idx + 1, bins.count - 1)]
-                rowData[i] = s0 + (s1 - s0) * frac
+                waterfallRowScratch[i] = s0 + (s1 - s0) * frac
             }
         }
 
         // Write row to texture at currentRow
         let region = MTLRegion(origin: MTLOrigin(x: 0, y: currentRow, z: 0),
                                size: MTLSize(width: textureWidth, height: 1, depth: 1))
-        rowData.withUnsafeBytes { ptr in
-            texture.replace(region: region, mipmapLevel: 0,
-                          withBytes: ptr.baseAddress!,
-                          bytesPerRow: textureWidth * MemoryLayout<Float>.stride)
+        let bytesPerRow = textureWidth * MemoryLayout<Float>.stride
+        if useDirectBins {
+            bins.withUnsafeBytes { ptr in
+                texture.replace(region: region, mipmapLevel: 0,
+                                withBytes: ptr.baseAddress!,
+                                bytesPerRow: bytesPerRow)
+            }
+        } else {
+            waterfallRowScratch.withUnsafeBytes { ptr in
+                texture.replace(region: region, mipmapLevel: 0,
+                                withBytes: ptr.baseAddress!,
+                                bytesPerRow: bytesPerRow)
+            }
         }
 
         currentRow = (currentRow + 1) % textureHeight
@@ -185,10 +202,12 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
         rowsWritten += 1
         if rowsWritten == 1 || rowsWritten % 200 == 0 {
             // Log first and every 200th row with sample values
-            let minV = rowData.min() ?? 0
-            let maxV = rowData.max() ?? 0
-            let avgV = rowData.reduce(0, +) / Float(rowData.count)
-            SDRDebug.print("🌊 Waterfall row \(rowsWritten): min=\(String(format: "%.3f", minV)) max=\(String(format: "%.3f", maxV)) avg=\(String(format: "%.3f", avgV)) bins=\(bins.count)")
+            let loggedBins = useDirectBins ? bins : waterfallRowScratch
+            SDRDebug.print(
+                "🌊 Waterfall row \(rowsWritten): min=\(String(format: "%.3f", loggedBins.min() ?? 0)) " +
+                "max=\(String(format: "%.3f", loggedBins.max() ?? 0)) " +
+                "avg=\(String(format: "%.3f", loggedBins.reduce(0, +) / Float(loggedBins.count))) bins=\(bins.count)"
+            )
         }
     }
 
@@ -227,6 +246,11 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     public func draw(in view: MTKView) {
+        let desiredFPS = max(1, targetFPS)
+        if view.preferredFramesPerSecond != desiredFPS {
+            view.preferredFramesPerSecond = desiredFPS
+        }
+
         guard let drawable = view.currentDrawable,
               let renderPassDesc = view.currentRenderPassDescriptor,
               let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -245,20 +269,22 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
         }
 
-        // Draw spectrum overlay
-        var localSpectrumBuffer: MTLBuffer?
-        var localSpectrumCount = 0
-        spectrumLock.lock()
-        localSpectrumBuffer = spectrumBuffer
-        localSpectrumCount = spectrumSampleCount
-        spectrumLock.unlock()
+        // Draw spectrum overlay (currently disabled for waterfall view).
+        if showSpectrum {
+            var localSpectrumBuffer: MTLBuffer?
+            var localSpectrumCount = 0
+            spectrumLock.lock()
+            localSpectrumBuffer = spectrumBuffer
+            localSpectrumCount = spectrumSampleCount
+            spectrumLock.unlock()
 
-        if showSpectrum, let pipeline = spectrumPipeline, let buffer = localSpectrumBuffer, localSpectrumCount > 0 {
-            encoder.setRenderPipelineState(pipeline)
-            encoder.setVertexBuffer(buffer, offset: 0, index: 0)
-            var count = UInt32(localSpectrumCount)
-            encoder.setVertexBytes(&count, length: MemoryLayout<UInt32>.stride, index: 1)
-            encoder.drawPrimitives(type: .lineStrip, vertexStart: 0, vertexCount: localSpectrumCount)
+            if let pipeline = spectrumPipeline, let buffer = localSpectrumBuffer, localSpectrumCount > 0 {
+                encoder.setRenderPipelineState(pipeline)
+                encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+                var count = UInt32(localSpectrumCount)
+                encoder.setVertexBytes(&count, length: MemoryLayout<UInt32>.stride, index: 1)
+                encoder.drawPrimitives(type: .lineStrip, vertexStart: 0, vertexCount: localSpectrumCount)
+            }
         }
 
         encoder.endEncoding()

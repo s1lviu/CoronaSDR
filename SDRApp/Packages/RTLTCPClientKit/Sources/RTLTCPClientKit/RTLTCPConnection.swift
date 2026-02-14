@@ -60,7 +60,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
     private var settleDiscardBytes: Int = 0
     private var isSettling: Bool = false
 
-    private let networkQueue = DispatchQueue(label: "yo6say.coronasdr.network", qos: .userInitiated)
+    private let networkQueue = DispatchQueue(label: "yo6say.coronasdr.network", qos: .utility)
     private let streamReceiveMinLength = 4_096
     private let streamReceiveMaxLength = 262_144
 

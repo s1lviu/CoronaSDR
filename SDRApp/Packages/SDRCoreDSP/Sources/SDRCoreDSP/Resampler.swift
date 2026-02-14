@@ -10,6 +10,7 @@ public final class Resampler {
     // Internal buffer for liquid-dsp output (needs to be large enough for max decimation/interpolation)
     private var outputBuffer: UnsafeMutablePointer<Float>
     private let maxOutputPerSample: Int = 16 // Safety margin
+    private var outputScratch: [Float] = []
 
     /// Current resampling ratio (output_rate / input_rate).
     /// Adjusting this value updates the underlying liquid-dsp object instantly.
@@ -55,25 +56,56 @@ public final class Resampler {
     /// Resample a block of input samples.
     /// Returns the resampled output array.
     public func process(_ input: [Float]) -> [Float] {
-        guard !input.isEmpty, let q = q else { return [] }
+        var output: [Float] = []
+        _ = process(input, into: &output)
+        return output
+    }
 
-        // Estimate output size: input * ratio + margin
-        let estimatedCount = Int(Float(input.count) * _ratio) + 16
-        var output = [Float]()
-        output.reserveCapacity(estimatedCount)
+    /// Allocation-aware path: writes resampled audio into caller-provided storage.
+    /// Returns number of valid output samples.
+    @discardableResult
+    public func process(_ input: [Float], into output: inout [Float]) -> Int {
+        guard !input.isEmpty, let q = q else {
+            output.removeAll(keepingCapacity: true)
+            return 0
+        }
 
-        // Process sample by sample
-        // liquid-dsp resamp_rrrf_execute takes 1 input and produces N outputs
-        for sample in input {
-            var numWritten: UInt32 = 0
-            resamp_rrrf_execute(q, sample, outputBuffer, &numWritten)
-            
-            if numWritten > 0 {
-                output.append(contentsOf: UnsafeBufferPointer(start: outputBuffer, count: Int(numWritten)))
+        let maxNeeded = input.count * maxOutputPerSample
+        if outputScratch.count < maxNeeded {
+            outputScratch = [Float](repeating: 0, count: maxNeeded)
+        }
+
+        var writeIndex = 0
+        outputScratch.withUnsafeMutableBufferPointer { scratch in
+            guard let scratchBase = scratch.baseAddress else { return }
+
+            for sample in input {
+                var numWritten: UInt32 = 0
+                resamp_rrrf_execute(q, sample, outputBuffer, &numWritten)
+
+                let produced = Int(numWritten)
+                if produced > 0 {
+                    scratchBase.advanced(by: writeIndex).update(from: outputBuffer, count: produced)
+                    writeIndex += produced
+                }
             }
         }
 
-        return output
+        if writeIndex <= 0 {
+            output.removeAll(keepingCapacity: true)
+            return 0
+        }
+
+        if output.count != writeIndex {
+            output = [Float](repeating: 0, count: writeIndex)
+        }
+        output.withUnsafeMutableBufferPointer { dest in
+            outputScratch.withUnsafeBufferPointer { scratch in
+                dest.baseAddress!.update(from: scratch.baseAddress!, count: writeIndex)
+            }
+        }
+
+        return writeIndex
     }
 
     public func reset() {

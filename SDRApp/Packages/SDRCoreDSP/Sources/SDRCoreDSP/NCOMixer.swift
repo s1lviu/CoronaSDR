@@ -7,6 +7,12 @@ public final class NCOMixer {
     private var phase: Float = 0
     private var phaseIncrement: Float = 0
     private let twoPi: Float = 2.0 * .pi
+    private var cosOut: [Float] = []
+    private var sinOut: [Float] = []
+    private var phases: [Float] = []
+    private var temp: [Float] = []
+    private var newReal: [Float] = []
+    private var newImag: [Float] = []
 
     /// Set the NCO frequency.
     /// - Parameters:
@@ -21,13 +27,7 @@ public final class NCOMixer {
     public func mix(real: inout [Float], imag: inout [Float], count: Int) {
         precondition(real.count >= count && imag.count >= count)
         guard count > 0 else { return }
-
-        var cosOut = [Float](repeating: 0, count: count)
-        var sinOut = [Float](repeating: 0, count: count)
-        var phases = [Float](repeating: 0, count: count)
-        var temp = [Float](repeating: 0, count: count)
-        var newReal = [Float](repeating: 0, count: count)
-        var newImag = [Float](repeating: 0, count: count)
+        ensureCapacity(count)
 
         // Build phase ramp
         for i in 0..<count {
@@ -36,8 +36,16 @@ public final class NCOMixer {
 
         // Vectorized sin/cos
         var n = Int32(count)
-        vvcosf(&cosOut, &phases, &n)
-        vvsinf(&sinOut, &phases, &n)
+        cosOut.withUnsafeMutableBufferPointer { cosPtr in
+            phases.withUnsafeMutableBufferPointer { phasePtr in
+                vvcosf(cosPtr.baseAddress!, phasePtr.baseAddress!, &n)
+            }
+        }
+        sinOut.withUnsafeMutableBufferPointer { sinPtr in
+            phases.withUnsafeMutableBufferPointer { phasePtr in
+                vvsinf(sinPtr.baseAddress!, phasePtr.baseAddress!, &n)
+            }
+        }
 
         // Complex multiply: (I + jQ) * (cos - jsin)
         // Result_I = I*cos + Q*sin
@@ -72,5 +80,14 @@ public final class NCOMixer {
 
     public func reset() {
         phase = 0
+    }
+
+    private func ensureCapacity(_ count: Int) {
+        if cosOut.count < count { cosOut = [Float](repeating: 0, count: count) }
+        if sinOut.count < count { sinOut = [Float](repeating: 0, count: count) }
+        if phases.count < count { phases = [Float](repeating: 0, count: count) }
+        if temp.count < count { temp = [Float](repeating: 0, count: count) }
+        if newReal.count < count { newReal = [Float](repeating: 0, count: count) }
+        if newImag.count < count { newImag = [Float](repeating: 0, count: count) }
     }
 }

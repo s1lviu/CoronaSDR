@@ -40,7 +40,7 @@ struct DiagnosticsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Label("If audio drops, use the Low processing profile", systemImage: "lightbulb")
+                    Label("If audio drops or the phone heats up, use Ultra Low or Low processing profile", systemImage: "lightbulb")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

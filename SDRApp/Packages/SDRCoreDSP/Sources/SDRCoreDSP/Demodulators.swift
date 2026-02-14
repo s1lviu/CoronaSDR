@@ -16,6 +16,9 @@ public protocol Demodulator {
 public final class AMDemodulator: Demodulator {
     private let dcBlocker = DCBlocker()
     private let agc = AGC(targetLevel: 0.3, attackRate: 0.005, decayRate: 0.00005)
+    private var realSqScratch: [Float] = []
+    private var imagSqScratch: [Float] = []
+    private var outputScratch: [Float] = []
 
     public var agcEnabled: Bool {
         get { agc.isEnabled }
@@ -27,17 +30,17 @@ public final class AMDemodulator: Demodulator {
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
         let count = min(real.count, imag.count)
         guard count > 0 else { return [] }
-        var output = [Float](repeating: 0, count: count)
+        if realSqScratch.count != count { realSqScratch = [Float](repeating: 0, count: count) }
+        if imagSqScratch.count != count { imagSqScratch = [Float](repeating: 0, count: count) }
+        if outputScratch.count != count { outputScratch = [Float](repeating: 0, count: count) }
 
         // Magnitude: sqrt(I^2 + Q^2)
         real.withUnsafeBufferPointer { r in
             imag.withUnsafeBufferPointer { i in
-                output.withUnsafeMutableBufferPointer { out in
-                    var realSq = [Float](repeating: 0, count: count)
-                    var imagSq = [Float](repeating: 0, count: count)
-                    vDSP_vsq(r.baseAddress!, 1, &realSq, 1, vDSP_Length(count))
-                    vDSP_vsq(i.baseAddress!, 1, &imagSq, 1, vDSP_Length(count))
-                    vDSP_vadd(realSq, 1, imagSq, 1, out.baseAddress!, 1, vDSP_Length(count))
+                outputScratch.withUnsafeMutableBufferPointer { out in
+                    vDSP_vsq(r.baseAddress!, 1, &realSqScratch, 1, vDSP_Length(count))
+                    vDSP_vsq(i.baseAddress!, 1, &imagSqScratch, 1, vDSP_Length(count))
+                    vDSP_vadd(realSqScratch, 1, imagSqScratch, 1, out.baseAddress!, 1, vDSP_Length(count))
                     var n = Int32(count)
                     vvsqrtf(out.baseAddress!, out.baseAddress!, &n)
                 }
@@ -45,12 +48,12 @@ public final class AMDemodulator: Demodulator {
         }
 
         // DC removal
-        dcBlocker.process(&output)
+        dcBlocker.process(&outputScratch)
 
         // AGC
-        agc.process(&output)
+        agc.process(&outputScratch)
 
-        return output
+        return outputScratch
     }
 
     public func reset() {
@@ -67,6 +70,7 @@ public final class AMDemodulator: Demodulator {
 public final class FMDemodulator: Demodulator {
     private var q: freqdem
     private let gain: Float
+    private var outputScratch: [Float] = []
     
     // De-emphasis state
     private var deemphPrev: Float = 0
@@ -96,7 +100,7 @@ public final class FMDemodulator: Demodulator {
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
         let count = min(real.count, imag.count)
         guard count > 0 else { return [] }
-        var output = [Float](repeating: 0, count: count)
+        if outputScratch.count != count { outputScratch = [Float](repeating: 0, count: count) }
         
         // Local state capture for loop
         var prev = deemphPrev
@@ -104,7 +108,7 @@ public final class FMDemodulator: Demodulator {
         
         for i in 0..<count {
             // Construct complex sample
-            var sample = liquid_float_complex(real: real[i], imag: imag[i])
+            let sample = liquid_float_complex(real: real[i], imag: imag[i])
             var outSample: Float = 0
             
             // Demodulate
@@ -113,12 +117,12 @@ public final class FMDemodulator: Demodulator {
             // De-emphasis (IIR single pole)
             // y[n] = y[n-1] + alpha * (x[n] - y[n-1])
             prev = prev + alpha * (outSample - prev)
-            output[i] = prev
+            outputScratch[i] = prev
         }
         
         deemphPrev = prev
 
-        return output
+        return outputScratch
     }
 
     public func reset() {
@@ -134,6 +138,7 @@ public final class FMDemodulator: Demodulator {
 public final class SSBDemodulator: Demodulator {
     private var q: ampmodem
     private let agc = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.0001)
+    private var outputScratch: [Float] = []
     
     public var agcEnabled: Bool {
         get { agc.isEnabled }
@@ -155,20 +160,20 @@ public final class SSBDemodulator: Demodulator {
     public func demodulate(real: [Float], imag: [Float]) -> [Float] {
         let count = min(real.count, imag.count)
         guard count > 0 else { return [] }
-        var output = [Float](repeating: 0, count: count)
+        if outputScratch.count != count { outputScratch = [Float](repeating: 0, count: count) }
         
         for i in 0..<count {
-            var sample = liquid_float_complex(real: real[i], imag: imag[i])
+            let sample = liquid_float_complex(real: real[i], imag: imag[i])
             var outSample: Float = 0
             
             // For ampmodem demodulate, it takes complex input (IQ) and gives real audio output
             ampmodem_demodulate(q, sample, &outSample)
             
-            output[i] = outSample
+            outputScratch[i] = outSample
         }
 
-        agc.process(&output)
-        return output
+        agc.process(&outputScratch)
+        return outputScratch
     }
 
     public func reset() {
