@@ -44,6 +44,9 @@ struct MainTabView: View {
             applyRuntimeSettings()
             updateRadioVisibility()
             viewModel.setAppActive(scenePhase == .active)
+            if scenePhase == .active {
+                attemptAutoReconnectIfNeeded()
+            }
         }
         .onChange(of: selectedTab) { _, newValue in
             viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
@@ -51,6 +54,9 @@ struct MainTabView: View {
         .onChange(of: scenePhase) { _, _ in
             updateRadioVisibility()
             viewModel.setAppActive(scenePhase == .active)
+            if scenePhase == .active {
+                attemptAutoReconnectIfNeeded()
+            }
         }
         .onChange(of: settings.selectedSampleProfileLabel) { _, newLabel in
             viewModel.applySampleProfile(label: newLabel)
@@ -79,5 +85,12 @@ struct MainTabView: View {
         viewModel.applySpectrumPeakHold(settings.spectrumPeakHold)
         viewModel.applyDeemphasis(settings.deemphasis)
         SDRDebug.setEnabled(settings.debugLogsEnabled)
+    }
+
+    private func attemptAutoReconnectIfNeeded() {
+        viewModel.autoConnectIfConfigured(
+            host: settings.lastServerHost,
+            port: UInt16(settings.lastServerPort)
+        )
     }
 }

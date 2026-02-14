@@ -519,12 +519,10 @@ struct RadioView: View {
     // MARK: - Helpers
 
     private func autoConnect() {
-        // Only auto-connect if not already connected/connecting
-        if case .disconnected = viewModel.connectionState,
-           !settings.lastServerHost.isEmpty {
-            SDRDebug.print("📻 autoConnect to \(settings.lastServerHost):\(settings.lastServerPort)")
-            viewModel.connect(host: settings.lastServerHost, port: UInt16(settings.lastServerPort))
-        }
+        viewModel.autoConnectIfConfigured(
+            host: settings.lastServerHost,
+            port: UInt16(settings.lastServerPort)
+        )
     }
 
     private func restoreRadioDefaultsIfNeeded() {

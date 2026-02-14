@@ -179,6 +179,19 @@ final class RadioViewModel {
         updateDiagnosticsTimerState()
     }
 
+    func autoConnectIfConfigured(host: String, port: UInt16) {
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHost.isEmpty else { return }
+
+        switch connection.state {
+        case .disconnected, .failed:
+            SDRDebug.print("📻 autoConnect to \(trimmedHost):\(port)")
+            connect(host: trimmedHost, port: port)
+        case .connecting, .validatingHeader, .connected, .reconnecting:
+            break
+        }
+    }
+
     func disconnect() {
         stopListening()
         connection.disconnect()
