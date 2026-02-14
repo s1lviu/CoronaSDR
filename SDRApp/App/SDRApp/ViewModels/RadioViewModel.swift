@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import Metal
+import QuartzCore
 import SDRModels
 import SDRSupport
 import RTLTCPClientKit
@@ -58,6 +59,7 @@ final class RadioViewModel {
     var directSamplingMode: DirectSamplingMode = .off
     var isNetworkPoor: Bool = false
     var networkQualityHint: String = "Idle"
+    var isAppActive: Bool = true
 
     // Diagnostics
     var throughputMbps: Double = 0
@@ -83,7 +85,7 @@ final class RadioViewModel {
     var waterfallRenderer: WaterfallRenderer?
 
     private var diagnosticsTimer: Timer?
-    private var fftUITimer: Timer?
+    private var fftDisplayLink: CADisplayLink?
     private let directSamplingThresholdHz = 24_000_000
     private let iqBytesPerSamplePair: Double = 2.0
     private let fftMailbox = FFTFrameMailbox()
@@ -92,6 +94,15 @@ final class RadioViewModel {
     private var goodNetworkStreak: Int = 0
     private var lastIQUnderrunCount: Int = 0
     private var lastAudioUnderrunCount: Int = 0
+    private var preferredSampleRate: Int = 1_024_000
+    private var preferredFFTSize: Int = 2048
+    private var effectiveSampleRate: Int = 1_024_000
+    private var effectiveFFTSize: Int = 2048
+    private var preferredUIFPS: Int = 20
+    private var effectiveUIFPS: Int = 20
+    private var lastWaterfallRow: [Float] = []
+    private var powerModeObserver: NSObjectProtocol?
+    private var thermalStateObserver: NSObjectProtocol?
 
     init() {
         connection = RTLTCPConnection(iqBuffer: iqBuffer)
@@ -126,6 +137,10 @@ final class RadioViewModel {
             waterfallRenderer = WaterfallRenderer(device: device)
             waterfallRenderer?.setRenderingActive(false)
         }
+        dspPipeline.setFFTFrameRate(effectiveUIFPS)
+        waterfallRenderer?.targetFPS = effectiveUIFPS
+        setupPowerAndThermalObservers()
+        applyPerformancePolicy()
 
         // Scan callbacks
         scanEngine.onTune = { [weak self] frequencyHz, mode in
@@ -142,7 +157,18 @@ final class RadioViewModel {
             return self.dspPipeline.isSquelchOpen
         }
 
-        startFFTUITimer()
+        updateFFTUITimerState()
+    }
+
+    @MainActor deinit {
+        diagnosticsTimer?.invalidate()
+        fftDisplayLink?.invalidate()
+        if let powerModeObserver {
+            NotificationCenter.default.removeObserver(powerModeObserver)
+        }
+        if let thermalStateObserver {
+            NotificationCenter.default.removeObserver(thermalStateObserver)
+        }
     }
 
     // MARK: - Connection
@@ -150,14 +176,13 @@ final class RadioViewModel {
     func connect(host: String, port: UInt16) {
         SDRDebug.print("📻 RadioViewModel.connect(\(host):\(port))")
         connection.connect(host: host, port: port)
-        startDiagnosticsTimer()
+        updateDiagnosticsTimerState()
     }
 
     func disconnect() {
         stopListening()
         connection.disconnect()
-        diagnosticsTimer?.invalidate()
-        diagnosticsTimer = nil
+        updateDiagnosticsTimerState()
         isConnected = false
         connectionState = .disconnected
         throughputMbps = 0
@@ -226,7 +251,24 @@ final class RadioViewModel {
             dspPipeline.onFFTFrame = dspFFTHandler
         }
         waterfallRenderer?.setRenderingActive(isRadioTabVisible)
+        updateDiagnosticsTimerState()
+        updateFFTUITimerState()
         updateNowPlaying()
+    }
+
+    func setAppActive(_ isActive: Bool) {
+        isAppActive = isActive
+        if !isActive {
+            scanEngine.stop()
+        }
+        if !isActive && !isPlaying {
+            disconnect()
+            return
+        }
+        updateDiagnosticsTimerState()
+        if !isActive {
+            updateFFTUITimerState()
+        }
     }
 
     func stopListening() {
@@ -238,7 +280,10 @@ final class RadioViewModel {
         isPlaying = false
         dspPipeline.onFFTFrame = nil
         waterfallRenderer?.setRenderingActive(false)
+        updateDiagnosticsTimerState()
+        updateFFTUITimerState()
         fftMailbox.clear()
+        lastWaterfallRow.removeAll(keepingCapacity: true)
         resetNetworkQualityState(hint: "Idle")
     }
 
@@ -357,18 +402,10 @@ final class RadioViewModel {
 
     func applySampleProfile(label: String) {
         let profile = sampleProfile(for: label)
-        dspPipeline.setSampleRate(profile.sampleRate)
-        dspPipeline.setFFTSize(profile.fftSize)
-        waterfallRenderer?.targetFPS = profile.uiFps
-
-        if isConnected {
-            connection.setSampleRate(UInt32(profile.sampleRate))
-        }
-
-        if isPlaying {
-            iqBuffer.flush()
-            audioBuffer.flush()
-        }
+        preferredSampleRate = profile.sampleRate
+        preferredFFTSize = profile.fftSize
+        preferredUIFPS = profile.uiFps
+        applyPerformancePolicy()
     }
 
     func applySpectrumPeakHold(_ enabled: Bool) {
@@ -395,7 +432,10 @@ final class RadioViewModel {
         } else {
             dspPipeline.onFFTFrame = nil
             fftMailbox.clear()
+            lastWaterfallRow.removeAll(keepingCapacity: true)
         }
+        updateDiagnosticsTimerState()
+        updateFFTUITimerState()
     }
 
     // MARK: - Now Playing
@@ -411,7 +451,7 @@ final class RadioViewModel {
     private func startDiagnosticsTimer() {
         diagnosticsTimer?.invalidate()
         diagnosticsTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 self.throughputMbps = self.connection.throughputBytesPerSec * 8 / 1_000_000
                 self.iqBufferFill = self.iqBuffer.fillLevel
@@ -431,25 +471,183 @@ final class RadioViewModel {
         }
     }
 
+    private func updateDiagnosticsTimerState() {
+        let isConnectionActive: Bool = {
+            switch connection.state {
+            case .connected, .connecting, .validatingHeader, .reconnecting:
+                return true
+            case .disconnected, .failed:
+                return false
+            }
+        }()
+        let shouldRun = isAppActive && (isPlaying || (isRadioTabVisible && isConnectionActive))
+
+        if shouldRun {
+            if diagnosticsTimer == nil {
+                startDiagnosticsTimer()
+            }
+        } else {
+            diagnosticsTimer?.invalidate()
+            diagnosticsTimer = nil
+        }
+    }
+
     private func startFFTUITimer() {
-        fftUITimer?.invalidate()
-        fftUITimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
+        fftDisplayLink?.invalidate()
+
+        let displayLink = CADisplayLink(target: self, selector: #selector(handleFFTDisplayLinkTick))
+        if #available(iOS 15.0, *) {
+            let fps = Float(max(1, effectiveUIFPS))
+            displayLink.preferredFrameRateRange = CAFrameRateRange(
+                minimum: fps,
+                maximum: fps,
+                preferred: fps
+            )
+        } else {
+            displayLink.preferredFramesPerSecond = max(1, effectiveUIFPS)
+        }
+        displayLink.add(to: .main, forMode: .common)
+        fftDisplayLink = displayLink
+    }
+
+    @objc private func handleFFTDisplayLinkTick() {
+        drainLatestFFTFrameForUI()
+    }
+
+    private func setupPowerAndThermalObservers() {
+        powerModeObserver = NotificationCenter.default.addObserver(
+            forName: .NSProcessInfoPowerStateDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard self != nil else { return }
             Task { @MainActor [weak self] in
-                self?.drainLatestFFTFrameForUI()
+                self?.applyPerformancePolicy()
             }
         }
-        if let fftUITimer {
-            RunLoop.main.add(fftUITimer, forMode: .common)
+
+        thermalStateObserver = NotificationCenter.default.addObserver(
+            forName: ProcessInfo.thermalStateDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard self != nil else { return }
+            Task { @MainActor [weak self] in
+                self?.applyPerformancePolicy()
+            }
+        }
+    }
+
+    private func applyPerformancePolicy() {
+        let processInfo = ProcessInfo.processInfo
+        let lowPower = processInfo.isLowPowerModeEnabled
+        let thermalState = processInfo.thermalState
+
+        // UI FPS policy
+        let clampedPreferredFPS = max(5, min(60, preferredUIFPS))
+        let targetFPS: Int
+        switch thermalState {
+        case .critical:
+            targetFPS = min(clampedPreferredFPS, 12)
+        case .serious:
+            targetFPS = min(clampedPreferredFPS, 20)
+        case .fair:
+            targetFPS = min(clampedPreferredFPS, lowPower ? 24 : 45)
+        case .nominal:
+            targetFPS = lowPower ? min(clampedPreferredFPS, 30) : clampedPreferredFPS
+        @unknown default:
+            targetFPS = lowPower ? min(clampedPreferredFPS, 30) : clampedPreferredFPS
+        }
+
+        dspPipeline.setFFTFrameRate(targetFPS)
+        waterfallRenderer?.targetFPS = targetFPS
+
+        if effectiveUIFPS != targetFPS {
+            effectiveUIFPS = targetFPS
+            if fftDisplayLink != nil {
+                startFFTUITimer()
+            }
+        }
+
+        // DSP/RF load policy
+        let sampleRateCap: Int
+        switch thermalState {
+        case .critical:
+            sampleRateCap = 512_000
+        case .serious:
+            sampleRateCap = 1_024_000
+        case .fair:
+            sampleRateCap = lowPower ? 1_024_000 : Int.max
+        case .nominal:
+            sampleRateCap = lowPower ? 1_024_000 : Int.max
+        @unknown default:
+            sampleRateCap = lowPower ? 1_024_000 : Int.max
+        }
+
+        let targetSampleRate = min(preferredSampleRate, sampleRateCap)
+        let targetFFTSize: Int = {
+            let desired = preferredFFTSize
+            if targetSampleRate <= 512_000 {
+                return min(desired, 1024)
+            }
+            if targetSampleRate <= 1_024_000 {
+                return min(desired, 2048)
+            }
+            return desired
+        }()
+
+        var dspConfigChanged = false
+        if effectiveSampleRate != targetSampleRate {
+            effectiveSampleRate = targetSampleRate
+            dspPipeline.setSampleRate(targetSampleRate)
+            if case .connected = connection.state {
+                connection.setSampleRate(UInt32(targetSampleRate))
+            }
+            dspConfigChanged = true
+        }
+
+        if effectiveFFTSize != targetFFTSize {
+            effectiveFFTSize = targetFFTSize
+            dspPipeline.setFFTSize(targetFFTSize)
+            dspConfigChanged = true
+        }
+
+        if dspConfigChanged, isPlaying {
+            iqBuffer.flush()
+            audioBuffer.flush()
+        }
+    }
+
+    private func updateFFTUITimerState() {
+        let shouldRun = isPlaying && isRadioTabVisible
+        if shouldRun {
+            if fftDisplayLink == nil {
+                startFFTUITimer()
+            }
+        } else {
+            fftDisplayLink?.invalidate()
+            fftDisplayLink = nil
         }
     }
 
     private func drainLatestFFTFrameForUI() {
         guard isPlaying, isRadioTabVisible else { return }
-        guard let bins = fftMailbox.popLatest() else { return }
-        spectrumProcessor.update(bins: bins)
-        let normalized = spectrumProcessor.normalizedBins()
-        waterfallRenderer?.addWaterfallRow(normalized)
-        waterfallRenderer?.updateSpectrumBins(normalized)
+        if let bins = fftMailbox.popLatest() {
+            spectrumProcessor.update(bins: bins)
+            let normalized = spectrumProcessor.normalizedBins()
+            waterfallRenderer?.addWaterfallRow(normalized)
+            if lastWaterfallRow.count != normalized.count {
+                lastWaterfallRow = normalized
+            } else {
+                lastWaterfallRow.withUnsafeMutableBufferPointer { dst in
+                    normalized.withUnsafeBufferPointer { src in
+                        dst.baseAddress!.update(from: src.baseAddress!, count: normalized.count)
+                    }
+                }
+            }
+        } else if !lastWaterfallRow.isEmpty {
+            waterfallRenderer?.addWaterfallRow(lastWaterfallRow)
+        }
     }
 
     // MARK: - Helpers
@@ -536,12 +734,14 @@ final class RadioViewModel {
 
     private func sampleProfile(for label: String) -> (sampleRate: Int, fftSize: Int, uiFps: Int) {
         switch label {
+        case "Ultra Low":
+            return (250_000, 1024, 12)
         case "Medium":
-            return (2_048_000, 4096, 20)
+            return (2_048_000, 4096, 24)
         case "High":
             return (2_400_000, 4096, 30)
         default:
-            return (1_024_000, 2048, 15)
+            return (1_024_000, 2048, 20)
         }
     }
 

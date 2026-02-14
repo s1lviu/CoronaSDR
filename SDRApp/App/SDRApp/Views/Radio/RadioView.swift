@@ -208,9 +208,9 @@ struct RadioView: View {
                 VStack(spacing: 0) {
                     // Spectrum
                     SpectrumCanvasView(
-                        bins: viewModel.spectrumProcessor.normalizedBins(),
+                        bins: viewModel.spectrumProcessor.normalizedCurrentBins,
                         peakBins: viewModel.spectrumProcessor.peakHoldEnabled
-                            ? viewModel.spectrumProcessor.peakBins.map { max(0, min(1, ($0 - viewModel.spectrumProcessor.minDB) / (viewModel.spectrumProcessor.maxDB - viewModel.spectrumProcessor.minDB))) }
+                            ? viewModel.spectrumProcessor.normalizedPeakBins
                             : [],
                         showPeaks: viewModel.spectrumProcessor.peakHoldEnabled
                     )

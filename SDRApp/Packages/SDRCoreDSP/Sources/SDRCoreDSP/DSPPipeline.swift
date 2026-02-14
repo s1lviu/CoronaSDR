@@ -47,27 +47,37 @@ public final class DSPPipeline: @unchecked Sendable {
 
     // FFT output callback
     public var onFFTFrame: (([Float], Int) -> Void)? // (bins, fftSize)
+    /// Maximum FFT frame rate delivered to UI/waterfall.
+    /// Keeping this near UI FPS avoids wasted CPU work.
+    public var fftFrameRate: Int = 15
 
     // Reused work buffers to avoid per-block allocations in the hot loop.
     private var realWork: [Float] = []
     private var imagWork: [Float] = []
+    private var filteredIWork: [Float] = []
+    private var filteredQWork: [Float] = []
+    private var resampledWork: [Float] = []
 
     // Processing state
     private var dspThread: Thread?
     private var isRunning: Bool = false
     private let outputRate: Double = 48000
 
-    // Block size for processing (in IQ sample pairs = 2 bytes each for 8-bit IQ)
-    private let blockSize: Int = 16384 // bytes (8192 IQ samples)
-    // IQ refill hysteresis: if stream jitters, wait for a healthier chunk before resuming DSP.
-    private let iqRefillLowWaterBytes: Int = 32_768
-    private let iqRefillResumeBytes: Int = 131_072
+    // Block size for processing (bytes). Adapted by sample-rate for smoother waterfall cadence.
+    private let minBlockSizeBytes: Int = 4_096
+    private let maxBlockSizeBytes: Int = 16_384
+    private var blockSizeBytes: Int
     private let iqStarvationGraceSeconds: CFTimeInterval = 0.08
 
     public init(iqBuffer: IQRingBuffer, audioBuffer: AudioRingBuffer, sampleRate: Int = 1_024_000) {
         self.iqBuffer = iqBuffer
         self.audioBuffer = audioBuffer
         self.sampleRate = sampleRate
+        self.blockSizeBytes = DSPPipeline.computeBlockSizeBytes(
+            for: sampleRate,
+            minBlockSizeBytes: minBlockSizeBytes,
+            maxBlockSizeBytes: maxBlockSizeBytes
+        )
 
         let cutoff = Float(12_500) / Float(sampleRate)
         let decimFactor = max(1, sampleRate / 48000)
@@ -111,7 +121,7 @@ public final class DSPPipeline: @unchecked Sendable {
     // MARK: - DSP Loop
 
     private func dspLoop() {
-        let rawBlock = UnsafeMutableRawBufferPointer.allocate(byteCount: blockSize, alignment: 16)
+        let rawBlock = UnsafeMutableRawBufferPointer.allocate(byteCount: maxBlockSizeBytes, alignment: 16)
         defer { rawBlock.deallocate() }
 
         var blockCount = 0
@@ -120,6 +130,9 @@ public final class DSPPipeline: @unchecked Sendable {
         var starvationSince: CFAbsoluteTime?
 
         while isRunning {
+            let blockSize = blockSizeBytes
+            let iqRefillLowWaterBytes = blockSize * 2
+            let iqRefillResumeBytes = blockSize * 8
             let available = iqBuffer.availableForReading
 
             if waitingForRefill {
@@ -150,7 +163,7 @@ public final class DSPPipeline: @unchecked Sendable {
 
             // Convert 8-bit IQ to complex float
             let sampleCount = ComplexBuffer.fromUInt8IQ(
-                UnsafeRawBufferPointer(rawBlock),
+                UnsafeRawBufferPointer(start: rawBlock.baseAddress, count: bytesRead),
                 into: complexBuf
             )
             guard sampleCount > 0 else { continue }
@@ -182,18 +195,29 @@ public final class DSPPipeline: @unchecked Sendable {
                 ncoMixer.mix(real: &realWork, imag: &imagWork, count: sampleCount)
             }
 
-            // FFT (before channelization, on full bandwidth)
-            computeFFT(real: realWork, imag: imagWork)
+            // FFT (before channelization, on full bandwidth), rate-limited for display.
+            let fftNow = CFAbsoluteTimeGetCurrent()
+            if shouldEmitFFTFrame(now: fftNow) {
+                computeFFT(real: realWork, imag: imagWork)
+            }
 
-            // Channel filter + decimate
-            let filteredI = channelFilterI.process(realWork)
-            let filteredQ = channelFilterQ.process(imagWork)
-            if filteredI.count != filteredQ.count {
-                SDRDebug.print("⚠️ IQ channel length mismatch: I=\(filteredI.count) Q=\(filteredQ.count)")
+            // Channel filter + decimate (allocation-aware)
+            let filteredICount = channelFilterI.process(realWork, into: &filteredIWork)
+            let filteredQCount = channelFilterQ.process(imagWork, into: &filteredQWork)
+            if filteredICount != filteredQCount {
+                SDRDebug.print("⚠️ IQ channel length mismatch: I=\(filteredICount) Q=\(filteredQCount)")
+            }
+            let filteredCount = min(filteredICount, filteredQCount)
+            guard filteredCount > 0 else { continue }
+            if filteredIWork.count != filteredCount {
+                filteredIWork.removeSubrange(filteredCount..<filteredIWork.count)
+            }
+            if filteredQWork.count != filteredCount {
+                filteredQWork.removeSubrange(filteredCount..<filteredQWork.count)
             }
 
             // Demodulate
-            var audio = demodulator.demodulate(real: filteredI, imag: filteredQ)
+            var audio = demodulator.demodulate(real: filteredIWork, imag: filteredQWork)
 
             // Squelch
             if mode.supportsSquelch {
@@ -205,10 +229,14 @@ public final class DSPPipeline: @unchecked Sendable {
             let adjustedRatio = driftCompensator.update(currentFill: currentFill)
             resampler.currentRatio = adjustedRatio
 
-            let resampled = resampler.process(audio)
+            let resampledCount = resampler.process(audio, into: &resampledWork)
 
             // Write to audio ring buffer
-            audioBuffer.write(resampled)
+            if resampledCount > 0 {
+                resampledWork.withUnsafeBufferPointer { samples in
+                    _ = audioBuffer.write(UnsafeBufferPointer(start: samples.baseAddress!, count: resampledCount))
+                }
+            }
 
             // Periodic diagnostics (every ~2 sec)
             blockCount += 1
@@ -216,7 +244,7 @@ public final class DSPPipeline: @unchecked Sendable {
             if now - lastLogTime >= 2.0 {
                 let bps = Double(blockCount * blockSize) / (now - lastLogTime)
                 SDRDebug.print("🎛️ DSP: \(blockCount) blocks, \(String(format: "%.1f", bps/1024))KB/s, " +
-                               "IQ→\(sampleCount) filt→\(filteredI.count) demod→\(audio.count) resamp→\(resampled.count), " +
+                               "IQ→\(sampleCount) filt→\(filteredCount) demod→\(audio.count) resamp→\(resampledCount), " +
                                "audioFill=\(String(format: "%.1f%%", currentFill*100)), ratio=\(String(format: "%.6f", adjustedRatio))")
                 blockCount = 0
                 lastLogTime = now
@@ -236,6 +264,7 @@ public final class DSPPipeline: @unchecked Sendable {
     private var fftPower: [Float] = []
     private var fftImagSq: [Float] = []
     private var fftShifted: [Float] = []
+    private var lastFFTFrameTime: CFAbsoluteTime = 0
 
     public func setFFTSize(_ size: Int) {
         guard size > 0 else { return }
@@ -251,6 +280,11 @@ public final class DSPPipeline: @unchecked Sendable {
         fftImagSq = [Float](repeating: 0, count: size)
         fftShifted = [Float](repeating: 0, count: size)
         vDSP_hann_window(&fftWindow, vDSP_Length(size), Int32(vDSP_HANN_NORM))
+    }
+
+    /// Update FFT frame rate budget used by spectrum/waterfall pipeline.
+    public func setFFTFrameRate(_ fps: Int) {
+        fftFrameRate = max(1, min(60, fps))
     }
 
     private func computeFFT(real: [Float], imag: [Float]) {
@@ -303,6 +337,16 @@ public final class DSPPipeline: @unchecked Sendable {
         fftShifted[half..<fftSize] = fftPower[0..<half]
 
         onFFTFrame(fftShifted, fftSize)
+    }
+
+    private func shouldEmitFFTFrame(now: CFAbsoluteTime) -> Bool {
+        guard onFFTFrame != nil else { return false }
+        let minInterval = 1.0 / Double(max(1, min(60, fftFrameRate)))
+        if now - lastFFTFrameTime >= minInterval {
+            lastFFTFrameTime = now
+            return true
+        }
+        return false
     }
 
     // MARK: - Rebuild
@@ -382,9 +426,14 @@ public final class DSPPipeline: @unchecked Sendable {
 
     /// Update IQ sample rate and rebuild the DSP chain.
     public func setSampleRate(_ hz: Int) {
-        let clamped = max(256_000, hz)
+        let clamped = max(250_000, hz)
         guard sampleRate != clamped else { return }
         sampleRate = clamped
+        blockSizeBytes = DSPPipeline.computeBlockSizeBytes(
+            for: clamped,
+            minBlockSizeBytes: minBlockSizeBytes,
+            maxBlockSizeBytes: maxBlockSizeBytes
+        )
         rebuildDemodChain(preservingBandwidth: true)
         resetState()
     }
@@ -421,5 +470,28 @@ public final class DSPPipeline: @unchecked Sendable {
         squelch.reset()
         resampler.reset()
         driftCompensator.reset()
+        lastFFTFrameTime = 0
+    }
+
+    private static func computeBlockSizeBytes(
+        for sampleRate: Int,
+        minBlockSizeBytes: Int,
+        maxBlockSizeBytes: Int
+    ) -> Int {
+        let targetBlockMs: Double
+        switch sampleRate {
+        case ..<500_000:
+            targetBlockMs = 8.0
+        case ..<1_500_000:
+            targetBlockMs = 10.0
+        default:
+            targetBlockMs = 12.0
+        }
+
+        let desiredBytes = Int(Double(sampleRate) * 2.0 * targetBlockMs / 1000.0)
+        let minBucket = max(1, minBlockSizeBytes / 1024)
+        let maxBucket = max(minBucket, maxBlockSizeBytes / 1024)
+        let bucket = max(minBucket, min(maxBucket, desiredBytes / 1024))
+        return bucket * 1024
     }
 }

@@ -43,12 +43,14 @@ struct MainTabView: View {
         .onAppear {
             applyRuntimeSettings()
             updateRadioVisibility()
+            viewModel.setAppActive(scenePhase == .active)
         }
         .onChange(of: selectedTab) { _, newValue in
             viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
         }
         .onChange(of: scenePhase) { _, _ in
             updateRadioVisibility()
+            viewModel.setAppActive(scenePhase == .active)
         }
         .onChange(of: settings.selectedSampleProfileLabel) { _, newLabel in
             viewModel.applySampleProfile(label: newLabel)

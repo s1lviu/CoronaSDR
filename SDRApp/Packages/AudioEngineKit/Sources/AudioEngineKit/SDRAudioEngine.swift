@@ -24,6 +24,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private var sourceNode: AVAudioSourceNode?
     private let audioBuffer: AudioRingBuffer
     private let sampleRate: Double = 48000
+    private let preferredIOBufferDuration: TimeInterval = 0.02
     private var isInterrupted: Bool = false
     private var shouldResumeAfterInterruption: Bool = false
     private var interruptionObserver: NSObjectProtocol?
@@ -49,7 +50,8 @@ public final class SDRAudioEngine: @unchecked Sendable {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playback, mode: .default, options: [])
         try session.setPreferredSampleRate(sampleRate)
-        try session.setPreferredIOBufferDuration(0.005) // 5ms buffer
+        // Higher IO duration is a standard trade-off for lower CPU/wakeup load in streaming apps.
+        try session.setPreferredIOBufferDuration(preferredIOBufferDuration)
         try session.setActive(true)
 
         setupInterruptionHandling()

@@ -7,9 +7,19 @@ import Observation
 public final class SpectrumProcessor {
     public var currentBins: [Float] = []
     public var peakBins: [Float] = []
-    public var peakHoldEnabled: Bool = false
+    public private(set) var normalizedCurrentBins: [Float] = []
+    public private(set) var normalizedPeakBins: [Float] = []
+    public var peakHoldEnabled: Bool = false {
+        didSet {
+            if !peakHoldEnabled {
+                peakBins = []
+                normalizedPeakBins = []
+            }
+        }
+    }
 
     private var smoothedBins: [Float] = []
+    private var smoothingWork: [Float] = []
     private let smoothingAlpha: Float = 0.3 // EMA factor
     private let peakDecayRate: Float = 0.2  // dB per update
     private var floorProbeBins: [Float] = []
@@ -27,52 +37,74 @@ public final class SpectrumProcessor {
     /// Update with a new FFT frame.
     public func update(bins: [Float]) {
         let count = bins.count
+        guard count > 0 else {
+            currentBins = []
+            smoothedBins = []
+            normalizedCurrentBins = []
+            if !peakHoldEnabled {
+                peakBins = []
+                normalizedPeakBins = []
+            }
+            return
+        }
 
         if smoothedBins.count != count {
             smoothedBins = bins
+            smoothingWork = [Float](repeating: 0, count: count)
             peakBins = bins
             currentBins = bins
+            updateDisplayWindow(using: bins)
+            refreshNormalizedCurrent()
+            if peakHoldEnabled {
+                refreshNormalizedPeaks()
+            } else {
+                normalizedPeakBins = []
+            }
             return
         }
 
         // EMA smoothing
         var alpha = smoothingAlpha
         var oneMinusAlpha = 1.0 - alpha
-        var smoothed = [Float](repeating: 0, count: count)
+        if smoothingWork.count != count {
+            smoothingWork = [Float](repeating: 0, count: count)
+        }
 
         // smoothed = alpha * new + (1 - alpha) * old
         vDSP_vsmsma(
             bins, 1, &alpha,
             smoothedBins, 1, &oneMinusAlpha,
-            &smoothed, 1,
+            &smoothingWork, 1,
             vDSP_Length(count)
         )
 
-        smoothedBins = smoothed
-        currentBins = smoothed
-        updateDisplayWindow(using: smoothed)
+        swap(&smoothedBins, &smoothingWork)
+        currentBins = smoothedBins
+
+        updateDisplayWindow(using: smoothedBins)
+        refreshNormalizedCurrent()
 
         // Peak hold
         if peakHoldEnabled {
             if peakBins.count != count {
-                peakBins = smoothed
+                peakBins = smoothedBins
             }
             for i in 0..<count {
-                if smoothed[i] > peakBins[i] {
-                    peakBins[i] = smoothed[i]
+                if smoothedBins[i] > peakBins[i] {
+                    peakBins[i] = smoothedBins[i]
                 } else {
                     peakBins[i] -= peakDecayRate
                 }
             }
+            refreshNormalizedPeaks()
+        } else {
+            normalizedPeakBins = []
         }
     }
 
     /// Normalize bins to 0.0–1.0 range for rendering.
     public func normalizedBins() -> [Float] {
-        let range = max(1, maxDB - minDB)
-        return currentBins.map { bin in
-            max(0, min(1, (bin - minDB) / range))
-        }
+        normalizedCurrentBins
     }
 
     private func updateDisplayWindow(using bins: [Float]) {
@@ -118,5 +150,36 @@ public final class SpectrumProcessor {
         let percentile: Float = 0.20
         let percentileIndex = Int((Float(floorProbeBins.count - 1) * percentile).rounded(.down))
         return floorProbeBins[max(0, min(percentileIndex, floorProbeBins.count - 1))]
+    }
+
+    private func refreshNormalizedCurrent() {
+        normalize(currentBins, into: &normalizedCurrentBins)
+    }
+
+    private func refreshNormalizedPeaks() {
+        normalize(peakBins, into: &normalizedPeakBins)
+    }
+
+    private func normalize(_ source: [Float], into destination: inout [Float]) {
+        guard !source.isEmpty else {
+            destination = []
+            return
+        }
+        if destination.count != source.count {
+            destination = [Float](repeating: 0, count: source.count)
+        }
+
+        let range = max(1, maxDB - minDB)
+        let invRange = 1.0 / range
+        for i in 0..<source.count {
+            let normalized = (source[i] - minDB) * invRange
+            if normalized <= 0 {
+                destination[i] = 0
+            } else if normalized >= 1 {
+                destination[i] = 1
+            } else {
+                destination[i] = normalized
+            }
+        }
     }
 }

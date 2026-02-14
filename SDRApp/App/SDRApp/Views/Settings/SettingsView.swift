@@ -33,6 +33,7 @@ struct SettingsView: View {
 
                 Section("Performance") {
                     Picker("Processing Profile", selection: $settings.selectedSampleProfileLabel) {
+                        Text("Ultra Low (250k SPS)").tag("Ultra Low")
                         Text("Low (1.024 MSPS)").tag("Low")
                         Text("Medium (2.048 MSPS)").tag("Medium")
                         Text("High (2.4 MSPS)").tag("High")

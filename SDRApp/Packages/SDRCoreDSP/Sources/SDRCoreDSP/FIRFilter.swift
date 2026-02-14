@@ -9,6 +9,7 @@ public final class FIRFilter {
     private var history: [Float] // numTaps-1 samples of overlap
     private let numTaps: Int
     public let decimationFactor: Int
+    private var extendedBuffer: [Float] = []
 
     /// Create a FIR low-pass filter.
     /// - Parameters:
@@ -20,6 +21,7 @@ public final class FIRFilter {
         self.decimationFactor = decimationFactor
         self.taps = FIRFilter.designLowPass(cutoff: cutoffNormalized, numTaps: numTaps)
         self.history = [Float](repeating: 0, count: numTaps - 1)
+        self.extendedBuffer = [Float](repeating: 0, count: numTaps - 1)
     }
 
     /// Create from pre-computed taps.
@@ -28,47 +30,70 @@ public final class FIRFilter {
         self.taps = taps
         self.decimationFactor = decimationFactor
         self.history = [Float](repeating: 0, count: numTaps - 1)
+        self.extendedBuffer = [Float](repeating: 0, count: numTaps - 1)
     }
 
     /// Filter and decimate a block of real samples.
     /// Returns the decimated output using overlap-save.
     public func process(_ input: [Float]) -> [Float] {
-        guard !input.isEmpty else { return [] }
+        var output: [Float] = []
+        _ = process(input, into: &output)
+        return output
+    }
 
-        // Overlap-save: prepend (numTaps-1) history samples
-        let overlap = numTaps - 1
-        let extended = [Float](unsafeUninitializedCapacity: overlap + input.count) { buffer, count in
-            // Copy history
-            for i in 0..<overlap {
-                buffer[i] = history[i]
-            }
-            // Copy input
-            for i in 0..<input.count {
-                buffer[overlap + i] = input[i]
-            }
-            count = overlap + input.count
+    /// Allocation-aware path: writes filtered/decimated samples into caller-provided storage.
+    /// Returns the number of valid output samples written.
+    @discardableResult
+    public func process(_ input: [Float], into output: inout [Float]) -> Int {
+        guard !input.isEmpty else {
+            output.removeAll(keepingCapacity: true)
+            return 0
         }
 
-        // Output count: number of decimated samples from the NEW input only
+        // Overlap-save: prepend (numTaps-1) history samples.
+        let overlap = numTaps - 1
+        let extendedCount = overlap + input.count
+        ensureExtendedCapacity(extendedCount)
+
+        if overlap > 0 {
+            history.withUnsafeBufferPointer { hist in
+                extendedBuffer.withUnsafeMutableBufferPointer { ext in
+                    ext.baseAddress!.update(from: hist.baseAddress!, count: overlap)
+                }
+            }
+        }
+        input.withUnsafeBufferPointer { src in
+            extendedBuffer.withUnsafeMutableBufferPointer { ext in
+                ext.baseAddress!.advanced(by: overlap).update(from: src.baseAddress!, count: input.count)
+            }
+        }
+
+        // Output count: decimated samples from NEW input only.
         let outputCount = input.count / decimationFactor
         guard outputCount > 0 else {
-            // Save tail as new history
-            saveHistory(from: extended)
-            return []
+            saveHistory(fromExtendedCount: extendedCount)
+            output.removeAll(keepingCapacity: true)
+            return 0
         }
 
-        var output = [Float](repeating: 0, count: outputCount)
+        let validOutputs = min(
+            outputCount,
+            max(0, (extendedCount - numTaps) / decimationFactor + 1)
+        )
+        if validOutputs <= 0 {
+            saveHistory(fromExtendedCount: extendedCount)
+            output.removeAll(keepingCapacity: true)
+            return 0
+        }
+
+        if output.count != validOutputs {
+            output = [Float](repeating: 0, count: validOutputs)
+        }
 
         // vDSP_desamp: C[n] = sum_{p=0}^{P-1} A[n*DF + p] * F[p]
-        // A starts at extended[0] so the first output uses all overlap samples
-        extended.withUnsafeBufferPointer { ext in
+        extendedBuffer.withUnsafeBufferPointer { ext in
             taps.withUnsafeBufferPointer { t in
                 output.withUnsafeMutableBufferPointer { out in
-                    let validOutputs = min(
-                        outputCount,
-                        max(0, (extended.count - numTaps) / decimationFactor + 1)
-                    )
-                    guard validOutputs > 0 else { return }
                     vDSP_desamp(
                         ext.baseAddress!,
                         vDSP_Stride(decimationFactor),
@@ -81,20 +106,27 @@ public final class FIRFilter {
             }
         }
 
-        // Save last (numTaps-1) samples from extended as history for next block
-        saveHistory(from: extended)
-
-        return output
+        // Save last (numTaps-1) samples for next block.
+        saveHistory(fromExtendedCount: extendedCount)
+        return validOutputs
     }
 
-    private func saveHistory(from extended: [Float]) {
+    private func ensureExtendedCapacity(_ requiredCount: Int) {
+        if extendedBuffer.count < requiredCount {
+            extendedBuffer = [Float](repeating: 0, count: requiredCount)
+        }
+    }
+
+    private func saveHistory(fromExtendedCount extendedCount: Int) {
         let overlap = numTaps - 1
-        if extended.count >= overlap {
-            let start = extended.count - overlap
-            history = Array(extended[start..<extended.count])
+        guard overlap > 0 else { return }
+        let start = max(0, extendedCount - overlap)
+        if start + overlap <= extendedBuffer.count {
+            for i in 0..<overlap {
+                history[i] = extendedBuffer[start + i]
+            }
         } else {
-            // Pad with zeros if not enough samples
-            history = [Float](repeating: 0, count: overlap - extended.count) + extended
+            history = [Float](repeating: 0, count: overlap)
         }
     }
 

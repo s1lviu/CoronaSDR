@@ -32,16 +32,16 @@ public final class Squelch {
             isOpen = true
             return true
         }
+        guard !samples.isEmpty else { return isOpen }
 
-        // Measure noise: high-pass filter then RMS
-        var hpFiltered = [Float](repeating: 0, count: samples.count)
+        // Measure noise: one-pass high-pass + RMS accumulator (no per-block allocations).
+        var sumSquares: Float = 0
         for i in 0..<samples.count {
-            hpFiltered[i] = samples[i] - prevSample
+            let hp = samples[i] - prevSample
             prevSample = samples[i]
+            sumSquares += hp * hp
         }
-
-        var rms: Float = 0
-        vDSP_rmsqv(hpFiltered, 1, &rms, vDSP_Length(samples.count))
+        let rms = sqrt(sumSquares / Float(samples.count))
 
         // Smooth noise level
         noiseLevel = noiseLevel * (1 - smoothingAlpha) + rms * smoothingAlpha
