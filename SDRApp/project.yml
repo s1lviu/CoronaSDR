@@ -57,6 +57,16 @@ targets:
           - CFBundleURLSchemes:
               - coronasdr
             CFBundleURLName: yo6say.coronasdr
+        CFBundleDisplayName: CoronaSDR
+        CFBundleIcons:
+          CFBundlePrimaryIcon:
+            CFBundleIconFiles:
+              - AppIcon60x60
+        "CFBundleIcons~ipad":
+          CFBundlePrimaryIcon:
+            CFBundleIconFiles:
+              - AppIcon76x76
+              - AppIcon83.5x83.5
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr

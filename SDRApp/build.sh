@@ -15,6 +15,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build"
 APP_PATH="${BUILD_DIR}/Debug-iphoneos/CoronaSDR.app"
+APP_PROJECT="${PROJECT_DIR}/SDRApp.xcodeproj"
 GENERATED_PROJECT="${PROJECT_DIR}/CoronaSDR.xcodeproj"
 BUNDLE_ID="yo6say.coronasdr"
 TEAM_ID="DDJCP893KF"
@@ -71,12 +72,27 @@ get_test_destination_id() {
     echo "$destination_id"
 }
 
+get_build_project() {
+    if [ -d "$APP_PROJECT" ]; then
+        echo "$APP_PROJECT"
+    elif [ -d "$GENERATED_PROJECT" ]; then
+        echo "$GENERATED_PROJECT"
+    else
+        echo "ERROR: No Xcode project found for app build." >&2
+        exit 1
+    fi
+}
+
 do_build() {
+    local build_project
+    build_project=$(get_build_project)
+
     echo "=== Building CoronaSDR ==="
     cd "$PROJECT_DIR"
     mkdir -p "$BUILD_DIR"
 
     xcodebuild \
+        -project "$build_project" \
         -target CoronaSDR \
         -sdk iphoneos \
         -arch arm64 \
