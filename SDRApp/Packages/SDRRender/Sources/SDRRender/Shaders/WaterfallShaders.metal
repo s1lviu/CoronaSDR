@@ -140,6 +140,9 @@ vertex SpectrumVertexOut spectrumVertexShader(
     float currentVal = bins[vertexID];
     float prevVal = prevBins[vertexID];
     float interpolatedVal = mix(prevVal, currentVal, interp);
+    
+    // Clamp to 1.0 so peaks don't go off-screen (visual ceiling)
+    interpolatedVal = min(interpolatedVal, 1.0);
 
     float x = float(vertexID) / float(binCount - 1) * 2.0 - 1.0;
     // Spectrum occupies the top 120/320 = 37.5%
