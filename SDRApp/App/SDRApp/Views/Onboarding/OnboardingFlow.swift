@@ -13,8 +13,6 @@ struct OnboardingFlow: View {
     @State private var testSuccess = false
     @FocusState private var focusedField: Field?
 
-    private let discovery = ServiceDiscovery()
-
     private enum Field: Hashable {
         case host
         case port
@@ -196,7 +194,6 @@ struct OnboardingFlow: View {
                     statusCard(text: result, success: testSuccess)
                 }
 
-                discoveredServersSection
             }
             .padding(.horizontal)
             .padding(.bottom, 120)
@@ -241,10 +238,6 @@ struct OnboardingFlow: View {
             if port.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 port = String(settings.lastServerPort)
             }
-            discovery.startBrowsing()
-        }
-        .onDisappear {
-            discovery.stopBrowsing()
         }
     }
 
@@ -305,78 +298,6 @@ struct OnboardingFlow: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.regularMaterial)
         )
-    }
-
-    private var discoveredServersSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            discoveredServersHeader
-
-            if discovery.discoveredServers.isEmpty {
-                Text("No servers found via Bonjour. You can still enter the server address manually.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else {
-                discoveredServersList
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.regularMaterial)
-        )
-    }
-
-    private var discoveredServersHeader: some View {
-        HStack {
-            Text("Discovered Servers")
-                .font(.headline)
-            Spacer()
-            if discovery.isBrowsing {
-                Label("Scanning", systemImage: "dot.radiowaves.left.and.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var discoveredServersList: some View {
-        VStack(spacing: 8) {
-            ForEach(discovery.discoveredServers) { server in
-                discoveredServerRow(server)
-            }
-        }
-    }
-
-    private func discoveredServerRow(_ server: DiscoveredServer) -> some View {
-        Button {
-            host = server.host
-            port = String(server.port)
-            focusedField = nil
-        } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(server.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text("\(server.host):\(server.port)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "arrow.down.left.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.background.opacity(0.7))
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Select server \(server.name)")
     }
 
     private func statusCard(text: String, success: Bool) -> some View {

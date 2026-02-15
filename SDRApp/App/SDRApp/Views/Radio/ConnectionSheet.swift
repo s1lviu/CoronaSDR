@@ -1,6 +1,5 @@
 import SwiftUI
 import SDRModels
-import RTLTCPClientKit
 
 struct ConnectionSheet: View {
     let viewModel: RadioViewModel
@@ -17,35 +16,15 @@ struct ConnectionSheet: View {
         NavigationStack {
             Form {
                 Section("Server") {
-                    TextField("IP Address", text: $host)
-                        .keyboardType(.decimalPad)
+                    TextField("Host or IP", text: $host)
+                        .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .accessibilityLabel("Server IP address")
+                        .keyboardType(.URL)
+                        .accessibilityLabel("Server host or IP address")
 
                     TextField("Port", text: $port)
                         .keyboardType(.numberPad)
                         .accessibilityLabel("Server port")
-                }
-
-                if !viewModel.discovery.discoveredServers.isEmpty {
-                    Section("Discovered") {
-                        ForEach(viewModel.discovery.discoveredServers) { server in
-                            Button {
-                                host = server.host
-                                port = String(server.port)
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(server.name).font(.headline)
-                                        Text("\(server.host):\(server.port)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
                 }
 
                 Section {
@@ -92,10 +71,6 @@ struct ConnectionSheet: View {
             .onAppear {
                 host = settings.lastServerHost
                 port = String(settings.lastServerPort)
-                viewModel.discovery.startBrowsing()
-            }
-            .onDisappear {
-                viewModel.discovery.stopBrowsing()
             }
         }
     }

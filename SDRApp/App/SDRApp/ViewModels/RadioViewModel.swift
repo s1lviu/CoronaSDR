@@ -81,7 +81,6 @@ final class RadioViewModel {
     let connection: RTLTCPConnection
     let dspPipeline: DSPPipeline
     let audioEngine: SDRAudioEngine
-    let discovery = ServiceDiscovery()
     let scanEngine = ScanEngine()
 
     var waterfallRenderer: WaterfallRenderer?

@@ -63,10 +63,6 @@ targets:
         UIBackgroundModes:
           - audio
         NSLocalNetworkUsageDescription: "Connect to SDR server on your local network"
-        NSBonjourServices:
-          - "_rtltcp._tcp"
-          - "_hfp._tcp"
-          - "_rsp._tcp"
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - coronasdr
