@@ -1,5 +1,4 @@
 import SwiftUI
-import SDRSupport
 
 struct DiagnosticsView: View {
     let viewModel: RadioViewModel

@@ -69,7 +69,6 @@ public final class AMDemodulator: Demodulator {
 /// Includes post-demodulation de-emphasis filter.
 public final class FMDemodulator: Demodulator {
     private var q: freqdem
-    private let gain: Float
     private var outputScratch: [Float] = []
     
     // De-emphasis state
@@ -85,7 +84,6 @@ public final class FMDemodulator: Demodulator {
         // kf = deviation / sample_rate
         let kf = deviation / sampleRate
         self.q = freqdem_create(kf)
-        self.gain = 1.0 
         
         // De-emphasis: alpha = 1 - exp(-1 / (sampleRate * tau))
         // tau = deemphasis_us * 1e-6

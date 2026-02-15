@@ -1,7 +1,6 @@
 import SwiftUI
 import SDRModels
 import SDRRender
-import SDRSupport
 
 struct RadioView: View {
     @Environment(SettingsStore.self) private var settings
