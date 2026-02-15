@@ -63,7 +63,7 @@
   - IMPORTANT: configurează build să **NU** includă FFTW (nu e necesar pe iOS; FFT pentru UI se face cu vDSP).
 - **CSV.swift** (SPM) – import/export CSV/TSV rapid, API simplu pentru V1.
 - **Firebase Crashlytics** + **Firebase Performance Monitoring** – crash reporting + traces de performanță.
-- **Swift Atomics** (`apple/swift-atomics`) – primitive atomice robuste pentru ring buffer lock-free.
+- **Atomics (Swift)** – `Synchronization.Atomic` (Swift stdlib) pentru primitive atomice robuste în ring buffer lock-free.
 
 ---
 
@@ -191,7 +191,7 @@ SDRApp/
 ### 7.2 Ring Buffers (mandatory)
 - `IQRingBuffer`: stores bytes or converted int16/float complex; size for jitter: 0.5–2 sec.
 - `AudioRingBuffer`: stores Float32 mono; size 0.5–1 sec.
-- Use lock-free indices (Swift Atomics). Never allocate in callbacks.
+- Use lock-free indices (`Synchronization.Atomic`). Never allocate in callbacks.
 - Track high/low watermarks pentru diagnoză underrun/overrun.
 
 ### 7.3 Backpressure policy

@@ -46,7 +46,7 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` MediaPlayer lock screen controls
 - `[x]` `os.Logger`
 - `[x]` liquid-dsp (resampler + demod FM/SSB)
-- `[~]` Atomics: folosit `Synchronization.Atomic` (nu `swift-atomics` package)
+- `[x]` Atomics: `Synchronization.Atomic` (Swift stdlib) pentru ring buffer lock-free
 - `[ ]` `CSV.swift` dependency (se folosește parser custom)
 - `[x]` Firebase Crashlytics + Firebase Performance
 
