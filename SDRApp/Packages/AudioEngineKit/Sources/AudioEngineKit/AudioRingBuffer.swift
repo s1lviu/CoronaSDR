@@ -1,7 +1,6 @@
 import Foundation
-import Synchronization
 
-/// Lock-free single-producer single-consumer ring buffer for Float32 audio samples.
+/// Thread-safe ring buffer for Float32 audio samples.
 /// Producer: DSP thread writes demodulated audio.
 /// Consumer: AVAudioEngine source node callback reads audio.
 ///
@@ -9,29 +8,40 @@ import Synchronization
 public final class AudioRingBuffer: @unchecked Sendable {
     private let buffer: UnsafeMutableBufferPointer<Float>
     private let capacity: Int // in samples
+    private let lock = NSLock()
 
-    private let head = Atomic<Int>(0)  // write position
-    private let tail = Atomic<Int>(0)  // read position
+    private var head: Int = 0 // write position
+    private var tail: Int = 0 // read position
 
-    private let _overrunCount = Atomic<Int>(0)
-    private let _underrunCount = Atomic<Int>(0)
+    private var _overrunCount: Int = 0
+    private var _underrunCount: Int = 0
 
-    public var overrunCount: Int { _overrunCount.load(ordering: .relaxed) }
-    public var underrunCount: Int { _underrunCount.load(ordering: .relaxed) }
+    public var overrunCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return _overrunCount
+    }
+
+    public var underrunCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return _underrunCount
+    }
 
     /// Fill level as a fraction 0.0–1.0.
     public var fillLevel: Double {
-        let h = head.load(ordering: .acquiring)
-        let t = tail.load(ordering: .acquiring)
-        let used = (h - t + capacity) % capacity
+        lock.lock()
+        let used = (head - tail + capacity) % capacity
+        lock.unlock()
         return Double(used) / Double(capacity)
     }
 
     /// Available samples for reading.
     public var availableForReading: Int {
-        let h = head.load(ordering: .acquiring)
-        let t = tail.load(ordering: .acquiring)
-        return (h - t + capacity) % capacity
+        lock.lock()
+        let available = (head - tail + capacity) % capacity
+        lock.unlock()
+        return available
     }
 
     /// Total ring buffer capacity in samples.
@@ -55,32 +65,35 @@ public final class AudioRingBuffer: @unchecked Sendable {
     public func write(_ samples: UnsafeBufferPointer<Float>) -> Int {
         let count = samples.count
         guard count > 0 else { return 0 }
+        guard let sourceBase = samples.baseAddress else { return 0 }
 
-        let h = head.load(ordering: .relaxed)
-        let t = tail.load(ordering: .acquiring)
-        let available = capacity - 1 - ((h - t + capacity) % capacity)
+        lock.lock()
+        defer { lock.unlock() }
+
+        let available = capacity - 1 - ((head - tail + capacity) % capacity)
 
         if count > available {
-            _overrunCount.wrappingAdd(1, ordering: .relaxed)
+            _overrunCount &+= 1
             // Advance tail to make room
             let drop = count - available
-            tail.store((t + drop) % capacity, ordering: .releasing)
+            tail = (tail + drop) % capacity
         }
 
         let samplesToWrite = min(count, capacity - 1)
+        let writeStart = head
 
-        if h + samplesToWrite <= capacity {
-            buffer.baseAddress!.advanced(by: h)
-                .update(from: samples.baseAddress!, count: samplesToWrite)
+        if writeStart + samplesToWrite <= capacity {
+            buffer.baseAddress!.advanced(by: writeStart)
+                .update(from: sourceBase, count: samplesToWrite)
         } else {
-            let firstChunk = capacity - h
-            buffer.baseAddress!.advanced(by: h)
-                .update(from: samples.baseAddress!, count: firstChunk)
+            let firstChunk = capacity - writeStart
+            buffer.baseAddress!.advanced(by: writeStart)
+                .update(from: sourceBase, count: firstChunk)
             buffer.baseAddress!
-                .update(from: samples.baseAddress!.advanced(by: firstChunk), count: samplesToWrite - firstChunk)
+                .update(from: sourceBase.advanced(by: firstChunk), count: samplesToWrite - firstChunk)
         }
 
-        head.store((h + samplesToWrite) % capacity, ordering: .releasing)
+        head = (writeStart + samplesToWrite) % capacity
         return samplesToWrite
     }
 
@@ -94,14 +107,14 @@ public final class AudioRingBuffer: @unchecked Sendable {
     /// MUST NOT ALLOCATE. Returns actual samples read.
     /// Fills remainder with silence (zero) if not enough data.
     public func read(into dest: UnsafeMutableBufferPointer<Float>, count requestedCount: Int) -> Int {
-        let h = head.load(ordering: .acquiring)
-        let t = tail.load(ordering: .relaxed)
-        let available = (h - t + capacity) % capacity
+        lock.lock()
+        defer { lock.unlock() }
+        let available = (head - tail + capacity) % capacity
 
         let count = min(requestedCount, available)
 
         if count > 0 {
-            let readStart = t
+            let readStart = tail
             if readStart + count <= capacity {
                 dest.baseAddress!.update(
                     from: buffer.baseAddress!.advanced(by: readStart),
@@ -118,12 +131,12 @@ public final class AudioRingBuffer: @unchecked Sendable {
                     count: count - firstChunk
                 )
             }
-            tail.store((t + count) % capacity, ordering: .releasing)
+            tail = (tail + count) % capacity
         }
 
         // Fill remainder with silence
         if count < requestedCount {
-            _underrunCount.wrappingAdd(1, ordering: .relaxed)
+            _underrunCount &+= 1
             dest.baseAddress!.advanced(by: count)
                 .initialize(repeating: 0, count: requestedCount - count)
         }
@@ -133,15 +146,18 @@ public final class AudioRingBuffer: @unchecked Sendable {
 
     /// Flush all data.
     public func flush() {
-        let h = head.load(ordering: .acquiring)
-        tail.store(h, ordering: .releasing)
+        lock.lock()
+        tail = head
+        lock.unlock()
     }
 
     /// Reset all state.
     public func reset() {
-        head.store(0, ordering: .releasing)
-        tail.store(0, ordering: .releasing)
-        _overrunCount.store(0, ordering: .relaxed)
-        _underrunCount.store(0, ordering: .relaxed)
+        lock.lock()
+        head = 0
+        tail = 0
+        _overrunCount = 0
+        _underrunCount = 0
+        lock.unlock()
     }
 }

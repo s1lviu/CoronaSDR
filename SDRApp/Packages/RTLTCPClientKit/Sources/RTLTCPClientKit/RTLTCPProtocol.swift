@@ -49,10 +49,18 @@ public struct RTLTCPHeader: Sendable, Equatable {
         guard let magic = String(data: magicBytes, encoding: .ascii) else { return nil }
         self.magic = magic
 
-        let tunerRaw = data.subdata(in: 4..<8).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let tunerRaw = Self.readUInt32BE(data, offset: 4)
         self.tunerType = TunerType(rawValue: tunerRaw) ?? .unknown
 
-        self.gainCount = data.subdata(in: 8..<12).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        self.gainCount = Self.readUInt32BE(data, offset: 8)
+    }
+
+    private static func readUInt32BE(_ data: Data, offset: Int) -> UInt32 {
+        let b0 = UInt32(data[offset])
+        let b1 = UInt32(data[offset + 1])
+        let b2 = UInt32(data[offset + 2])
+        let b3 = UInt32(data[offset + 3])
+        return (b0 << 24) | (b1 << 16) | (b2 << 8) | b3
     }
 }
 

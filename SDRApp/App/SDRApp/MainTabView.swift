@@ -2,12 +2,25 @@ import SwiftUI
 import SDRModels
 import SDRSupport
 
+@MainActor
+private final class RadioViewModelStore: ObservableObject {
+    let viewModel: RadioViewModel
+
+    init() {
+        self.viewModel = RadioViewModel()
+    }
+}
+
 struct MainTabView: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(DeepLinkCoordinator.self) private var deepLinkCoordinator
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
-    @State private var viewModel = RadioViewModel()
+    @StateObject private var viewModelStore = RadioViewModelStore()
+    @State private var didApplyInitialState = false
+    @State private var hasSeenActiveScene = false
+
+    private var viewModel: RadioViewModel { viewModelStore.viewModel }
 
     var body: some View {
         deepLinkAwareTabs
@@ -50,10 +63,11 @@ struct MainTabView: View {
     private var lifecycleAwareTabs: some View {
         tabs
             .onAppear {
-                applyRuntimeSettings()
+                applyInitialStateIfNeeded()
                 updateRadioVisibility()
-                viewModel.setAppActive(scenePhase == .active)
                 if scenePhase == .active {
+                    hasSeenActiveScene = true
+                    viewModel.setAppActive(true)
                     attemptAutoReconnectIfNeeded()
                 }
                 processPendingDeepLinkIfNeeded()
@@ -61,11 +75,14 @@ struct MainTabView: View {
             .onChange(of: selectedTab) { _, newValue in
                 viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
             }
-            .onChange(of: scenePhase) { _, _ in
+            .onChange(of: scenePhase) { _, newPhase in
                 updateRadioVisibility()
-                viewModel.setAppActive(scenePhase == .active)
-                if scenePhase == .active {
+                if newPhase == .active {
+                    hasSeenActiveScene = true
+                    viewModel.setAppActive(true)
                     attemptAutoReconnectIfNeeded()
+                } else if hasSeenActiveScene {
+                    viewModel.setAppActive(false)
                 }
             }
     }
@@ -117,6 +134,13 @@ struct MainTabView: View {
         viewModel.setRadioTabVisible(selectedTab == 0 && scenePhase == .active)
     }
 
+    private func applyInitialStateIfNeeded() {
+        guard !didApplyInitialState else { return }
+        didApplyInitialState = true
+        applyRuntimeSettings()
+        restoreRadioDefaultsFromSettings()
+    }
+
     private func applyRuntimeSettings() {
         viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
         viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
@@ -142,6 +166,25 @@ struct MainTabView: View {
         }
     }
 
+    private func restoreRadioDefaultsFromSettings() {
+        if let restoredMode = DemodMode(rawValue: settings.lastMode) {
+            viewModel.setMode(restoredMode)
+        }
+
+        viewModel.stepHz = max(1, settings.lastStepHz)
+        viewModel.setBandwidth(max(500, settings.lastBandwidthHz))
+        viewModel.setSquelch(max(0, min(1, settings.lastSquelchLevel)))
+        viewModel.setBFOOffset(max(-5_000, min(5_000, settings.lastBFOOffset)))
+
+        if let restoredGainMode = GainMode(rawValue: settings.lastGainMode) {
+            viewModel.setGain(mode: restoredGainMode, value: settings.lastGainValue)
+        }
+
+        viewModel.setPPM(settings.lastPPM)
+        let maxTunableFrequencyHz = Int(UInt32.max)
+        viewModel.setFrequency(max(1_000, min(maxTunableFrequencyHz, settings.lastFrequencyHz)))
+    }
+
     private func attemptAutoReconnectIfNeeded() {
         viewModel.autoConnectIfConfigured(
             host: settings.lastServerHost,
@@ -152,13 +195,14 @@ struct MainTabView: View {
     private func processPendingDeepLinkIfNeeded() {
         guard let action = deepLinkCoordinator.consumePendingAction() else { return }
         selectedTab = 0
+        let maxTunableFrequencyHz = Int(UInt32.max)
 
         switch action {
         case .tune(let frequencyHz, let mode):
             if let mode {
                 viewModel.setMode(mode)
             }
-            viewModel.setFrequency(max(1_000, frequencyHz))
+            viewModel.setFrequency(min(maxTunableFrequencyHz, max(1_000, frequencyHz)))
             viewModel.requestStartListeningWhenConnected()
             attemptAutoReconnectIfNeeded()
 

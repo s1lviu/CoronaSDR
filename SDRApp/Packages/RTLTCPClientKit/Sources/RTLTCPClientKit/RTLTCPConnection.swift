@@ -58,6 +58,9 @@ public final class RTLTCPConnection: @unchecked Sendable {
     public var throughputBytesPerSec: Double = 0
 
     // Settle window: discard samples after retune
+    private let settleLock = NSLock()
+    private var currentSampleRateHz: Int = 1_024_000
+    private let settleWindowDurationMs = 150
     private var settleDiscardBytes: Int = 0
     private var isSettling: Bool = false
 
@@ -139,6 +142,10 @@ public final class RTLTCPConnection: @unchecked Sendable {
         conn?.cancel()
         setState(.disconnected)
         header = nil
+        settleLock.lock()
+        settleDiscardBytes = 0
+        isSettling = false
+        settleLock.unlock()
     }
 
     // MARK: - Test Connection
@@ -218,14 +225,17 @@ public final class RTLTCPConnection: @unchecked Sendable {
     }
 
     /// Set frequency in Hz.
-    public func setFrequency(_ hz: UInt32) {
-        sendCommand(.setFrequency, parameter: hz)
+    public func setFrequency(_ hz: Int) {
+        let clampedHz = max(0, min(Int(UInt32.max), hz))
+        sendCommand(.setFrequency, parameter: UInt32(clampedHz))
         beginSettleWindow()
     }
 
     /// Set sample rate in Hz.
-    public func setSampleRate(_ hz: UInt32) {
-        sendCommand(.setSampleRate, parameter: hz)
+    public func setSampleRate(_ hz: Int) {
+        let clampedHz = max(1, min(Int(UInt32.max), hz))
+        currentSampleRateHz = clampedHz
+        sendCommand(.setSampleRate, parameter: UInt32(clampedHz))
         beginSettleWindow()
     }
 
@@ -235,8 +245,9 @@ public final class RTLTCPConnection: @unchecked Sendable {
     }
 
     /// Set gain in tenths of dB.
-    public func setGain(_ tenthsDb: UInt32) {
-        sendCommand(.setGain, parameter: tenthsDb)
+    public func setGain(_ tenthsDb: Int) {
+        let clamped = max(0, min(Int(UInt32.max), tenthsDb))
+        sendCommand(.setGain, parameter: UInt32(clamped))
     }
 
     /// Set RTL2832 AGC mode (0 = off, 1 = on).
@@ -321,12 +332,8 @@ public final class RTLTCPConnection: @unchecked Sendable {
                 }
 
                 // Handle settle window
-                if self.isSettling {
-                    self.settleDiscardBytes -= data.count
-                    if self.settleDiscardBytes <= 0 {
-                        self.isSettling = false
-                    }
-                    // Don't write to buffer during settle
+                if self.consumeSettleWindow(bytesReceived: data.count) {
+                    // Don't write to buffer while settling.
                 } else {
                     self.iqBuffer.write(data)
                 }
@@ -351,11 +358,28 @@ public final class RTLTCPConnection: @unchecked Sendable {
         }
     }
 
-    /// Begin settle window: flush buffer and discard incoming data for ~150ms.
+    /// Begin settle window: flush buffer and discard incoming data for a fixed time window.
     private func beginSettleWindow() {
         iqBuffer.flush()
-        settleDiscardBytes = 300_000
+        let bytesPerSecond = max(1, currentSampleRateHz * 2) // 8-bit I + 8-bit Q
+        let requested = Int(Double(bytesPerSecond) * Double(settleWindowDurationMs) / 1_000.0)
+        let clampedBytes = max(8_192, min(bytesPerSecond, requested))
+        settleLock.lock()
+        settleDiscardBytes = clampedBytes
         isSettling = true
+        settleLock.unlock()
+    }
+
+    private func consumeSettleWindow(bytesReceived: Int) -> Bool {
+        settleLock.lock()
+        defer { settleLock.unlock() }
+        guard isSettling else { return false }
+        settleDiscardBytes -= bytesReceived
+        if settleDiscardBytes <= 0 {
+            settleDiscardBytes = 0
+            isSettling = false
+        }
+        return true
     }
 
     // MARK: - Reconnect

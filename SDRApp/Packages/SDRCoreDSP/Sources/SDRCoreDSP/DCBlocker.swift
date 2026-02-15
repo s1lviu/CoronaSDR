@@ -7,6 +7,8 @@ public final class DCBlocker {
     private var alpha: Float
     private var prevX: Float = 0
     private var prevY: Float = 0
+    private var prevXSecondary: Float = 0
+    private var prevYSecondary: Float = 0
 
     public init(alpha: Float = 0.998) {
         self.alpha = alpha
@@ -25,24 +27,40 @@ public final class DCBlocker {
 
     /// Process separate I and Q channels.
     public func processIQ(real: inout [Float], imag: inout [Float]) {
-        // Use two separate DC blockers
-        process(&real)
-        // Reset is wrong here - we need separate state
+        let count = min(real.count, imag.count)
+        guard count > 0 else { return }
+
+        for i in 0..<count {
+            let xI = real[i]
+            let yI = xI - prevX + alpha * prevY
+            prevX = xI
+            prevY = yI
+            real[i] = yI
+
+            let xQ = imag[i]
+            let yQ = xQ - prevXSecondary + alpha * prevYSecondary
+            prevXSecondary = xQ
+            prevYSecondary = yQ
+            imag[i] = yQ
+        }
     }
 
     public func reset() {
         prevX = 0
         prevY = 0
+        prevXSecondary = 0
+        prevYSecondary = 0
     }
 }
 
 /// Paired DC blocker for I and Q channels.
 public final class IQDCBlocker {
-    private let dcI = DCBlocker()
-    private let dcQ = DCBlocker()
+    private let dcI: DCBlocker
+    private let dcQ: DCBlocker
 
     public init(alpha: Float = 0.998) {
-        // Both use the same alpha
+        self.dcI = DCBlocker(alpha: alpha)
+        self.dcQ = DCBlocker(alpha: alpha)
     }
 
     public func process(real: inout [Float], imag: inout [Float]) {

@@ -31,13 +31,17 @@ public struct CSVImportExport {
     /// Parse CSV/TSV string into station data tuples. Does not create SwiftData objects.
     public static func parseCSV(_ content: String) -> [StationCSVRow] {
         let delimiter = detectDelimiter(content)
-        let lines = content.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let records = splitCSVRecords(content, delimiter: delimiter)
+            .filter { record in
+                record.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            }
 
-        guard lines.count > 1 else { return [] }
+        guard !records.isEmpty else { return [] }
+        let rowStartIndex = hasHeader(records[0]) ? 1 : 0
+        guard rowStartIndex < records.count else { return [] }
 
-        // Skip header line
-        return lines.dropFirst().compactMap { line in
-            parseRow(line, delimiter: delimiter)
+        return records[rowStartIndex...].compactMap { fields in
+            parseRow(fields)
         }
     }
 
@@ -47,8 +51,7 @@ public struct CSVImportExport {
         return ","
     }
 
-    private static func parseRow(_ line: String, delimiter: Character) -> StationCSVRow? {
-        let fields = splitCSVLine(line, delimiter: delimiter)
+    private static func parseRow(_ fields: [String]) -> StationCSVRow? {
         guard fields.count >= 3 else { return nil }
 
         let name = fields[0]
@@ -73,10 +76,73 @@ public struct CSVImportExport {
         )
     }
 
-    private static func splitCSVLine(_ line: String, delimiter: Character) -> [String] {
-        line.split(separator: delimiter, omittingEmptySubsequences: false).map {
-            $0.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+    private static func hasHeader(_ fields: [String]) -> Bool {
+        guard !fields.isEmpty else { return false }
+        let normalized = fields.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        return normalized == headers.map { $0.lowercased() }
+    }
+
+    private static func splitCSVRecords(_ content: String, delimiter: Character) -> [[String]] {
+        var records: [[String]] = []
+        var row: [String] = []
+        var field = ""
+        var isInsideQuotes = false
+        var index = content.startIndex
+
+        func appendField() {
+            row.append(field)
+            field.removeAll(keepingCapacity: true)
         }
+
+        func appendRowIfNeeded() {
+            if !row.isEmpty {
+                records.append(row)
+                row.removeAll(keepingCapacity: true)
+            }
+        }
+
+        while index < content.endIndex {
+            let char = content[index]
+
+            if isInsideQuotes {
+                if char == "\"" {
+                    let next = content.index(after: index)
+                    if next < content.endIndex, content[next] == "\"" {
+                        field.append("\"")
+                        index = next
+                    } else {
+                        isInsideQuotes = false
+                    }
+                } else {
+                    field.append(char)
+                }
+                index = content.index(after: index)
+                continue
+            }
+
+            if char == "\"" {
+                isInsideQuotes = true
+            } else if char == delimiter {
+                appendField()
+            } else if char == "\n" || char == "\r" {
+                if char == "\r" {
+                    let next = content.index(after: index)
+                    if next < content.endIndex, content[next] == "\n" {
+                        index = next
+                    }
+                }
+                appendField()
+                appendRowIfNeeded()
+            } else {
+                field.append(char)
+            }
+
+            index = content.index(after: index)
+        }
+
+        appendField()
+        appendRowIfNeeded()
+        return records
     }
 
     private static func escapeField(_ value: String, delimiter: Character) -> String {
