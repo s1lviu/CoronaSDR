@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,16 +8,60 @@
       name="description"
       content="CoronaSDR is an iOS app for connecting to rtl_tcp SDR servers on your local network, with live spectrum, waterfall, and stable audio playback."
     />
+    <meta name="keywords" content="SDR, iOS, iPhone, rtl_tcp, RTL-SDR, Software Defined Radio, Spectrum Analyzer, Waterfall, Radio" />
+    <meta name="author" content="Silviu YO6SAY" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://coronasdr.pages.dev/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://coronasdr.pages.dev/" />
+    <meta property="og:title" content="CoronaSDR | Local-First SDR for iPhone" />
+    <meta property="og:description" content="Connect your iPhone to any rtl_tcp server. Experience smooth waterfall displays, precise tuning, and crystal-clear audio without the cloud." />
+    <meta property="og:image" content="https://coronasdr.pages.dev/assets/sdr.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://coronasdr.pages.dev/" />
+    <meta property="twitter:title" content="CoronaSDR | Local-First SDR for iPhone" />
+    <meta property="twitter:description" content="Connect your iPhone to any rtl_tcp server. Experience smooth waterfall displays, precise tuning, and crystal-clear audio without the cloud." />
+    <meta property="twitter:image" content="https://coronasdr.pages.dev/assets/sdr.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="./assets/sdr.png" />
+    <link rel="apple-touch-icon" href="./assets/sdr.png" />
+
+    <!-- Structured Data (SoftwareApplication) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "CoronaSDR",
+      "operatingSystem": "iOS",
+      "applicationCategory": "UtilityApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Silviu YO6SAY"
+      },
+      "description": "CoronaSDR is an iOS app for connecting to rtl_tcp SDR servers on your local network, with live spectrum, waterfall, and stable audio playback."
+    }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'media',
         theme: {
           extend: {
             colors: {
@@ -38,36 +82,39 @@
                 DEFAULT: 'hsl(var(--muted))',
                 foreground: 'hsl(var(--muted-foreground))'
               },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))'
+              },
               card: {
                 DEFAULT: 'hsl(var(--card))',
                 foreground: 'hsl(var(--card-foreground))'
               }
             },
             borderRadius: {
-              lg: '0.85rem',
-              md: '0.65rem',
-              sm: '0.45rem'
+              lg: 'var(--radius)',
+              md: 'calc(var(--radius) - 2px)',
+              sm: 'calc(var(--radius) - 4px)'
             },
             fontFamily: {
-              sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-              mono: ['IBM Plex Mono', 'ui-monospace', 'monospace']
-            },
-            boxShadow: {
-              soft: '0 12px 40px -18px rgba(0, 0, 0, 0.35)'
+              sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace']
             },
             keyframes: {
-              rise: {
-                '0%': { opacity: '0', transform: 'translateY(14px)' },
+              'fade-in-up': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' }
               },
-              pulseGlow: {
-                '0%,100%': { opacity: '0.25' },
-                '50%': { opacity: '0.45' }
+              'blob': {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' }
               }
             },
             animation: {
-              rise: 'rise 680ms ease-out both',
-              pulseGlow: 'pulseGlow 4s ease-in-out infinite'
+              'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+              'blob': 'blob 7s infinite'
             }
           }
         }
@@ -75,278 +122,363 @@
     </script>
 
     <style type="text/tailwindcss">
-      :root {
-        --background: 165 20% 98%;
-        --foreground: 168 31% 14%;
-        --card: 0 0% 100%;
-        --card-foreground: 168 31% 14%;
-        --primary: 162 66% 35%;
-        --primary-foreground: 160 40% 98%;
-        --secondary: 165 25% 92%;
-        --secondary-foreground: 168 31% 20%;
-        --muted: 168 23% 94%;
-        --muted-foreground: 168 12% 39%;
-        --border: 166 18% 85%;
-        --input: 166 18% 85%;
-        --ring: 162 66% 35%;
-      }
-
       @layer base {
-        * {
-          @apply border-border;
+        :root {
+          --background: 0 0% 100%;
+          --foreground: 240 10% 3.9%;
+          --card: 0 0% 100%;
+          --card-foreground: 240 10% 3.9%;
+          --primary: 160 84% 39%;
+          --primary-foreground: 355.7 100% 97.3%;
+          --secondary: 240 4.8% 95.9%;
+          --secondary-foreground: 240 5.9% 10%;
+          --muted: 240 4.8% 95.9%;
+          --muted-foreground: 240 3.8% 46.1%;
+          --accent: 240 4.8% 95.9%;
+          --accent-foreground: 240 5.9% 10%;
+          --border: 240 5.9% 90%;
+          --input: 240 5.9% 90%;
+          --ring: 160 84% 39%;
+          --radius: 1rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --background: 240 10% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 240 10% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --primary: 160 84% 39%;
+            --primary-foreground: 240 5.9% 10%;
+            --secondary: 240 3.7% 15.9%;
+            --secondary-foreground: 0 0% 98%;
+            --muted: 240 3.7% 15.9%;
+            --muted-foreground: 240 5% 64.9%;
+            --accent: 240 3.7% 15.9%;
+            --accent-foreground: 0 0% 98%;
+            --border: 240 3.7% 15.9%;
+            --input: 240 3.7% 15.9%;
+            --ring: 160 84% 39%;
+          }
         }
 
         body {
-          @apply bg-background text-foreground antialiased;
-          background-image:
-            radial-gradient(circle at 10% 0%, rgba(74, 222, 128, 0.12), transparent 35%),
-            radial-gradient(circle at 90% 15%, rgba(45, 212, 191, 0.14), transparent 32%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(243, 249, 247, 0.95) 100%);
+          @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+          font-feature-settings: "ss01", "ss02", "cv01", "cv02";
         }
       }
 
       @layer components {
-        .chip {
-          @apply inline-flex items-center rounded-full border bg-white/80 px-3 py-1 text-xs font-medium text-muted-foreground;
+        .glass-panel {
+          @apply bg-white/70 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl dark:shadow-2xl shadow-black/5 dark:shadow-black/20;
+        }
+        
+        .nav-link {
+          @apply text-sm font-medium text-muted-foreground transition-colors hover:text-foreground;
         }
 
-        .card-surface {
-          @apply rounded-lg border bg-card/90 p-5 shadow-soft backdrop-blur;
+        .bento-card {
+          @apply relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:border-primary/20;
         }
 
-        .btn-primary {
-          @apply inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
-        }
-
-        .btn-secondary {
-          @apply inline-flex items-center justify-center rounded-md border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
-        }
-
-        .setup-card {
-          @apply relative overflow-hidden rounded-lg border bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-soft;
-        }
-
-        .setup-card::before {
-          content: '';
-          position: absolute;
-          inset: 0 0 auto 0;
-          height: 3px;
-          background: linear-gradient(90deg, rgba(16, 185, 129, 0.9), rgba(45, 212, 191, 0.6));
+        .bento-icon {
+          @apply mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20;
         }
 
         .setup-step {
-          @apply grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary/10 font-mono text-xs font-semibold text-primary ring-1 ring-primary/20;
-        }
-
-        .reveal {
-          opacity: 0;
-          transform: translateY(14px);
-          transition: opacity 500ms ease, transform 500ms ease;
-        }
-
-        .reveal.in-view {
-          opacity: 1;
-          transform: translateY(0);
+          @apply flex items-center justify-center w-8 h-8 rounded-full border border-border bg-background text-sm font-bold text-muted-foreground shrink-0;
         }
       }
     </style>
   </head>
-  <body>
-    <div class="mx-auto min-h-screen max-w-6xl px-5 pb-10 pt-6 sm:px-8">
-      <header class="reveal flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white/80 px-4 py-3 shadow-soft backdrop-blur sm:px-6">
-        <a href="/" class="flex items-center gap-3">
-          <div class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground">📻</div>
-          <div>
-            <p class="text-sm font-semibold leading-tight">CoronaSDR</p>
-            <p class="font-mono text-[11px] text-muted-foreground">rtl_tcp on iPhone</p>
+  <body class="relative overflow-x-hidden">
+    <!-- Background Decor -->
+    <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+      <div class="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+      <div class="absolute top-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+      <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-pink-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <!-- Navbar -->
+      <header class="fixed top-4 left-0 right-0 z-50 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <nav class="glass-panel rounded-full px-6 py-3 flex items-center justify-between">
+          <a href="/" class="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+            </div>
+            <span class="font-bold tracking-tight">CoronaSDR</span>
+          </a>
+
+          <div class="hidden md:flex items-center gap-8">
+            <a href="#features" class="nav-link">Features</a>
+            <a href="#setup" class="nav-link">Setup</a>
           </div>
-        </a>
-        <button
-          id="menu-toggle"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-md border bg-white text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
-          type="button"
-          aria-expanded="false"
-          aria-controls="site-nav"
-          aria-label="Toggle navigation"
-        >
-          <span class="font-mono text-lg leading-none">≡</span>
-        </button>
-        <nav id="site-nav" class="hidden w-full flex-col gap-1 border-t border-border pt-2 text-sm sm:flex sm:w-auto sm:flex-row sm:items-center sm:gap-2 sm:border-0 sm:pt-0">
-          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="#features">Features</a>
-          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="#setup">Setup</a>
-          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="/privacy/">Privacy</a>
-          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="/terms/">Terms</a>
+
+          <div class="flex items-center gap-3">
+            <a href="#setup" class="hidden sm:inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+              Get Started
+            </a>
+            <button id="mobile-menu-btn" class="md:hidden p-2 text-muted-foreground hover:text-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+          </div>
         </nav>
       </header>
 
-      <main class="mt-10 space-y-10">
-        <section class="grid items-center gap-8 lg:grid-cols-2">
-          <div class="space-y-5">
-            <span class="chip reveal">Local-first SDR listening</span>
-            <h1 class="reveal text-4xl font-bold leading-tight sm:text-5xl">
-              Clean SDR listening from your own
-              <span class="text-primary">rtl_tcp server</span>.
-            </h1>
-            <p class="reveal max-w-xl text-base text-muted-foreground sm:text-lg">
-              CoronaSDR connects your iPhone to an RTL-SDR server on your LAN and gives you live spectrum,
-              waterfall, multiple demod modes, and practical tuning controls without cloud dependency for radio data.
-            </p>
-            <div class="reveal flex flex-wrap gap-3 pt-2">
-              <a class="btn-primary" href="#setup">Quick setup</a>
-            </div>
-            <p class="reveal text-xs text-muted-foreground">
-              Compatible with `rtl_tcp` servers on Raspberry Pi, Linux, or macOS.
-            </p>
-            <p class="reveal font-mono text-xs text-primary/80">Built by Silviu YO6SAY</p>
+      <!-- Mobile Menu -->
+      <div id="mobile-menu" class="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm hidden md:hidden">
+        <div class="fixed inset-y-0 right-0 w-full max-w-xs border-l bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out translate-x-full" id="mobile-menu-panel">
+          <div class="flex items-center justify-between mb-8">
+            <span class="font-bold text-lg">Menu</span>
+            <button id="close-menu-btn" class="p-2 text-muted-foreground hover:text-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>
+            </button>
           </div>
+          <nav class="flex flex-col gap-6">
+            <a href="#features" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Features</a>
+            <a href="#setup" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Setup</a>
+            <a href="/privacy/" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Privacy</a>
+            <a href="/terms/" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Terms</a>
+          </nav>
+        </div>
+      </div>
 
-          <div class="reveal relative">
-            <div class="pointer-events-none absolute -inset-4 -z-10 rounded-[1.4rem] bg-emerald-300/30 blur-3xl animate-pulseGlow"></div>
-            <div class="card-surface overflow-hidden p-2">
-              <img
-                src="./assets/sdr.png"
-                alt="CoronaSDR screenshot"
-                class="w-full rounded-md border object-cover"
-                loading="lazy"
-              />
+      <main class="pt-32 pb-16">
+        <!-- Hero Section -->
+        <section class="relative py-12 lg:py-20">
+          <div class="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+            <div class="space-y-8 animate-fade-in-up">
+              <div class="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary">
+                <span class="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse"></span>
+                v1.0 Now Available
+              </div>
+              
+              <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
+                Professional SDR <br />
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">on your local network.</span>
+              </h1>
+              
+              <p class="text-lg text-muted-foreground max-w-xl leading-relaxed">
+                Connect your iPhone to any rtl_tcp server. Experience smooth waterfall displays, precise tuning, and crystal-clear audio without the cloud.
+              </p>
+
+              <div class="flex flex-col sm:flex-row gap-4">
+                <a href="#setup" class="inline-flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                  Start Listening
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+              </div>
+              
+              <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                <div class="flex -space-x-2">
+                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-100 flex items-center justify-center text-[10px] font-bold">RPi</div>
+                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-200 flex items-center justify-center text-[10px] font-bold">Mac</div>
+                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-300 flex items-center justify-center text-[10px] font-bold">Lnx</div>
+                </div>
+                <p>Compatible with Raspberry Pi, macOS & Linux</p>
+              </div>
+            </div>
+
+            <div class="relative lg:ml-auto w-full max-w-md lg:max-w-full animate-fade-in-up" style="animation-delay: 0.2s;">
+              <div class="absolute -inset-1 bg-gradient-to-r from-primary to-emerald-400 rounded-2xl blur opacity-20 dark:opacity-40"></div>
+              <div class="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
+                 <img
+                  src="./assets/sdr.png"
+                  alt="CoronaSDR App Screenshot"
+                  class="w-full h-auto object-cover"
+                  loading="lazy"
+                />
+                <!-- Reflection/Glare effect -->
+                <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 dark:opacity-100 pointer-events-none"></div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="features" class="space-y-4">
-          <div class="reveal flex items-end justify-between gap-3">
-            <h2 class="text-2xl font-bold sm:text-3xl">What you get</h2>
+        <!-- Features Bento Grid -->
+        <section id="features" class="py-20">
+          <div class="text-center max-w-2xl mx-auto mb-16">
+            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Everything you need</h2>
+            <p class="text-muted-foreground text-lg">Powerful features packed into a clean, modern iOS interface.</p>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <article class="card-surface reveal">
-              <h3 class="font-semibold">Live RF + DSP</h3>
-              <p class="mt-2 text-sm text-muted-foreground">AM, NFM, WFM, USB, LSB, and CW with squelch, AGC, and DSP filtering.</p>
-            </article>
-            <article class="card-surface reveal">
-              <h3 class="font-semibold">Spectrum + Waterfall</h3>
-              <p class="mt-2 text-sm text-muted-foreground">Real-time FFT and Metal-rendered waterfall with performance profiles.</p>
-            </article>
-            <article class="card-surface reveal">
-              <h3 class="font-semibold">Reliable audio path</h3>
-              <p class="mt-2 text-sm text-muted-foreground">Jitter-aware buffers, reconnect flow, and click-free retune transitions.</p>
-            </article>
-            <article class="card-surface reveal">
-              <h3 class="font-semibold">Station memory</h3>
-              <p class="mt-2 text-sm text-muted-foreground">Favorites, tags, and CSV/TSV import/export stored on device.</p>
-            </article>
-            <article class="card-surface reveal">
-              <h3 class="font-semibold">Advanced tuner controls</h3>
-              <p class="mt-2 text-sm text-muted-foreground">PPM, direct sampling, offset tuning, and bias-tee (hardware/server dependent).</p>
-            </article>
-            <article class="card-surface reveal">
-              <h3 class="font-semibold">Diagnostics</h3>
-              <p class="mt-2 text-sm text-muted-foreground">Throughput, buffer health, and performance traces for troubleshooting.</p>
-            </article>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Feature 1 -->
+            <div class="bento-card group col-span-1 lg:col-span-2">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M6 12v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M8 12v5a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-5"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Live Spectrum & Waterfall</h3>
+              <p class="text-muted-foreground">High-performance real-time FFT rendering using Metal. Visualize signals with clarity and precision, spotting transmissions instantly across the spectrum.</p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M2 12h20"/><path d="m4.929 4.929 14.14 14.14"/><path d="m19.071 4.929-14.14 14.14"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Multi-Mode Demod</h3>
+              <p class="text-muted-foreground">Support for AM, NFM, WFM, USB, LSB, and CW. Includes squelch and AGC controls.</p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18h.01"/><path d="M8 18h.01"/><path d="M16 18h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M12 6h.01"/><path d="M8 6h.01"/><path d="M16 6h.01"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Audio Buffering</h3>
+              <p class="text-muted-foreground">Jitter-aware audio path ensures smooth playback even on busy networks.</p>
+            </div>
+
+            <!-- Feature 4 -->
+            <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Station Memory</h3>
+              <p class="text-muted-foreground">Save your favorite frequencies with tags. Import and export via CSV/TSV.</p>
+            </div>
+
+             <!-- Feature 5 -->
+             <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Advanced Control</h3>
+              <p class="text-muted-foreground">PPM correction, offset tuning, direct sampling, and bias-tee control.</p>
+            </div>
+
+            <!-- Feature 6 -->
+            <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Diagnostics</h3>
+              <p class="text-muted-foreground">Throughput, buffer health, and performance traces for troubleshooting.</p>
+            </div>
           </div>
         </section>
 
-        <section id="setup" class="card-surface reveal">
-          <h2 class="text-2xl font-bold">Quick setup</h2>
-          <p class="mt-2 text-sm text-muted-foreground">You need an RTL-SDR dongle and an `rtl_tcp` server reachable from your phone on the same LAN.</p>
-          <div class="mt-5 grid gap-3 sm:grid-cols-3">
-            <article class="setup-card reveal">
-              <div class="flex items-start gap-3">
-                <span class="setup-step">01</span>
-                <div>
-                  <p class="text-sm font-semibold">Start your SDR server</p>
-                  <p class="mt-1 font-mono text-xs text-muted-foreground">rtl_tcp -a 0.0.0.0 -p 1234</p>
+        <!-- Setup Section -->
+        <section id="setup" class="py-20">
+          <div class="rounded-3xl border border-border bg-card p-8 lg:p-12 shadow-sm">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 class="text-3xl font-bold tracking-tight mb-6">Quick Setup Guide</h2>
+                <p class="text-muted-foreground text-lg mb-8">Get up and running in minutes. All you need is an RTL-SDR dongle and a computer to act as the server.</p>
+                
+                <div class="space-y-8">
+                  <div class="flex gap-4">
+                    <span class="setup-step">1</span>
+                    <div>
+                      <h4 class="font-semibold text-foreground">Launch rtl_tcp</h4>
+                      <p class="text-sm text-muted-foreground mt-1">Run the server on your computer or Pi:</p>
+                      <code class="mt-2 block w-fit rounded bg-muted px-3 py-1 font-mono text-sm text-foreground">rtl_tcp -a 0.0.0.0 -p 1234</code>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-4">
+                    <span class="setup-step">2</span>
+                    <div>
+                      <h4 class="font-semibold text-foreground">Connect App</h4>
+                      <p class="text-sm text-muted-foreground mt-1">Open CoronaSDR, enter your server's IP address and port.</p>
+                    </div>
+                  </div>
+
+                  <div class="flex gap-4">
+                    <span class="setup-step">3</span>
+                    <div>
+                      <h4 class="font-semibold text-foreground">Tune In</h4>
+                      <p class="text-sm text-muted-foreground mt-1">Adjust gain, pick a mode (like WFM for radio), and enjoy.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </article>
-            <article class="setup-card reveal">
-              <div class="flex items-start gap-3">
-                <span class="setup-step">02</span>
-                <div>
-                  <p class="text-sm font-semibold">Connect from CoronaSDR</p>
-                  <p class="mt-1 text-sm text-muted-foreground">Enter your server host and port, then test connection.</p>
-                </div>
+
+              <div class="rounded-2xl bg-muted/50 p-6 border border-border/50">
+                 <div class="space-y-4 font-mono text-xs sm:text-sm">
+                    <div class="flex gap-2">
+                        <span class="text-green-500">$</span>
+                        <span class="text-foreground">rtl_tcp -a 0.0.0.0</span>
+                    </div>
+                    <div class="text-muted-foreground">Found 1 device(s):</div>
+                    <div class="text-muted-foreground">0:  Realtek, RTL2838UHIDIR, SN: 00000001</div>
+                    <div class="text-muted-foreground">Using device 0: Generic RTL2832U OEM</div>
+                    <div class="text-muted-foreground">Found Rafael Micro R820T tuner</div>
+                    <div class="text-muted-foreground">Tuned to 100000000 Hz.</div>
+                    <div class="text-muted-foreground">listening...</div>
+                    <div class="flex gap-2 animate-pulse">
+                        <span class="text-blue-500">client accepted!</span>
+                    </div>
+                 </div>
               </div>
-            </article>
-            <article class="setup-card reveal">
-              <div class="flex items-start gap-3">
-                <span class="setup-step">03</span>
-                <div>
-                  <p class="text-sm font-semibold">Tune and listen</p>
-                  <p class="mt-1 text-sm text-muted-foreground">Pick mode, adjust gain and enjoy live spectrum + audio.</p>
-                </div>
-              </div>
-            </article>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer class="reveal mt-12 rounded-lg border bg-white/80 px-5 py-4 text-xs text-muted-foreground shadow-soft backdrop-blur">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            <span id="year"></span> CoronaSDR. Created and maintained by Silviu YO6SAY for local-network SDR listening on iOS.
-          </p>
-          <div class="flex flex-wrap items-center gap-4">
-            <a class="hover:text-foreground" href="/privacy/">Privacy</a>
-            <a class="hover:text-foreground" href="/terms/">Terms</a>
-            <a class="hover:text-foreground" href="mailto:yo6say@proton.me">Contact</a>
-            <a
-              class="opacity-80 transition hover:opacity-100 hover:text-foreground"
-              href="https://www.buymeacoffee.com/silviu"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Support this project on Buy Me a Coffee"
-              >Support the project</a
-            >
+      <footer class="border-t border-border py-12">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div class="flex items-center gap-2">
+             <div class="h-8 w-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center">
+                <span class="font-bold">C</span>
+             </div>
+             <div class="text-sm text-muted-foreground">
+                &copy; <span id="year"></span> CoronaSDR. Built by Silviu YO6SAY.
+             </div>
+          </div>
+          
+          <div class="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+             <a href="/privacy/" class="hover:text-foreground transition-colors">Privacy</a>
+             <a href="/terms/" class="hover:text-foreground transition-colors">Terms</a>
+             <a href="mailto:yo6say@proton.me" class="hover:text-foreground transition-colors">Contact</a>
+             <a href="https://www.buymeacoffee.com/silviu" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors text-primary">Support the project</a>
           </div>
         </div>
       </footer>
     </div>
 
     <script>
+      // Year
       document.getElementById('year').textContent = new Date().getFullYear();
-      const menuToggle = document.getElementById('menu-toggle');
-      const siteNav = document.getElementById('site-nav');
 
-      menuToggle.addEventListener('click', () => {
-        const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
-        menuToggle.setAttribute('aria-expanded', String(!isOpen));
-        siteNav.classList.toggle('hidden', isOpen);
+      // Mobile Menu Logic
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const closeMenuBtn = document.getElementById('close-menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const mobileMenuPanel = document.getElementById('mobile-menu-panel');
+      const mobileLinks = document.querySelectorAll('.mobile-link');
+
+      function openMenu() {
+        mobileMenu.classList.remove('hidden');
+        // Slight delay to allow display:block to apply before transform
+        setTimeout(() => {
+          mobileMenuPanel.classList.remove('translate-x-full');
+        }, 10);
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeMenu() {
+        mobileMenuPanel.classList.add('translate-x-full');
+        setTimeout(() => {
+          mobileMenu.classList.add('hidden');
+        }, 300);
+        document.body.style.overflow = '';
+      }
+
+      mobileMenuBtn.addEventListener('click', openMenu);
+      closeMenuBtn.addEventListener('click', closeMenu);
+
+      mobileLinks.forEach(link => {
+        link.addEventListener('click', closeMenu);
       });
 
-      siteNav.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', () => {
-          if (window.innerWidth < 640) {
-            menuToggle.setAttribute('aria-expanded', 'false');
-            siteNav.classList.add('hidden');
-          }
-        });
-      });
-
-      window.addEventListener('resize', () => {
-        if (window.innerWidth >= 640) {
-          menuToggle.setAttribute('aria-expanded', 'false');
-          siteNav.classList.remove('hidden');
-          return;
+      // Close on click outside
+      mobileMenu.addEventListener('click', (e) => {
+        if (e.target === mobileMenu) {
+          closeMenu();
         }
-        siteNav.classList.add('hidden');
-      });
-
-      const reveals = document.querySelectorAll('.reveal');
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('in-view');
-              observer.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.12 }
-      );
-
-      reveals.forEach((el, index) => {
-        el.style.transitionDelay = `${Math.min(index * 35, 250)}ms`;
-        observer.observe(el);
       });
     </script>
   </body>

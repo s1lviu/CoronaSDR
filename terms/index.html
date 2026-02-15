@@ -1,145 +1,284 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Terms of Use | CoronaSDR</title>
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content="Terms of Use for CoronaSDR." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'media',
         theme: {
           extend: {
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))'
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))'
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))'
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))'
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))'
+              }
+            },
+            borderRadius: {
+              lg: 'var(--radius)',
+              md: 'calc(var(--radius) - 2px)',
+              sm: 'calc(var(--radius) - 4px)'
+            },
             fontFamily: {
-              sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-              mono: ['IBM Plex Mono', 'ui-monospace', 'monospace']
+              sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace']
+            },
+            keyframes: {
+              'fade-in-up': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' }
+              },
+              'blob': {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' }
+              }
+            },
+            animation: {
+              'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+              'blob': 'blob 7s infinite'
             }
           }
         }
       };
     </script>
+
     <style type="text/tailwindcss">
-      :root {
-        --bg: #f6faf9;
-        --fg: #112f29;
-        --muted: #5a726c;
-        --line: #cee2dc;
+      @layer base {
+        :root {
+          --background: 0 0% 100%;
+          --foreground: 240 10% 3.9%;
+          --card: 0 0% 100%;
+          --card-foreground: 240 10% 3.9%;
+          --primary: 160 84% 39%;
+          --primary-foreground: 355.7 100% 97.3%;
+          --secondary: 240 4.8% 95.9%;
+          --secondary-foreground: 240 5.9% 10%;
+          --muted: 240 4.8% 95.9%;
+          --muted-foreground: 240 3.8% 46.1%;
+          --accent: 240 4.8% 95.9%;
+          --accent-foreground: 240 5.9% 10%;
+          --border: 240 5.9% 90%;
+          --input: 240 5.9% 90%;
+          --ring: 160 84% 39%;
+          --radius: 1rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --background: 240 10% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 240 10% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --primary: 160 84% 39%;
+            --primary-foreground: 240 5.9% 10%;
+            --secondary: 240 3.7% 15.9%;
+            --secondary-foreground: 0 0% 98%;
+            --muted: 240 3.7% 15.9%;
+            --muted-foreground: 240 5% 64.9%;
+            --accent: 240 3.7% 15.9%;
+            --accent-foreground: 0 0% 98%;
+            --border: 240 3.7% 15.9%;
+            --input: 240 3.7% 15.9%;
+            --ring: 160 84% 39%;
+          }
+        }
+
+        body {
+          @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+          font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+        }
       }
 
-      body {
-        @apply font-sans antialiased;
-        background: radial-gradient(circle at 5% 15%, #a7f3d0 0%, transparent 28%), var(--bg);
-        color: var(--fg);
-      }
-
-      .card {
-        @apply rounded-2xl border bg-white/90 shadow-sm;
-        border-color: var(--line);
-      }
-
-      .muted {
-        color: var(--muted);
-      }
-
-      .link {
-        @apply underline decoration-emerald-500/40 underline-offset-4 hover:decoration-emerald-700;
+      @layer components {
+        .glass-panel {
+          @apply bg-white/70 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl dark:shadow-2xl shadow-black/5 dark:shadow-black/20;
+        }
+        
+        .nav-link {
+          @apply text-sm font-medium text-muted-foreground transition-colors hover:text-foreground;
+        }
       }
     </style>
   </head>
-  <body>
-    <div class="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
-      <header class="card flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
-        <a href="/" class="text-sm font-semibold">CoronaSDR</a>
-        <nav class="flex items-center gap-4 text-sm">
-          <a class="muted hover:text-black" href="/">Home</a>
-          <a class="muted hover:text-black" href="/privacy/">Privacy</a>
-        </nav>
+  <body class="relative overflow-x-hidden min-h-screen flex flex-col">
+    <!-- Background Decor -->
+    <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+      <div class="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+      <div class="absolute top-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+      <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-pink-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 w-full flex-grow">
+      <!-- Navbar -->
+      <header class="py-6 mb-8 flex items-center justify-between">
+         <a href="/" class="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+            </div>
+            <span class="font-bold tracking-tight">CoronaSDR</span>
+          </a>
+          <nav class="flex gap-6">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/privacy/" class="nav-link">Privacy</a>
+          </nav>
       </header>
 
-      <main class="card mt-5 space-y-6 px-5 py-6 sm:px-8 sm:py-8">
-        <section>
-          <h1 class="text-2xl font-bold sm:text-3xl">Terms of Use</h1>
-          <p class="mt-2 text-sm muted">Last updated: February 15, 2026</p>
+      <main class="glass-panel rounded-2xl p-8 md:p-12 mb-12 animate-fade-in-up">
+        <section class="mb-10 border-b border-border pb-6">
+          <h1 class="text-3xl font-bold tracking-tight sm:text-4xl mb-2">Terms of Use</h1>
+          <p class="text-sm text-muted-foreground font-mono">Last updated: February 15, 2026</p>
         </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">1. Acceptance of terms</h2>
-          <p>
-            By using CoronaSDR and this website, you agree to these Terms. If you do not agree, do not use the app or website.
-            CoronaSDR is created and maintained by Silviu YO6SAY.
-          </p>
-        </section>
+        <div class="space-y-8 text-base leading-7 text-muted-foreground">
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">1</span>
+              Acceptance of terms
+            </h2>
+            <p>
+              By using CoronaSDR and this website, you agree to these Terms. If you do not agree, do not use the app or website.
+              CoronaSDR is created and maintained by Silviu YO6SAY.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">2. Intended use</h2>
-          <p>
-            CoronaSDR is software for receiving and processing SDR streams from servers you configure.
-            You are responsible for lawful and compliant radio usage in your jurisdiction.
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">2</span>
+              Intended use
+            </h2>
+            <p>
+              CoronaSDR is software for receiving and processing SDR streams from servers you configure.
+              You are responsible for lawful and compliant radio usage in your jurisdiction.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">3. Your responsibilities</h2>
-          <ul class="list-disc space-y-1 pl-5 muted">
-            <li>Use only servers and networks you are authorized to access.</li>
-            <li>Do not use the app for illegal interception or unauthorized monitoring.</li>
-            <li>Protect your own device and local network security.</li>
-          </ul>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">3</span>
+              Your responsibilities
+            </h2>
+            <ul class="list-disc pl-6 space-y-2 marker:text-primary">
+              <li>Use only servers and networks you are authorized to access.</li>
+              <li>Do not use the app for illegal interception or unauthorized monitoring.</li>
+              <li>Protect your own device and local network security.</li>
+            </ul>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">4. No emergency or safety-critical use</h2>
-          <p>
-            CoronaSDR is provided for hobby, research, and general listening use. It is not intended for emergency response,
-            life-safety, or mission-critical communications.
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+              <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">4</span>
+              No emergency or safety-critical use
+            </h2>
+            <p>
+              CoronaSDR is provided for hobby, research, and general listening use. It is not intended for emergency response,
+              life-safety, or mission-critical communications.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">5. Third-party components and services</h2>
-          <p>
-            The app may include third-party libraries and optional diagnostics services (for example Firebase Crashlytics and
-            Firebase Performance). Those services are governed by their own terms and policies.
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">5</span>
+               Third-party components and services
+            </h2>
+            <p>
+              The app may include third-party libraries and optional diagnostics services (for example Firebase Crashlytics and
+              Firebase Performance). Those services are governed by their own terms and policies.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">6. Warranty disclaimer</h2>
-          <p>
-            CoronaSDR is provided "as is" and "as available" without warranties of any kind, express or implied,
-            including fitness for a particular purpose, accuracy, or uninterrupted availability.
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">6</span>
+               Warranty disclaimer
+            </h2>
+            <p>
+              CoronaSDR is provided "as is" and "as available" without warranties of any kind, express or implied,
+              including fitness for a particular purpose, accuracy, or uninterrupted availability.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">7. Limitation of liability</h2>
-          <p>
-            To the maximum extent permitted by law, the project owner is not liable for indirect, incidental,
-            special, consequential, or punitive damages arising from use of the app or website.
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">7</span>
+               Limitation of liability
+            </h2>
+            <p>
+              To the maximum extent permitted by law, the project owner is not liable for indirect, incidental,
+              special, consequential, or punitive damages arising from use of the app or website.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">8. Changes to these terms</h2>
-          <p>
-            These Terms may be updated from time to time. The updated version is effective from the date shown on this page.
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">8</span>
+               Changes to these terms
+            </h2>
+            <p>
+              These Terms may be updated from time to time. The updated version is effective from the date shown on this page.
+            </p>
+          </section>
 
-        <section class="space-y-2 text-sm leading-6">
-          <h2 class="text-base font-semibold">9. Contact</h2>
-          <p>
-            For support or terms questions, contact Silviu YO6SAY:
-            <a class="link" href="mailto:yo6say@proton.me">yo6say@proton.me</a>
-          </p>
-        </section>
+          <section>
+            <h2 class="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs text-primary">9</span>
+               Contact
+            </h2>
+            <p>
+              For support or terms questions, contact Silviu YO6SAY:
+              <a class="text-primary hover:underline underline-offset-4 decoration-primary/30 hover:decoration-primary transition-all" href="mailto:yo6say@proton.me">yo6say@proton.me</a>
+            </p>
+          </section>
+        </div>
       </main>
     </div>
+    
+    <footer class="border-t border-border py-8 mt-auto">
+        <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+          <p>&copy; <span id="year"></span> CoronaSDR. Built by Silviu YO6SAY.</p>
+           <div class="flex items-center gap-6">
+             <a href="/privacy/" class="hover:text-foreground transition-colors">Privacy</a>
+             <a href="/terms/" class="hover:text-foreground transition-colors">Terms</a>
+             <a href="mailto:yo6say@proton.me" class="hover:text-foreground transition-colors">Contact</a>
+          </div>
+        </div>
+    </footer>
+    
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
   </body>
 </html>
