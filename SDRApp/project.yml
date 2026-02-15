@@ -81,6 +81,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr
         INFOPLIST_FILE: App/SDRApp/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: CoronaSDR
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
         CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1,2"
