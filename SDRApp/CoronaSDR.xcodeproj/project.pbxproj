@@ -11,6 +11,7 @@
 		0943DD7A280234F76854921F /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = D790FB2CD547BA1A01136FAF /* FirebaseCore */; };
 		0B67B96592A8918A07D262E0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA2A04F38D311C2BAC137AC /* ContentView.swift */; };
 		198E17427BADB4D33AE30DA0 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005AB8EE3ECA837D47F89617 /* DeepLinkHandler.swift */; };
+		20A9B3A996EC6EF055A873D0 /* RFControlsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 565BB40C80E668A8E367BE28 /* RFControlsTests.swift */; };
 		253D92E62048CF514EE3F2AB /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 48C0701AD5E1EA2BD87BB86F /* FirebaseCrashlytics */; };
 		2C26CF23DF73D64CAE91DF81 /* SDRSupport in Frameworks */ = {isa = PBXBuildFile; productRef = CB27B1EE55F3DC0583BE03BA /* SDRSupport */; };
 		2F25DD1DDE53B1CEA55CD3A7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = B63CF84D09D95EFDF91453F3 /* GoogleService-Info.plist */; };
@@ -26,7 +27,6 @@
 		7247B51BEC82DA9D2DD263EE /* ScanEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362F2679EFD318CCED70EC4 /* ScanEngine.swift */; };
 		78012DEF3E70DE33C1681436 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239DE295767628C0B61417DA /* DiagnosticsView.swift */; };
 		921B4040B2923407E791E124 /* SDRAppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */; };
-		94E37B11BBCBF34AAB2DE932 /* AudioEngineKit in Frameworks */ = {isa = PBXBuildFile; productRef = 887086697C925D5F65B4F208 /* AudioEngineKit */; };
 		953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */; };
 		9555334D9074956824F792FD /* AppIcon76x76.png in Resources */ = {isa = PBXBuildFile; fileRef = 43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */; };
 		A030BA19E04E1C72105984DF /* SDRRender in Frameworks */ = {isa = PBXBuildFile; productRef = 8DE39D29C59EB576ABD3CF6F /* SDRRender */; };
@@ -42,7 +42,6 @@
 		D969371AA8B38478520AE6F4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8CF7495601D45F14E89C65 /* SettingsView.swift */; };
 		ED53BC5EC0A0EB4C48FDF55F /* AppIcon76x76@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 4ACE8830C5D0667D4F0603EF /* AppIcon76x76@2x.png */; };
 		F831F95CE64ACCBD3B808ECC /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14D225D3F7AC73101511DD9B /* OnboardingFlow.swift */; };
-		FA21D7931160ABD9AAAB315F /* RTLTCPClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0A86875076B38ECD4923BC7E /* RTLTCPClientKit */; };
 		FB777858F3413DD3C94B6768 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A488ACFE29F4CC1ACDDDBD /* MainTabView.swift */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +68,7 @@
 		5362F2679EFD318CCED70EC4 /* ScanEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanEngine.swift; sourceTree = "<group>"; };
 		5479E9108B6A98B1000F44A4 /* RadioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioView.swift; sourceTree = "<group>"; };
 		55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IQRingBufferTests.swift; sourceTree = "<group>"; };
+		565BB40C80E668A8E367BE28 /* RFControlsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFControlsTests.swift; sourceTree = "<group>"; };
 		5C7E5486B627308AA580B3FA /* AppIcon60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon60x60@3x.png"; sourceTree = "<group>"; };
 		67EB21079C4468171086D34E /* CoronaSDR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoronaSDR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6CFC38E087C49B1FFA363F1C /* ImportExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportExportSheet.swift; sourceTree = "<group>"; };
@@ -91,15 +91,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		247FDB3BBAEA338297A62164 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				FA21D7931160ABD9AAAB315F /* RTLTCPClientKit in Frameworks */,
-				94E37B11BBCBF34AAB2DE932 /* AudioEngineKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		453F2FA9EEC0914500E03FFB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -163,6 +154,7 @@
 				F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */,
 				7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */,
 				55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */,
+				565BB40C80E668A8E367BE28 /* RFControlsTests.swift */,
 			);
 			name = CoronaSDRTests;
 			path = Tests/CoronaSDRTests;
@@ -298,7 +290,6 @@
 			buildConfigurationList = 0D603EE6F4546EC3D2C58FF0 /* Build configuration list for PBXNativeTarget "CoronaSDRTests" */;
 			buildPhases = (
 				2ACFF8C143FAADC89D8E81EF /* Sources */,
-				247FDB3BBAEA338297A62164 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -307,8 +298,6 @@
 			);
 			name = CoronaSDRTests;
 			packageProductDependencies = (
-				0A86875076B38ECD4923BC7E /* RTLTCPClientKit */,
-				887086697C925D5F65B4F208 /* AudioEngineKit */,
 			);
 			productName = CoronaSDRTests;
 			productReference = C1BCC6BA54AA9D77D3C3DFBB /* CoronaSDRTests.xctest */;
@@ -379,6 +368,7 @@
 				953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */,
 				060450D988F56FD0835821C2 /* DeepLinkHandlerTests.swift in Sources */,
 				C6686AF665A8D0120B39D71B /* IQRingBufferTests.swift in Sources */,
+				20A9B3A996EC6EF055A873D0 /* RFControlsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -674,10 +664,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		0A86875076B38ECD4923BC7E /* RTLTCPClientKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = RTLTCPClientKit;
-		};
 		48C0701AD5E1EA2BD87BB86F /* FirebaseCrashlytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -686,10 +672,6 @@
 		494F684A58C456D32A3B8ECB /* SDRModels */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SDRModels;
-		};
-		887086697C925D5F65B4F208 /* AudioEngineKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AudioEngineKit;
 		};
 		8DE39D29C59EB576ABD3CF6F /* SDRRender */ = {
 			isa = XCSwiftPackageProductDependency;

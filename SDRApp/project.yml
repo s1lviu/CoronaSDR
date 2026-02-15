@@ -99,10 +99,6 @@ targets:
         type: group
     dependencies:
       - target: CoronaSDR
-      - package: SDRAppPackages
-        product: RTLTCPClientKit
-      - package: SDRAppPackages
-        product: AudioEngineKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr.tests
