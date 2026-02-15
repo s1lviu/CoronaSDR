@@ -97,6 +97,7 @@ final class RadioViewModel {
     private var diagnosticsTimer: Timer?
     private var fftDisplayLink: CADisplayLink?
     private let directSamplingThresholdHz = 24_000_000
+    private let maxTunableFrequencyHz = Int(UInt32.max)
     private let maxAudioFilterCutoffHz = 20_000
     private let minAudioFilterGapHz = 150
     private let iqBytesPerSamplePair: Double = 2.0
@@ -273,15 +274,15 @@ final class RadioViewModel {
         applyDirectSamplingForCurrentFrequency()
         applyOffsetTuningIfSupported()
         applyBiasTeeIfSupported()
-        connection.setFrequency(UInt32(frequencyHz))
-        connection.setSampleRate(UInt32(dspPipeline.sampleRate))
+        connection.setFrequency(frequencyHz)
+        connection.setSampleRate(dspPipeline.sampleRate)
         connection.setGainMode(gainMode)
         connection.setAGCMode(gainMode == .auto)
         if gainMode == .manual {
-            connection.setGain(UInt32(gainValue * 10))
+            connection.setGain(gainTenthsCommandValue(from: gainValue))
         }
         if ppm != 0 {
-            connection.setPPM(Int32(ppm))
+            connection.setPPM(ppmCommandValue(from: ppm))
         }
 
         // Configure DSP
@@ -419,8 +420,9 @@ final class RadioViewModel {
     // MARK: - Tuning
 
     func setFrequency(_ hz: Int) {
-        let didChangeFrequency = hz != frequencyHz
-        frequencyHz = hz
+        let sanitizedHz = min(maxTunableFrequencyHz, max(1_000, hz))
+        let didChangeFrequency = sanitizedHz != frequencyHz
+        frequencyHz = sanitizedHz
         guard didChangeFrequency else {
             updateNowPlaying()
             updateTelemetryContext()
@@ -429,7 +431,7 @@ final class RadioViewModel {
 
         let applyRetune = {
             self.applyDirectSamplingForCurrentFrequency()
-            self.connection.setFrequency(UInt32(hz))
+            self.connection.setFrequency(self.frequencyHz)
             self.iqBuffer.flush()
             self.audioBuffer.flush()
             self.dspPipeline.resetState()
@@ -449,7 +451,7 @@ final class RadioViewModel {
 
     func stepFrequency(up: Bool) {
         let newFreq = up ? frequencyHz + stepHz : frequencyHz - stepHz
-        setFrequency(max(1_000, newFreq)) // Minimum 1 kHz
+        setFrequency(newFreq)
     }
 
     func setMode(_ newMode: DemodMode) {
@@ -457,6 +459,11 @@ final class RadioViewModel {
         mode = newMode
         stepHz = newMode.defaultStepHz
         bandwidthHz = newMode.defaultBandwidthHz
+        guard didChangeMode else {
+            updateNowPlaying()
+            updateTelemetryContext()
+            return
+        }
 
         let applyModeChange = {
             self.dspPipeline.mode = newMode
@@ -478,6 +485,7 @@ final class RadioViewModel {
     }
 
     func setBandwidth(_ hz: Int) {
+        guard bandwidthHz != hz else { return }
         bandwidthHz = hz
         dspPipeline.bandwidthHz = hz
     }
@@ -488,13 +496,13 @@ final class RadioViewModel {
         connection.setGainMode(mode)
         connection.setAGCMode(mode == .auto)
         if mode == .manual {
-            connection.setGain(UInt32(value * 10))
+            connection.setGain(gainTenthsCommandValue(from: value))
         }
     }
 
     func setPPM(_ value: Float) {
         ppm = value
-        connection.setPPM(Int32(value))
+        connection.setPPM(ppmCommandValue(from: value))
     }
 
     func setDirectSamplingPreference(_ preference: DirectSamplingPreference) {
@@ -761,7 +769,7 @@ final class RadioViewModel {
                     self.beginRetuneTrace(reason: "sample_rate")
                     self.dspPipeline.setSampleRate(targetSampleRate)
                     if case .connected = self.connection.state {
-                        self.connection.setSampleRate(UInt32(targetSampleRate))
+                        self.connection.setSampleRate(targetSampleRate)
                     }
                     self.iqBuffer.flush()
                     self.audioBuffer.flush()
@@ -770,7 +778,7 @@ final class RadioViewModel {
             } else {
                 dspPipeline.setSampleRate(targetSampleRate)
                 if case .connected = connection.state {
-                    connection.setSampleRate(UInt32(targetSampleRate))
+                    connection.setSampleRate(targetSampleRate)
                 }
             }
             dspConfigChanged = true
@@ -850,6 +858,15 @@ final class RadioViewModel {
     private func linearToDBFS(_ value: Float) -> Float {
         let clamped = max(1e-9, value)
         return 20 * log10(clamped)
+    }
+
+    private func gainTenthsCommandValue(from gainDb: Float) -> Int {
+        let rounded = Int((gainDb * 10).rounded())
+        return max(0, min(Int(UInt32.max), rounded))
+    }
+
+    private func ppmCommandValue(from ppm: Float) -> Int32 {
+        Int32(clamping: Int(ppm.rounded()))
     }
 
     private func applyDirectSamplingForCurrentFrequency() {

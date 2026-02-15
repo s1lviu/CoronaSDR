@@ -9,7 +9,6 @@ struct RadioView: View {
     @State private var showFrequencyKeypad = false
     @State private var showConnectionSheet = false
     @State private var helpTopic: ControlHelpTopic?
-    @State private var didRestoreRadioDefaults = false
 
     private enum ControlHelpTopic: String, Identifiable {
         case step
@@ -120,10 +119,6 @@ struct RadioView: View {
             .sheet(item: $helpTopic) { topic in
                 controlHelpSheet(for: topic)
                     .presentationDetents([.medium, .large])
-            }
-            .onAppear {
-                restoreRadioDefaultsIfNeeded()
-                autoConnect()
             }
             .onChange(of: viewModel.frequencyHz) { _, newFrequency in
                 settings.lastFrequencyHz = newFrequency
@@ -583,47 +578,6 @@ struct RadioView: View {
     }
 
     // MARK: - Helpers
-
-    private func autoConnect() {
-        viewModel.autoConnectIfConfigured(
-            host: settings.lastServerHost,
-            port: UInt16(settings.lastServerPort)
-        )
-    }
-
-    private func restoreRadioDefaultsIfNeeded() {
-        guard !didRestoreRadioDefaults else { return }
-        didRestoreRadioDefaults = true
-
-        viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
-        viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
-        viewModel.applyDeemphasis(settings.deemphasis)
-        viewModel.applyRFControls(
-            directSamplingPreference: DirectSamplingPreference(rawValue: settings.directSamplingPreference) ?? .auto,
-            offsetTuningEnabled: settings.isOffsetTuningEnabled,
-            biasTeeEnabled: settings.isBiasTeeEnabled
-        )
-        viewModel.setAudioToneFilters(
-            highPassHz: settings.audioHighPassHz,
-            lowPassHz: settings.audioLowPassHz
-        )
-
-        if let restoredMode = DemodMode(rawValue: settings.lastMode) {
-            viewModel.setMode(restoredMode)
-        }
-
-        viewModel.stepHz = max(1, settings.lastStepHz)
-        viewModel.setBandwidth(max(500, settings.lastBandwidthHz))
-        viewModel.setSquelch(max(0, min(1, settings.lastSquelchLevel)))
-        viewModel.setBFOOffset(max(-5_000, min(5_000, settings.lastBFOOffset)))
-
-        if let restoredGainMode = GainMode(rawValue: settings.lastGainMode) {
-            viewModel.setGain(mode: restoredGainMode, value: settings.lastGainValue)
-        }
-
-        viewModel.setPPM(settings.lastPPM)
-        viewModel.setFrequency(max(1_000, settings.lastFrequencyHz))
-    }
 
     private func formatStep(_ hz: Int) -> String {
         if hz >= 1_000_000 { return String(format: "%.1f MHz", Double(hz) / 1_000_000) }

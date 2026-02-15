@@ -8,6 +8,9 @@ import SDRModels
 ///   coronasdr://start
 ///   coronasdr://stop
 enum DeepLinkHandler {
+    private static let minFrequencyHz = 1_000
+    private static let maxFrequencyHz = Int(UInt32.max)
+
     enum DeepLinkAction: Equatable {
         case tune(frequencyHz: Int, mode: DemodMode?)
         case start
@@ -23,8 +26,11 @@ enum DeepLinkHandler {
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             let items = components?.queryItems ?? []
 
-            guard let freqStr = items.first(where: { $0.name == "freq" })?.value,
-                  let freq = Int(freqStr) else {
+            guard
+                let freqStr = items.first(where: { $0.name == "freq" })?.value,
+                let freq = Int(freqStr),
+                (minFrequencyHz...maxFrequencyHz).contains(freq)
+            else {
                 return nil
             }
 

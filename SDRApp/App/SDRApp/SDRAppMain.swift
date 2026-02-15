@@ -93,10 +93,16 @@ struct CoronaSDRApp: App {
             .environment(settingsStore)
             .environment(deepLinkCoordinator)
             .onOpenURL { url in
-                logger.info("Received deep link: \(url.absoluteString, privacy: .public)")
+                logger.info("Received deep link command: \(Self.redactedDeepLinkDescription(url), privacy: .public)")
                 deepLinkCoordinator.handle(url: url)
             }
         }
+    }
+
+    private static func redactedDeepLinkDescription(_ url: URL) -> String {
+        let scheme = url.scheme ?? "unknown"
+        let command = url.host ?? url.pathComponents.dropFirst().first ?? "unknown"
+        return "\(scheme)://\(command)"
     }
 
     private static func installDebugCrashHandlers() {
@@ -204,14 +210,15 @@ final class TelemetryService: @unchecked Sendable {
     func recordNonFatal(kind: String, message: String, metadata: [String: String] = [:]) {
         let enabled = firebaseIsEnabled()
         let sanitized = sanitizeAttributes(metadata)
+        let sanitizedMessage = sanitizeMessage(message)
 
-        SDRLogger.general.error("Non-fatal [\(kind)]: \(message)")
+        SDRLogger.general.error("Non-fatal [\(kind)]: \(sanitizedMessage)")
 
         guard enabled else { return }
         #if canImport(FirebaseCrashlytics)
         let crashlytics = Crashlytics.crashlytics()
         crashlytics.setCustomValue(kind, forKey: "last_nonfatal_kind")
-        crashlytics.setCustomValue(message, forKey: "last_nonfatal_message")
+        crashlytics.setCustomValue(sanitizedMessage, forKey: "last_nonfatal_message")
         for (key, value) in sanitized {
             crashlytics.setCustomValue(value, forKey: "nf_\(key)")
         }
@@ -219,7 +226,7 @@ final class TelemetryService: @unchecked Sendable {
         let error = NSError(
             domain: "yo6say.coronasdr.nonfatal",
             code: stableCode(for: kind),
-            userInfo: [NSLocalizedDescriptionKey: message]
+            userInfo: [NSLocalizedDescriptionKey: sanitizedMessage]
         )
         crashlytics.record(error: error)
         #endif
@@ -282,6 +289,25 @@ final class TelemetryService: @unchecked Sendable {
         }
 
         return sanitized
+    }
+
+    private func sanitizeMessage(_ message: String) -> String {
+        var sanitized = message
+        let replacementRules: [(pattern: String, replacement: String)] = [
+            (#"(?i)(?:[a-z][a-z0-9+\-.]*://)[^\s]+"#, "[redacted_url]"),
+            (#"(?i)\b(?:\d{1,3}\.){3}\d{1,3}\b"#, "[redacted_ip]"),
+            (#"(?i)\b[a-z0-9][a-z0-9\-]{0,62}(?:\.[a-z0-9][a-z0-9\-]{0,62})+\b"#, "[redacted_host]")
+        ]
+
+        for rule in replacementRules {
+            sanitized = sanitized.replacingOccurrences(
+                of: rule.pattern,
+                with: rule.replacement,
+                options: .regularExpression
+            )
+        }
+
+        return String(sanitized.prefix(200))
     }
 
     private func deviceClass() -> String {

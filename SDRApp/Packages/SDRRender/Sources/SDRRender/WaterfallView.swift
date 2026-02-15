@@ -7,7 +7,6 @@ public struct WaterfallView: UIViewRepresentable {
     let isActive: Bool
 
     public final class Coordinator {
-        var didDrawInactiveFrame = false
         var wasActive = true
     }
 
@@ -30,13 +29,6 @@ public struct WaterfallView: UIViewRepresentable {
         view.enableSetNeedsDisplay = !isActive
         view.isPaused = !isActive
         view.isOpaque = true
-
-        // Ensure the waterfall has a valid first frame before playback starts.
-        if !isActive {
-            view.setNeedsDisplay()
-            view.draw()
-            context.coordinator.didDrawInactiveFrame = true
-        }
         context.coordinator.wasActive = isActive
 
         return view
@@ -47,11 +39,9 @@ public struct WaterfallView: UIViewRepresentable {
         uiView.enableSetNeedsDisplay = !isActive
         uiView.isPaused = !isActive
         if isActive {
-            context.coordinator.didDrawInactiveFrame = false
-        } else if !context.coordinator.didDrawInactiveFrame || context.coordinator.wasActive {
+            // no-op
+        } else if context.coordinator.wasActive {
             uiView.setNeedsDisplay()
-            uiView.draw()
-            context.coordinator.didDrawInactiveFrame = true
         }
         context.coordinator.wasActive = isActive
     }
