@@ -249,6 +249,11 @@ public final class RTLTCPConnection: @unchecked Sendable {
         sendCommand(.setDirectSampling, parameter: mode.rawValue)
     }
 
+    /// Enable or disable tuner offset tuning.
+    public func setOffsetTuning(_ enabled: Bool) {
+        sendCommand(.setOffsetTuning, parameter: enabled ? 1 : 0)
+    }
+
     /// Set PPM correction.
     public func setPPM(_ ppm: Int32) {
         sendCommand(.setFrequencyCorrection, parameter: UInt32(bitPattern: ppm))

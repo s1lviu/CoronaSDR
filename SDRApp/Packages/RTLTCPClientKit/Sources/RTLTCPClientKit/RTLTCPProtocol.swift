@@ -77,4 +77,56 @@ public enum TunerType: UInt32, Sendable {
         case .r828d: return "R828D"
         }
     }
+
+    /// Capabilities inferred from tuner family.
+    ///
+    /// Notes:
+    /// - `rtl_tcp` protocol does not expose a formal capabilities handshake.
+    /// - We keep auto direct-sampling conservative to avoid enabling it on
+    ///   setups where it is usually unavailable or undesirable.
+    public var capabilities: TunerCapabilities {
+        switch self {
+        case .r820t, .r828d:
+            return TunerCapabilities(
+                supportsDirectSamplingAuto: true,
+                supportsManualDirectSampling: true,
+                supportsOffsetTuning: true,
+                supportsBiasTeeControl: true
+            )
+        case .e4000, .fc0012, .fc0013, .fc2580:
+            return TunerCapabilities(
+                supportsDirectSamplingAuto: false,
+                supportsManualDirectSampling: true,
+                supportsOffsetTuning: true,
+                supportsBiasTeeControl: false
+            )
+        case .unknown:
+            return TunerCapabilities(
+                supportsDirectSamplingAuto: false,
+                supportsManualDirectSampling: true,
+                supportsOffsetTuning: true,
+                supportsBiasTeeControl: false
+            )
+        }
+    }
+}
+
+/// Runtime tuner capability flags inferred from header tuner type.
+public struct TunerCapabilities: Sendable, Equatable {
+    public let supportsDirectSamplingAuto: Bool
+    public let supportsManualDirectSampling: Bool
+    public let supportsOffsetTuning: Bool
+    public let supportsBiasTeeControl: Bool
+
+    public init(
+        supportsDirectSamplingAuto: Bool,
+        supportsManualDirectSampling: Bool,
+        supportsOffsetTuning: Bool,
+        supportsBiasTeeControl: Bool
+    ) {
+        self.supportsDirectSamplingAuto = supportsDirectSamplingAuto
+        self.supportsManualDirectSampling = supportsManualDirectSampling
+        self.supportsOffsetTuning = supportsOffsetTuning
+        self.supportsBiasTeeControl = supportsBiasTeeControl
+    }
 }

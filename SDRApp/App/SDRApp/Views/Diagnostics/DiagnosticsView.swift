@@ -15,6 +15,8 @@ struct DiagnosticsView: View {
                     diagRow("Audio Health", value: audioHealthText)
                     diagRow("Stream Hint", value: viewModel.networkQualityHint)
                     diagRow("Direct Sampling", value: directSamplingText)
+                    diagRow("Offset Tuning", value: offsetTuningText)
+                    diagRow("Bias-Tee", value: biasTeeText)
                 }
 
                 Section("Buffers") {
@@ -31,6 +33,8 @@ struct DiagnosticsView: View {
                     diagRow("Sample Rate", value: "\(viewModel.dspPipeline.sampleRate) Hz")
                     diagRow("Mode", value: viewModel.mode.displayName)
                     diagRow("Bandwidth", value: "\(viewModel.bandwidthHz) Hz")
+                    diagRow("Audio HP", value: viewModel.audioHighPassHz == 0 ? "Off" : "\(viewModel.audioHighPassHz) Hz")
+                    diagRow("Audio LP", value: viewModel.audioLowPassHz == 0 ? "Off" : "\(viewModel.audioLowPassHz) Hz")
                 }
 
                 Section("Display") {
@@ -90,14 +94,23 @@ struct DiagnosticsView: View {
     }
 
     private var directSamplingText: String {
+        let mode: String
         switch viewModel.directSamplingMode {
-        case .off:
-            return "Off"
-        case .iBranch:
-            return "I-branch"
-        case .qBranch:
-            return "Q-branch"
+        case .off: mode = "Off"
+        case .iBranch: mode = "I-branch"
+        case .qBranch: mode = "Q-branch"
         }
+        return "\(viewModel.directSamplingPreference.displayName) / \(mode)"
+    }
+
+    private var offsetTuningText: String {
+        if !viewModel.supportsOffsetTuning { return "Unsupported" }
+        return viewModel.isOffsetTuningEnabled ? "Enabled" : "Disabled"
+    }
+
+    private var biasTeeText: String {
+        if !viewModel.supportsBiasTee { return "Unsupported" }
+        return viewModel.isBiasTeeEnabled ? "Enabled" : "Disabled"
     }
 
     private var waterfallFPSText: String {

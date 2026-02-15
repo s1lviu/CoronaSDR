@@ -19,10 +19,10 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` Gain auto/manual + PPM
 - `[x]` Profile sample rate (Low/Medium/High)
 - `[x]` Spectrum + waterfall funcțional
-- `[~]` Direct sampling auto sub 24 MHz (fără gating pe capabilități tuner)
-- `[ ]` Control IQ offset / offset tuning în UI
-- `[ ]` Bias-tee control în UI
-- `[ ]` Filtre audio HP/LP ajustabile din UI
+- `[x]` Direct sampling auto sub 24 MHz cu gating pe capabilități tuner + override manual (Auto/Off/I/Q)
+- `[x]` Control IQ offset / offset tuning în UI
+- `[x]` Bias-tee control în UI
+- `[x]` Filtre audio HP/LP ajustabile din UI (lanț audio DSP + controale în Settings)
 
 ### 1.2 UX / Produs
 - `[x]` Onboarding explicit despre server rtl_tcp

@@ -71,3 +71,20 @@ public enum ReconnectPolicy: String, Codable, CaseIterable, Sendable {
     case exponentialBackoff = "Exponential Backoff"
     case immediate = "Immediate"
 }
+
+/// User preference for direct sampling behavior.
+public enum DirectSamplingPreference: String, Codable, CaseIterable, Sendable {
+    case auto = "Auto"
+    case off = "Off"
+    case iBranch = "I"
+    case qBranch = "Q"
+
+    public var displayName: String {
+        switch self {
+        case .auto: return "Auto"
+        case .off: return "Off"
+        case .iBranch: return "I"
+        case .qBranch: return "Q"
+        }
+    }
+}

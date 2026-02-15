@@ -60,6 +60,20 @@ public final class SettingsStore {
         didSet { defaults.set(lastPPM, forKey: "lastPPM") }
     }
 
+    // MARK: - RF Controls
+
+    public var directSamplingPreference: String {
+        didSet { defaults.set(directSamplingPreference, forKey: "directSamplingPreference") }
+    }
+
+    public var isOffsetTuningEnabled: Bool {
+        didSet { defaults.set(isOffsetTuningEnabled, forKey: "isOffsetTuningEnabled") }
+    }
+
+    public var isBiasTeeEnabled: Bool {
+        didSet { defaults.set(isBiasTeeEnabled, forKey: "isBiasTeeEnabled") }
+    }
+
     // MARK: - Sample Profile
 
     public var selectedSampleProfileLabel: String {
@@ -78,6 +92,14 @@ public final class SettingsStore {
         didSet { defaults.set(deemphasis, forKey: "deemphasis") }
     }
 
+    public var audioHighPassHz: Int {
+        didSet { defaults.set(audioHighPassHz, forKey: "audioHighPassHz") }
+    }
+
+    public var audioLowPassHz: Int {
+        didSet { defaults.set(audioLowPassHz, forKey: "audioLowPassHz") }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
@@ -92,8 +114,13 @@ public final class SettingsStore {
         self.lastGainMode = defaults.string(forKey: "lastGainMode") ?? "Auto"
         self.lastGainValue = defaults.float(forKey: "lastGainValue")
         self.lastPPM = defaults.float(forKey: "lastPPM")
+        self.directSamplingPreference = defaults.string(forKey: "directSamplingPreference") ?? "Auto"
+        self.isOffsetTuningEnabled = defaults.bool(forKey: "isOffsetTuningEnabled")
+        self.isBiasTeeEnabled = defaults.bool(forKey: "isBiasTeeEnabled")
         self.selectedSampleProfileLabel = defaults.string(forKey: "selectedSampleProfileLabel") ?? "Low"
         self.waterfallColorScheme = defaults.string(forKey: "waterfallColorScheme") ?? "classic"
         self.deemphasis = defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75
+        self.audioHighPassHz = defaults.object(forKey: "audioHighPassHz") != nil ? defaults.integer(forKey: "audioHighPassHz") : 0
+        self.audioLowPassHz = defaults.object(forKey: "audioLowPassHz") != nil ? defaults.integer(forKey: "audioLowPassHz") : 0
     }
 }
