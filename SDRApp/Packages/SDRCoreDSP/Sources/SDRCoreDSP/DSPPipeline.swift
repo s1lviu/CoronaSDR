@@ -44,6 +44,9 @@ public final class DSPPipeline: @unchecked Sendable {
     private var driftCompensator: DriftCompensator
     private var deemphasisUs: Float = 75
     private let targetAudioFill: Double = 0.65
+    private let audioToneFilter = AudioToneFilter(sampleRate: 48_000)
+    private(set) var audioHighPassCutoffHz: Int = 0
+    private(set) var audioLowPassCutoffHz: Int = 0
 
     // FFT output callback
     public var onFFTFrame: (([Float], Int) -> Void)? // (bins, fftSize)
@@ -62,6 +65,8 @@ public final class DSPPipeline: @unchecked Sendable {
     private var dspThread: Thread?
     private var isRunning: Bool = false
     private let outputRate: Double = 48000
+    private let maxAudioCutoffHz: Int = 20_000
+    private let minAudioCutoffGapHz: Int = 150
 
     // Block size for processing (bytes). Adapted by sample-rate for smoother waterfall cadence.
     private let minBlockSizeBytes: Int = 4_096
@@ -234,7 +239,8 @@ public final class DSPPipeline: @unchecked Sendable {
 
             // Write to audio ring buffer
             if resampledCount > 0 {
-                resampledWork.withUnsafeBufferPointer { samples in
+                resampledWork.withUnsafeMutableBufferPointer { samples in
+                    audioToneFilter.processInPlace(samples, count: resampledCount)
                     _ = audioBuffer.write(UnsafeBufferPointer(start: samples.baseAddress!, count: resampledCount))
                 }
             }
@@ -465,6 +471,29 @@ public final class DSPPipeline: @unchecked Sendable {
         }
     }
 
+    /// Configure high-pass and low-pass cutoffs for demodulated audio.
+    /// Use 0 to disable each stage.
+    public func setAudioToneFilters(highPassHz: Int, lowPassHz: Int) {
+        let normalized = normalizedAudioCutoffs(
+            highPassHz: highPassHz,
+            lowPassHz: lowPassHz
+        )
+        guard normalized.highPass != audioHighPassCutoffHz || normalized.lowPass != audioLowPassCutoffHz else { return }
+
+        audioHighPassCutoffHz = normalized.highPass
+        audioLowPassCutoffHz = normalized.lowPass
+        audioToneFilter.setHighPassCutoff(normalized.highPass)
+        audioToneFilter.setLowPassCutoff(normalized.lowPass)
+    }
+
+    public func setAudioHighPassCutoff(_ hz: Int) {
+        setAudioToneFilters(highPassHz: hz, lowPassHz: audioLowPassCutoffHz)
+    }
+
+    public func setAudioLowPassCutoff(_ hz: Int) {
+        setAudioToneFilters(highPassHz: audioHighPassCutoffHz, lowPassHz: hz)
+    }
+
     /// Update squelch threshold.
     public func setSquelch(_ threshold: Float) {
         squelch.threshold = threshold
@@ -486,7 +515,19 @@ public final class DSPPipeline: @unchecked Sendable {
         squelch.reset()
         resampler.reset()
         driftCompensator.reset()
+        audioToneFilter.reset()
         lastFFTFrameTime = 0
+    }
+
+    private func normalizedAudioCutoffs(highPassHz: Int, lowPassHz: Int) -> (highPass: Int, lowPass: Int) {
+        let requestedHP = max(0, highPassHz)
+        let requestedLP = max(0, lowPassHz)
+
+        let clampedLP = requestedLP > 0 ? min(maxAudioCutoffHz, requestedLP) : 0
+        let maxHP = clampedLP > 0 ? max(0, clampedLP - minAudioCutoffGapHz) : maxAudioCutoffHz
+        let clampedHP = min(requestedHP, maxHP)
+
+        return (clampedHP, clampedLP)
     }
 
     private static func computeBlockSizeBytes(

@@ -23,7 +23,62 @@ struct SettingsView: View {
                         Text("75 \u{00B5}s (Americas)").tag(75)
                     }
 
-                    Text("Used by FM demodulation modes (NFM/WFM).")
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Audio High-pass")
+                            Spacer()
+                            Text(settings.audioHighPassHz == 0 ? "Off" : "\(settings.audioHighPassHz) Hz")
+                                .foregroundStyle(.secondary)
+                                .font(.caption.monospacedDigit())
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { Double(settings.audioHighPassHz) },
+                                set: { settings.audioHighPassHz = Int($0.rounded()) }
+                            ),
+                            in: 0...3_000,
+                            step: 25
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Audio Low-pass")
+                            Spacer()
+                            Text(settings.audioLowPassHz == 0 ? "Off" : "\(settings.audioLowPassHz) Hz")
+                                .foregroundStyle(.secondary)
+                                .font(.caption.monospacedDigit())
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { Double(settings.audioLowPassHz) },
+                                set: { settings.audioLowPassHz = Int($0.rounded()) }
+                            ),
+                            in: 0...20_000,
+                            step: 100
+                        )
+                    }
+
+                    Text("De-emphasis is used by FM modes. HP/LP apply to demodulated audio in all modes (0 = Off).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("When both HP and LP are active, HP is automatically clamped below LP.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("RF Controls") {
+                    Picker("Direct Sampling", selection: $settings.directSamplingPreference) {
+                        ForEach(DirectSamplingPreference.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode.rawValue)
+                        }
+                    }
+
+                    Toggle("Offset Tuning", isOn: $settings.isOffsetTuningEnabled)
+                    Toggle("Bias-Tee", isOn: $settings.isBiasTeeEnabled)
+
+                    Text("Availability depends on tuner hardware and server support.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

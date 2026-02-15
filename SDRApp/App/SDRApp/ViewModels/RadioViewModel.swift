@@ -55,12 +55,21 @@ final class RadioViewModel {
     var isPlaying: Bool = false
     var connectionState: ConnectionState = .disconnected
     var isRadioTabVisible: Bool = true
+    var directSamplingPreference: DirectSamplingPreference = .auto
     var isDirectSamplingActive: Bool = false
     var directSamplingMode: DirectSamplingMode = .off
+    var supportsDirectSamplingAuto: Bool = false
+    var supportsManualDirectSampling: Bool = true
+    var isOffsetTuningEnabled: Bool = false
+    var isBiasTeeEnabled: Bool = false
+    var supportsOffsetTuning: Bool = true
+    var supportsBiasTee: Bool = false
     var isNetworkPoor: Bool = false
     var isAudioStarving: Bool = false
     var networkQualityHint: String = "Idle"
     var isAppActive: Bool = true
+    var audioHighPassHz: Int = 0
+    var audioLowPassHz: Int = 0
 
     // Diagnostics
     var throughputMbps: Double = 0
@@ -88,6 +97,8 @@ final class RadioViewModel {
     private var diagnosticsTimer: Timer?
     private var fftDisplayLink: CADisplayLink?
     private let directSamplingThresholdHz = 24_000_000
+    private let maxAudioFilterCutoffHz = 20_000
+    private let minAudioFilterGapHz = 150
     private let iqBytesPerSamplePair: Double = 2.0
     private let fftMailbox = FFTFrameMailbox()
     private var dspFFTHandler: (([Float], Int) -> Void)?
@@ -260,6 +271,8 @@ final class RadioViewModel {
 
         // Send initial commands
         applyDirectSamplingForCurrentFrequency()
+        applyOffsetTuningIfSupported()
+        applyBiasTeeIfSupported()
         connection.setFrequency(UInt32(frequencyHz))
         connection.setSampleRate(UInt32(dspPipeline.sampleRate))
         connection.setGainMode(gainMode)
@@ -457,6 +470,21 @@ final class RadioViewModel {
         connection.setPPM(Int32(value))
     }
 
+    func setDirectSamplingPreference(_ preference: DirectSamplingPreference) {
+        directSamplingPreference = preference
+        applyDirectSamplingForCurrentFrequency()
+    }
+
+    func setOffsetTuningEnabled(_ enabled: Bool) {
+        isOffsetTuningEnabled = enabled
+        applyOffsetTuningIfSupported()
+    }
+
+    func setBiasTeeEnabled(_ enabled: Bool) {
+        isBiasTeeEnabled = enabled
+        applyBiasTeeIfSupported()
+    }
+
     func setSquelch(_ level: Float) {
         squelchLevel = level
         dspPipeline.setSquelch(squelchThreshold(for: level))
@@ -491,6 +519,32 @@ final class RadioViewModel {
 
     func applyDeemphasis(_ microseconds: Int) {
         dspPipeline.setDeemphasisUs(microseconds)
+    }
+
+    func applyRFControls(
+        directSamplingPreference: DirectSamplingPreference,
+        offsetTuningEnabled: Bool,
+        biasTeeEnabled: Bool
+    ) {
+        self.directSamplingPreference = directSamplingPreference
+        self.isOffsetTuningEnabled = offsetTuningEnabled
+        self.isBiasTeeEnabled = biasTeeEnabled
+        applyDirectSamplingForCurrentFrequency()
+        applyOffsetTuningIfSupported()
+        applyBiasTeeIfSupported()
+    }
+
+    func setAudioToneFilters(highPassHz: Int, lowPassHz: Int) {
+        let normalized = normalizedAudioFilterCutoffs(
+            highPassHz: highPassHz,
+            lowPassHz: lowPassHz
+        )
+        audioHighPassHz = normalized.highPass
+        audioLowPassHz = normalized.lowPass
+        dspPipeline.setAudioToneFilters(
+            highPassHz: normalized.highPass,
+            lowPassHz: normalized.lowPass
+        )
     }
 
     func setRadioTabVisible(_ isVisible: Bool) {
@@ -730,7 +784,17 @@ final class RadioViewModel {
     // MARK: - Helpers
 
     private func desiredDirectSamplingMode(for frequencyHz: Int) -> DirectSamplingMode {
-        frequencyHz < directSamplingThresholdHz ? .qBranch : .off
+        switch directSamplingPreference {
+        case .off:
+            return .off
+        case .iBranch:
+            return supportsManualDirectSampling ? .iBranch : .off
+        case .qBranch:
+            return supportsManualDirectSampling ? .qBranch : .off
+        case .auto:
+            guard supportsDirectSamplingAuto else { return .off }
+            return frequencyHz < directSamplingThresholdHz ? .qBranch : .off
+        }
     }
 
     private func squelchThreshold(for uiLevel: Float) -> Float {
@@ -755,6 +819,25 @@ final class RadioViewModel {
         directSamplingMode = mode
         isDirectSamplingActive = mode != .off
         connection.setDirectSampling(mode)
+    }
+
+    private func applyOffsetTuningIfSupported() {
+        connection.setOffsetTuning(supportsOffsetTuning && isOffsetTuningEnabled)
+    }
+
+    private func applyBiasTeeIfSupported() {
+        connection.setBiasTee(supportsBiasTee && isBiasTeeEnabled)
+    }
+
+    private func normalizedAudioFilterCutoffs(highPassHz: Int, lowPassHz: Int) -> (highPass: Int, lowPass: Int) {
+        let requestedHP = max(0, highPassHz)
+        let requestedLP = max(0, lowPassHz)
+
+        let clampedLP = requestedLP > 0 ? min(maxAudioFilterCutoffHz, requestedLP) : 0
+        let maxHP = clampedLP > 0 ? max(0, clampedLP - minAudioFilterGapHz) : maxAudioFilterCutoffHz
+        let clampedHP = min(requestedHP, maxHP)
+
+        return (clampedHP, clampedLP)
     }
 
     private func updateNetworkQuality() {
@@ -881,8 +964,26 @@ final class RadioViewModel {
 
     private func handleConnectionStateChange(_ newState: ConnectionState) {
         connectionState = newState
-        if case .connected = newState {
+        if case .connected(let header) = newState {
             isConnected = true
+            let capabilities = header.tunerType.capabilities
+            supportsDirectSamplingAuto = capabilities.supportsDirectSamplingAuto
+            supportsManualDirectSampling = capabilities.supportsManualDirectSampling
+            supportsOffsetTuning = capabilities.supportsOffsetTuning
+            supportsBiasTee = capabilities.supportsBiasTeeControl
+            if !supportsManualDirectSampling {
+                directSamplingPreference = .auto
+            }
+            if !supportsOffsetTuning {
+                isOffsetTuningEnabled = false
+            }
+            if !supportsBiasTee {
+                isBiasTeeEnabled = false
+            }
+
+            applyDirectSamplingForCurrentFrequency()
+            applyOffsetTuningIfSupported()
+            applyBiasTeeIfSupported()
             completeConnectTrace()
 
             if shouldStartListeningOnConnect {
@@ -891,6 +992,8 @@ final class RadioViewModel {
             }
         } else {
             isConnected = false
+            isDirectSamplingActive = false
+            directSamplingMode = .off
             if case .disconnected = newState {
                 cancelConnectTrace()
             }

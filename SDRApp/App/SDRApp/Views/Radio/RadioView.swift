@@ -17,6 +17,8 @@ struct RadioView: View {
         case squelch
         case bfo
         case ppm
+        case offsetTuning
+        case biasTee
 
         var id: String { rawValue }
 
@@ -27,6 +29,8 @@ struct RadioView: View {
             case .squelch: return "Squelch (SQL)"
             case .bfo: return "BFO"
             case .ppm: return "PPM Correction"
+            case .offsetTuning: return "Offset Tuning"
+            case .biasTee: return "Bias-Tee"
             }
         }
 
@@ -42,6 +46,10 @@ struct RadioView: View {
                 return "BFO shifts SSB/CW audio pitch for fine tuning. It helps center speech/tones without changing RF frequency."
             case .ppm:
                 return "PPM compensates crystal frequency error in the SDR tuner. Use it to align stations exactly on frequency."
+            case .offsetTuning:
+                return "Offset tuning shifts the tuned carrier away from DC to reduce center spike and DC offset artifacts."
+            case .biasTee:
+                return "Bias-tee powers active antennas or mast LNA over the coax feed. Enable only if your RF chain supports DC power injection."
             }
         }
 
@@ -57,6 +65,10 @@ struct RadioView: View {
                 return "For FT8 keep near 0 Hz. For CW/SSB adjust until tone/voice sounds natural and stable."
             case .ppm:
                 return "Calibrate on a known station; typical values are often within +/-40 PPM depending on dongle temperature."
+            case .offsetTuning:
+                return "Keep enabled for most users. Disable only if your server/hardware combination behaves better without it."
+            case .biasTee:
+                return "Keep disabled unless you intentionally power an active antenna/LNA that requires bias voltage."
             }
         }
     }
@@ -140,6 +152,15 @@ struct RadioView: View {
             .onChange(of: viewModel.ppm) { _, newPPM in
                 settings.lastPPM = newPPM
             }
+            .onChange(of: viewModel.directSamplingPreference) { _, newValue in
+                settings.directSamplingPreference = newValue.rawValue
+            }
+            .onChange(of: viewModel.isOffsetTuningEnabled) { _, newValue in
+                settings.isOffsetTuningEnabled = newValue
+            }
+            .onChange(of: viewModel.isBiasTeeEnabled) { _, newValue in
+                settings.isBiasTeeEnabled = newValue
+            }
         }
     }
 
@@ -182,7 +203,7 @@ struct RadioView: View {
             }
 
             if viewModel.isDirectSamplingActive {
-                Text("DS Q")
+                Text("DS \(directSamplingModeLabel)")
                     .font(.caption2.bold())
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -373,12 +394,61 @@ struct RadioView: View {
 
     private var controlsSection: some View {
         VStack(spacing: 12) {
-            if viewModel.isDirectSamplingActive {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Direct Sampling (Q) active for < 24 MHz")
+                    Text("Direct Sampling")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.secondary)
                     Spacer()
+                    Text(viewModel.isDirectSamplingActive ? "Active \(directSamplingModeLabel)" : "Inactive")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(viewModel.isDirectSamplingActive ? .orange : .secondary)
+                }
+
+                Picker("", selection: Binding(
+                    get: { viewModel.directSamplingPreference },
+                    set: { viewModel.setDirectSamplingPreference($0) }
+                )) {
+                    ForEach(DirectSamplingPreference.allCases, id: \.self) { preference in
+                        Text(preference.displayName).tag(preference)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                HStack {
+                    controlLabel("Offset", topic: .offsetTuning)
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { viewModel.isOffsetTuningEnabled },
+                        set: { viewModel.setOffsetTuningEnabled($0) }
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel("Offset Tuning")
+                    .disabled(!viewModel.supportsOffsetTuning)
+                }
+
+                HStack {
+                    controlLabel("Bias", topic: .biasTee)
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { viewModel.isBiasTeeEnabled },
+                        set: { viewModel.setBiasTeeEnabled($0) }
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel("Bias-Tee")
+                    .disabled(!viewModel.supportsBiasTee)
+                }
+
+                if viewModel.directSamplingPreference == .auto && !viewModel.supportsDirectSamplingAuto {
+                    Text("Auto direct sampling is not available for this tuner. Current behavior falls back to Off.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                if !viewModel.supportsBiasTee {
+                    Text("Bias-tee control is unavailable for this tuner.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -528,6 +598,15 @@ struct RadioView: View {
         viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
         viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
         viewModel.applyDeemphasis(settings.deemphasis)
+        viewModel.applyRFControls(
+            directSamplingPreference: DirectSamplingPreference(rawValue: settings.directSamplingPreference) ?? .auto,
+            offsetTuningEnabled: settings.isOffsetTuningEnabled,
+            biasTeeEnabled: settings.isBiasTeeEnabled
+        )
+        viewModel.setAudioToneFilters(
+            highPassHz: settings.audioHighPassHz,
+            lowPassHz: settings.audioLowPassHz
+        )
 
         if let restoredMode = DemodMode(rawValue: settings.lastMode) {
             viewModel.setMode(restoredMode)
@@ -550,6 +629,17 @@ struct RadioView: View {
         if hz >= 1_000_000 { return String(format: "%.1f MHz", Double(hz) / 1_000_000) }
         if hz >= 1_000 { return String(format: "%.1f kHz", Double(hz) / 1_000) }
         return "\(hz) Hz"
+    }
+
+    private var directSamplingModeLabel: String {
+        switch viewModel.directSamplingMode {
+        case .off:
+            return "Off"
+        case .iBranch:
+            return "I"
+        case .qBranch:
+            return "Q"
+        }
     }
 
     private var spectrumSpanHz: Int {

@@ -10,6 +10,10 @@ struct MainTabView: View {
     @State private var viewModel = RadioViewModel()
 
     var body: some View {
+        deepLinkAwareTabs
+    }
+
+    private var tabs: some View {
         TabView(selection: $selectedTab) {
             RadioView(viewModel: viewModel)
                 .tabItem {
@@ -41,37 +45,72 @@ struct MainTabView: View {
                 }
                 .tag(4)
         }
-        .onAppear {
-            applyRuntimeSettings()
-            updateRadioVisibility()
-            viewModel.setAppActive(scenePhase == .active)
-            if scenePhase == .active {
-                attemptAutoReconnectIfNeeded()
+    }
+
+    private var lifecycleAwareTabs: some View {
+        tabs
+            .onAppear {
+                applyRuntimeSettings()
+                updateRadioVisibility()
+                viewModel.setAppActive(scenePhase == .active)
+                if scenePhase == .active {
+                    attemptAutoReconnectIfNeeded()
+                }
+                processPendingDeepLinkIfNeeded()
             }
-            processPendingDeepLinkIfNeeded()
-        }
-        .onChange(of: selectedTab) { _, newValue in
-            viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
-        }
-        .onChange(of: scenePhase) { _, _ in
-            updateRadioVisibility()
-            viewModel.setAppActive(scenePhase == .active)
-            if scenePhase == .active {
-                attemptAutoReconnectIfNeeded()
+            .onChange(of: selectedTab) { _, newValue in
+                viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
             }
-        }
-        .onChange(of: settings.selectedSampleProfileLabel) { _, newLabel in
-            viewModel.applySampleProfile(label: newLabel)
-        }
-        .onChange(of: settings.waterfallColorScheme) { _, newScheme in
-            viewModel.applyWaterfallColorScheme(newScheme)
-        }
-        .onChange(of: settings.deemphasis) { _, newValue in
-            viewModel.applyDeemphasis(newValue)
-        }
-        .onChange(of: deepLinkCoordinator.lastEventToken) { _, _ in
-            processPendingDeepLinkIfNeeded()
-        }
+            .onChange(of: scenePhase) { _, _ in
+                updateRadioVisibility()
+                viewModel.setAppActive(scenePhase == .active)
+                if scenePhase == .active {
+                    attemptAutoReconnectIfNeeded()
+                }
+            }
+    }
+
+    private var profileAwareTabs: some View {
+        lifecycleAwareTabs
+            .onChange(of: settings.selectedSampleProfileLabel) { _, newLabel in
+                viewModel.applySampleProfile(label: newLabel)
+            }
+            .onChange(of: settings.waterfallColorScheme) { _, newScheme in
+                viewModel.applyWaterfallColorScheme(newScheme)
+            }
+            .onChange(of: settings.deemphasis) { _, newValue in
+                viewModel.applyDeemphasis(newValue)
+            }
+    }
+
+    private var rfAwareTabs: some View {
+        profileAwareTabs
+            .onChange(of: settings.directSamplingPreference) { _, newValue in
+                viewModel.setDirectSamplingPreference(directSamplingPreference(from: newValue))
+            }
+            .onChange(of: settings.isOffsetTuningEnabled) { _, newValue in
+                viewModel.setOffsetTuningEnabled(newValue)
+            }
+            .onChange(of: settings.isBiasTeeEnabled) { _, newValue in
+                viewModel.setBiasTeeEnabled(newValue)
+            }
+    }
+
+    private var audioFilterAwareTabs: some View {
+        rfAwareTabs
+            .onChange(of: settings.audioHighPassHz) { _, _ in
+                applyAudioToneSettings()
+            }
+            .onChange(of: settings.audioLowPassHz) { _, _ in
+                applyAudioToneSettings()
+            }
+    }
+
+    private var deepLinkAwareTabs: some View {
+        audioFilterAwareTabs
+            .onChange(of: deepLinkCoordinator.lastEventToken) { _, _ in
+                processPendingDeepLinkIfNeeded()
+            }
     }
 
     private func updateRadioVisibility() {
@@ -82,6 +121,25 @@ struct MainTabView: View {
         viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
         viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
         viewModel.applyDeemphasis(settings.deemphasis)
+        viewModel.applyRFControls(
+            directSamplingPreference: directSamplingPreference(from: settings.directSamplingPreference),
+            offsetTuningEnabled: settings.isOffsetTuningEnabled,
+            biasTeeEnabled: settings.isBiasTeeEnabled
+        )
+        applyAudioToneSettings()
+    }
+
+    private func applyAudioToneSettings() {
+        viewModel.setAudioToneFilters(
+            highPassHz: settings.audioHighPassHz,
+            lowPassHz: settings.audioLowPassHz
+        )
+        if settings.audioHighPassHz != viewModel.audioHighPassHz {
+            settings.audioHighPassHz = viewModel.audioHighPassHz
+        }
+        if settings.audioLowPassHz != viewModel.audioLowPassHz {
+            settings.audioLowPassHz = viewModel.audioLowPassHz
+        }
     }
 
     private func attemptAutoReconnectIfNeeded() {
@@ -112,5 +170,9 @@ struct MainTabView: View {
             viewModel.cancelPendingStartListening()
             viewModel.stopListening()
         }
+    }
+
+    private func directSamplingPreference(from rawValue: String) -> DirectSamplingPreference {
+        DirectSamplingPreference(rawValue: rawValue) ?? .auto
     }
 }
