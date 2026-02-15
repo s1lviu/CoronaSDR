@@ -114,11 +114,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Advanced") {
-                    Button("Run Onboarding Again") {
-                        settings.hasCompletedOnboarding = false
-                    }
-                }
             }
             .navigationTitle("Settings")
         }
