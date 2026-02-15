@@ -9,6 +9,9 @@ options:
 packages:
   SDRAppPackages:
     path: .
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.0.0
 
 targets:
   CoronaSDR:
@@ -18,6 +21,11 @@ targets:
     sources:
       - path: App/SDRApp
         type: group
+        excludes:
+          - Resources/GoogleService-Info.plist.example
+    resources:
+      - path: App/SDRApp/Resources/GoogleService-Info.plist
+        optional: true
     dependencies:
       - package: SDRAppPackages
         product: RTLTCPClientKit
@@ -31,6 +39,12 @@ targets:
         product: SDRModels
       - package: SDRAppPackages
         product: SDRSupport
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseCrashlytics
+      - package: Firebase
+        product: FirebasePerformance
     info:
       path: App/SDRApp/Info.plist
       properties:

@@ -1,6 +1,6 @@
 # iOS RTL-TCP SDR - Implementation Status
 
-Updated: 2026-02-13  
+Updated: 2026-02-15  
 Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 
 ## Legend
@@ -31,9 +31,9 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` Tuning: keypad + steps + digit cursor tap + drag tuning + BFO slider
 - `[x]` Scan list + range scan (dwell/hold/skip/stop)
 - `[x]` Lock Screen controls + Now Playing
-- `[~]` Deep links parser implementat, dar neconectat în lifecycle app
+- `[x]` Deep links end-to-end (`onOpenURL` -> parse -> action dispatch în Radio)
 - `[~]` Accessibility de bază (labels), fără pass complet VoiceOver rotor/Dynamic Type
-- `[ ]` Crash/performance telemetry producție (Firebase)
+- `[x]` Crash/performance telemetry producție (Firebase + fallback local-only)
 
 ## 2) Tech Stack
 
@@ -48,7 +48,7 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` liquid-dsp (resampler + demod FM/SSB)
 - `[~]` Atomics: folosit `Synchronization.Atomic` (nu `swift-atomics` package)
 - `[ ]` `CSV.swift` dependency (se folosește parser custom)
-- `[ ]` Firebase Crashlytics + Firebase Performance
+- `[x]` Firebase Crashlytics + Firebase Performance
 
 ## 3) Networking + Discovery
 
@@ -80,15 +80,15 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` Scan
 - `[x]` Diagnostics
 - `[x]` Settings
-- `[~]` Diagnostics este bun funcțional, dar fără telemetry backend conectat
+- `[x]` Diagnostics funcțional + telemetry backend conectat
 
 ## 6) Telemetry, Quality Gates, Testing
 
 - `[x]` Logging categorii `os.Logger` (Network/DSP/Audio/UI/Scan)
-- `[~]` `PerformanceTrace` există, dar nu e integrat în fluxurile principale
-- `[ ]` Crashlytics non-fatal + crash pipeline
-- `[ ]` Firebase Performance traces (connect/first-audio/retune/DSP block)
-- `[ ]` `TELEMETRY.md`
+- `[x]` `PerformanceTrace` integrat în fluxurile principale + reporter către telemetry backend
+- `[x]` Crashlytics non-fatal + crash pipeline
+- `[x]` Firebase Performance traces (connect/first-audio/retune/DSP block)
+- `[x]` `TELEMETRY.md`
 - `[ ]` Test harness deterministic (rtl_tcp replay)
 - `[ ]` Suite de teste automată pentru scan/reconnect/dsp/audio
 - `[ ]` Documentare rezultate quality gates (60 min/30 min/memory/reconnect<5s)
@@ -98,13 +98,13 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` `ONBOARDING.md`
 - `[x]` `PROTOCOLS.md`
 - `[x]` `DSP_NOTES.md`
-- `[ ]` `TELEMETRY.md`
+- `[x]` `TELEMETRY.md`
 - `[~]` `Tools/mdns_advertiser` există ca folder, dar este gol
 
 ## 8) Backlog Prioritar
 
-1. P0 - Telemetry producție: Firebase Crashlytics + Performance + `TELEMETRY.md`.
-2. P0 - Deep links end-to-end: conectare `DeepLinkHandler` în `onOpenURL`.
+1. [x] P0 - Telemetry producție: Firebase Crashlytics + Performance + `TELEMETRY.md`.
+2. [x] P0 - Deep links end-to-end: conectare `DeepLinkHandler` în `onOpenURL`.
 3. P1 - Radio UX avansat: bandwidth control vizibil + HP/LP audio + AGC toggle explicit.
 4. P1 - Advanced tuner controls: bias-tee, offset tuning, direct sampling capability checks.
 5. P1 - CSV robust parser (`CSV.swift`) sau parser custom corect pentru quoted fields.

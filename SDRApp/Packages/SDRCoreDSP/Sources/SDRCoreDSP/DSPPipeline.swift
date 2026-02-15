@@ -167,6 +167,7 @@ public final class DSPPipeline: @unchecked Sendable {
                 into: complexBuf
             )
             guard sampleCount > 0 else { continue }
+            let processingStart = CFAbsoluteTimeGetCurrent()
 
             if realWork.count != sampleCount {
                 realWork = [Float](repeating: 0, count: sampleCount)
@@ -249,6 +250,19 @@ public final class DSPPipeline: @unchecked Sendable {
                 blockCount = 0
                 lastLogTime = now
             }
+
+            if lastDSPPerfReportTime == 0 || now - lastDSPPerfReportTime >= dspPerfReportInterval {
+                let elapsedMs = (now - processingStart) * 1000
+                PerformanceTrace.reportDuration(
+                    name: .dspBlockProcessing,
+                    durationMs: elapsedMs,
+                    metadata: [
+                        "mode": mode.rawValue,
+                        "sample_rate": String(sampleRate)
+                    ]
+                )
+                lastDSPPerfReportTime = now
+            }
         }
     }
 
@@ -265,6 +279,8 @@ public final class DSPPipeline: @unchecked Sendable {
     private var fftImagSq: [Float] = []
     private var fftShifted: [Float] = []
     private var lastFFTFrameTime: CFAbsoluteTime = 0
+    private var lastDSPPerfReportTime: CFAbsoluteTime = 0
+    private let dspPerfReportInterval: CFTimeInterval = 5.0
 
     public func setFFTSize(_ size: Int) {
         guard size > 0 else { return }

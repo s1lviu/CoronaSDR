@@ -39,6 +39,7 @@ private final class TestConnectionHelper: Sendable {
 public final class RTLTCPConnection: @unchecked Sendable {
     public var state: ConnectionState = .disconnected
     public private(set) var header: RTLTCPHeader?
+    public var onStateChange: ((ConnectionState) -> Void)?
 
     private var connection: NWConnection?
     private var pathMonitor: NWPathMonitor?
@@ -81,13 +82,13 @@ public final class RTLTCPConnection: @unchecked Sendable {
         self.lastPort = port
         self.reconnectPolicy = policy
         self.reconnectAttempt = 0
-        self.state = .connecting
+        setState(.connecting)
         SDRDebug.print("🔌 connectInternal: state=connecting, host=\(host):\(port)")
 
         SDRLogger.network.info("Connecting to \(host):\(port)")
 
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
-            self.state = .failed("Invalid port: \(port)")
+            setState(.failed("Invalid port: \(port)"))
             return
         }
         let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(host), port: nwPort)
@@ -105,15 +106,13 @@ public final class RTLTCPConnection: @unchecked Sendable {
             case .ready:
                 SDRLogger.network.info("TCP connected, reading header")
                 SDRDebug.print("🔌 TCP ready, reading header")
-                DispatchQueue.main.async { self.state = .validatingHeader }
+                self.setState(.validatingHeader)
                 self.readHeader(conn)
             case .failed(let error):
                 SDRLogger.network.error("Connection failed: \(error)")
                 SDRDebug.print("🔌 TCP failed: \(error)")
-                DispatchQueue.main.async {
-                    self.state = .failed(error.localizedDescription)
-                    self.attemptReconnect()
-                }
+                self.setState(.failed(error.localizedDescription))
+                self.attemptReconnect()
             case .waiting(let error):
                 SDRLogger.network.warning("Connection waiting: \(error)")
                 SDRDebug.print("🔌 TCP waiting: \(error)")
@@ -138,9 +137,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
         let conn = connection
         connection = nil
         conn?.cancel()
-        DispatchQueue.main.async { [weak self] in
-            self?.state = .disconnected
-        }
+        setState(.disconnected)
         header = nil
     }
 
@@ -275,16 +272,12 @@ public final class RTLTCPConnection: @unchecked Sendable {
             guard self.connection === conn else { return }
             if let error {
                 SDRLogger.network.error("Header read failed: \(error)")
-                DispatchQueue.main.async {
-                    self.state = .failed("Header read failed: \(error.localizedDescription)")
-                }
+                self.setState(.failed("Header read failed: \(error.localizedDescription)"))
                 return
             }
             guard let data, let header = RTLTCPHeader(data: data), header.isValid else {
                 SDRLogger.network.error("Invalid RTL-TCP header")
-                DispatchQueue.main.async {
-                    self.state = .failed("Invalid server: expected RTL0 header")
-                }
+                self.setState(.failed("Invalid server: expected RTL0 header"))
                 conn.cancel()
                 return
             }
@@ -292,10 +285,8 @@ public final class RTLTCPConnection: @unchecked Sendable {
             SDRLogger.network.info("Header valid: tuner=\(header.tunerType.displayName), gains=\(header.gainCount)")
             SDRDebug.print("🔌 Header valid: \(header.tunerType.displayName), setting state=connected")
             self.header = header
-            DispatchQueue.main.async {
-                self.state = .connected(header)
-                SDRDebug.print("🔌 State set to connected on main thread")
-            }
+            self.setState(.connected(header))
+            SDRDebug.print("🔌 State set to connected on main thread")
             self.reconnectAttempt = 0
             self.reconnectTask = nil
             self.lastThroughputCheck = CFAbsoluteTimeGetCurrent()
@@ -338,19 +329,15 @@ public final class RTLTCPConnection: @unchecked Sendable {
 
             if isComplete {
                 SDRLogger.network.info("Connection completed (server closed)")
-                DispatchQueue.main.async {
-                    self.state = .failed("Server closed connection")
-                    self.attemptReconnect()
-                }
+                self.setState(.failed("Server closed connection"))
+                self.attemptReconnect()
                 return
             }
 
             if let error {
                 SDRLogger.network.error("Receive error: \(error)")
-                DispatchQueue.main.async {
-                    self.state = .failed(error.localizedDescription)
-                    self.attemptReconnect()
-                }
+                self.setState(.failed(error.localizedDescription))
+                self.attemptReconnect()
                 return
             }
 
@@ -395,9 +382,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
 
         SDRLogger.network.info("Reconnecting in \(String(format: "%.1f", delay))s (attempt \(attempt))")
 
-        DispatchQueue.main.async {
-            self.state = .reconnecting(attempt: attempt)
-        }
+        setState(.reconnecting(attempt: attempt))
 
         reconnectTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
@@ -426,5 +411,13 @@ public final class RTLTCPConnection: @unchecked Sendable {
         }
         monitor.start(queue: networkQueue)
         self.pathMonitor = monitor
+    }
+
+    private func setState(_ newState: ConnectionState) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.state = newState
+            self.onStateChange?(newState)
+        }
     }
 }

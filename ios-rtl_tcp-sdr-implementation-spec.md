@@ -71,7 +71,7 @@
 
 ```
 SDRApp/
-  SDRApp.xcodeproj
+  CoronaSDR.xcodeproj
   Packages/
     RTLTCPClientKit/          # networking + protocol parsing + discovery
     SDRCoreDSP/               # DSP pipeline + demod + filters + squelch + AGC

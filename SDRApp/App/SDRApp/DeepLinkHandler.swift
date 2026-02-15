@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import SDRModels
 
 /// Handles deep links via custom URL scheme: coronasdr://
@@ -7,16 +8,17 @@ import SDRModels
 ///   coronasdr://start
 ///   coronasdr://stop
 enum DeepLinkHandler {
-    enum DeepLinkAction {
+    enum DeepLinkAction: Equatable {
         case tune(frequencyHz: Int, mode: DemodMode?)
         case start
         case stop
     }
 
     static func parse(url: URL) -> DeepLinkAction? {
-        guard url.scheme == "coronasdr" else { return nil }
+        guard url.scheme?.lowercased() == "coronasdr" else { return nil }
+        let command = url.host?.lowercased() ?? url.pathComponents.dropFirst().first?.lowercased()
 
-        switch url.host {
+        switch command {
         case "tune":
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             let items = components?.queryItems ?? []
@@ -27,7 +29,7 @@ enum DeepLinkHandler {
             }
 
             let mode = items.first(where: { $0.name == "mode" })?.value.flatMap { raw in
-                DemodMode(rawValue: raw)
+                DemodMode(rawValue: raw.uppercased())
             }
             return .tune(frequencyHz: freq, mode: mode)
 
@@ -40,5 +42,23 @@ enum DeepLinkHandler {
         default:
             return nil
         }
+    }
+}
+
+@Observable
+@MainActor
+final class DeepLinkCoordinator {
+    var pendingAction: DeepLinkHandler.DeepLinkAction?
+    private(set) var lastEventToken: UInt64 = 0
+
+    func handle(url: URL) {
+        guard let action = DeepLinkHandler.parse(url: url) else { return }
+        pendingAction = action
+        lastEventToken &+= 1
+    }
+
+    func consumePendingAction() -> DeepLinkHandler.DeepLinkAction? {
+        defer { pendingAction = nil }
+        return pendingAction
     }
 }
