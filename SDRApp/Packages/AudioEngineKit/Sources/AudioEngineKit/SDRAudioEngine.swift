@@ -1,6 +1,7 @@
 import AVFoundation
 import MediaPlayer
 import Observation
+import Dispatch
 import SDRSupport
 #if canImport(UIKit)
 import UIKit
@@ -10,6 +11,13 @@ import UIKit
 /// Handles audio session, lock screen controls, background playback, and interruptions.
 @Observable
 public final class SDRAudioEngine: @unchecked Sendable {
+    private enum TransitionPhase: Equatable {
+        case idle
+        case fadingOut
+        case mutedWaitingForData
+        case fadingIn
+    }
+
     public var isPlaying: Bool = false
     public var volume: Float = 1.0 {
         didSet { engine.mainMixerNode.outputVolume = volume }
@@ -37,6 +45,15 @@ public final class SDRAudioEngine: @unchecked Sendable {
     @ObservationIgnored private let nowPlayingArtwork: MPMediaItemArtwork?
     private let audioSignalLock = NSLock()
     private var isAudioSignalEventArmed = false
+    private let transitionExecutionLock = NSLock()
+    private let transitionStateLock = NSLock()
+    private let transitionFadeDurationMs: Double = 5.0
+    private let transitionFadeTimeoutMs: Int = 250
+    private var transitionPhase: TransitionPhase = .idle
+    private var transitionFadeOutRemainingSamples: Int = 0
+    private var transitionFadeInRemainingSamples: Int = 0
+    private var transitionFadeOutSemaphore: DispatchSemaphore?
+    private var suppressAudioSignalEvents: Bool = false
 
     // Callbacks for lock screen remote commands
     public var onPlayPause: (() -> Void)?
@@ -83,6 +100,9 @@ public final class SDRAudioEngine: @unchecked Sendable {
         let onAudioSignal: () -> Void = { [weak self] in
             self?.consumeAudioSignalArmIfNeeded()
         }
+        let applyTransitionEnvelope: (UnsafeMutableBufferPointer<Float>, Int) -> Bool = { [weak self] samples, validCount in
+            self?.applyTransitionEnvelope(to: samples, validSampleCount: validCount) ?? true
+        }
         let node = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard let dest = ablPointer.first?.mData?.assumingMemoryBound(to: Float.self) else {
@@ -91,7 +111,8 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
             let destBuf = UnsafeMutableBufferPointer(start: dest, count: Int(frameCount))
             let actual = buffer.read(into: destBuf, count: Int(frameCount))
-            if actual > 0 {
+            let shouldNotifyAudioSignal = applyTransitionEnvelope(destBuf, actual)
+            if actual > 0, shouldNotifyAudioSignal {
                 onAudioSignal()
             }
 
@@ -105,6 +126,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
         try engine.start()
         isPlaying = true
+        resetTransitionState()
         armAudioSignalEvent()
         updateNowPlaying()
 
@@ -124,6 +146,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
         audioSignalLock.lock()
         isAudioSignalEventArmed = false
         audioSignalLock.unlock()
+        resetTransitionState()
         clearNowPlaying()
 
         SDRLogger.audio.info("Audio engine stopped")
@@ -303,6 +326,136 @@ public final class SDRAudioEngine: @unchecked Sendable {
         audioSignalLock.lock()
         isAudioSignalEventArmed = true
         audioSignalLock.unlock()
+    }
+
+    /// Executes a disruptive audio-path transition without clicks:
+    /// fade-out -> transition closure while muted -> fade-in on first resumed audio samples.
+    public func performClickFreeTransition(_ transition: () -> Void) {
+        transitionExecutionLock.lock()
+        defer { transitionExecutionLock.unlock() }
+
+        guard isPlaying else {
+            transition()
+            return
+        }
+
+        let fadeOutSemaphore = DispatchSemaphore(value: 0)
+        transitionStateLock.lock()
+        transitionPhase = .fadingOut
+        transitionFadeOutRemainingSamples = transitionFadeSamples
+        transitionFadeInRemainingSamples = transitionFadeSamples
+        transitionFadeOutSemaphore = fadeOutSemaphore
+        suppressAudioSignalEvents = true
+        transitionStateLock.unlock()
+
+        let timeout = DispatchTime.now() + .milliseconds(transitionFadeTimeoutMs)
+        let waitResult = fadeOutSemaphore.wait(timeout: timeout)
+        if waitResult == .timedOut {
+            SDRLogger.audio.warning("Audio transition fade-out timed out after \(self.transitionFadeTimeoutMs)ms")
+        }
+
+        transition()
+
+        transitionStateLock.lock()
+        transitionPhase = .mutedWaitingForData
+        transitionFadeOutSemaphore = nil
+        suppressAudioSignalEvents = false
+        transitionStateLock.unlock()
+    }
+
+    private var transitionFadeSamples: Int {
+        max(1, AudioFade.fadeSamples(durationMs: transitionFadeDurationMs, sampleRate: sampleRate))
+    }
+
+    private func resetTransitionState() {
+        transitionStateLock.lock()
+        transitionPhase = .idle
+        transitionFadeOutRemainingSamples = 0
+        transitionFadeInRemainingSamples = 0
+        transitionFadeOutSemaphore = nil
+        suppressAudioSignalEvents = false
+        transitionStateLock.unlock()
+    }
+
+    private func applyTransitionEnvelope(
+        to buffer: UnsafeMutableBufferPointer<Float>,
+        validSampleCount: Int
+    ) -> Bool {
+        let totalCount = buffer.count
+        guard totalCount > 0 else { return true }
+
+        let validCount = max(0, min(validSampleCount, totalCount))
+        let fadeSamples = transitionFadeSamples
+        var shouldNotifyAudioSignal = true
+        var semaphoreToSignal: DispatchSemaphore?
+
+        transitionStateLock.lock()
+        shouldNotifyAudioSignal = !suppressAudioSignalEvents
+
+        var phase = transitionPhase
+        var fadeOutRemaining = transitionFadeOutRemainingSamples
+        var fadeInRemaining = transitionFadeInRemainingSamples
+
+        if phase == .mutedWaitingForData, validCount > 0 {
+            phase = .fadingIn
+            fadeInRemaining = fadeSamples
+        }
+
+        if phase != .idle {
+            for idx in 0..<totalCount {
+                switch phase {
+                case .idle:
+                    break
+
+                case .fadingOut:
+                    let gain = max(0, min(1, Float(fadeOutRemaining) / Float(fadeSamples)))
+                    if idx < validCount {
+                        buffer[idx] *= gain
+                    } else {
+                        buffer[idx] = 0
+                    }
+
+                    fadeOutRemaining -= 1
+                    if fadeOutRemaining <= 0 {
+                        phase = .mutedWaitingForData
+                        buffer[idx] = 0
+                        if semaphoreToSignal == nil {
+                            semaphoreToSignal = transitionFadeOutSemaphore
+                        }
+                    }
+
+                case .mutedWaitingForData:
+                    buffer[idx] = 0
+
+                case .fadingIn:
+                    if idx < validCount {
+                        let progressed = fadeSamples - fadeInRemaining
+                        let gain = max(0, min(1, Float(progressed) / Float(fadeSamples)))
+                        buffer[idx] *= gain
+                        fadeInRemaining -= 1
+                        if fadeInRemaining <= 0 {
+                            phase = .idle
+                        }
+                    } else {
+                        buffer[idx] = 0
+                    }
+                }
+            }
+        }
+
+        transitionPhase = phase
+        transitionFadeOutRemainingSamples = max(0, fadeOutRemaining)
+        transitionFadeInRemainingSamples = max(0, fadeInRemaining)
+        if semaphoreToSignal != nil {
+            transitionFadeOutSemaphore = nil
+        }
+        if phase == .idle {
+            suppressAudioSignalEvents = false
+        }
+        transitionStateLock.unlock()
+
+        semaphoreToSignal?.signal()
+        return shouldNotifyAudioSignal
     }
 
     private func consumeAudioSignalArmIfNeeded() {

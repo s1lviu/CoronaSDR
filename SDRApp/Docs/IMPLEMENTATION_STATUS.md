@@ -69,7 +69,7 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[x]` Waterfall Metal cu row updates și scroll shader
 - `[x]` Background audio capability
 - `[x]` Interruption + route change handling
-- `[~]` Fade utilities există, dar nu sunt aplicate explicit la toate tranzițiile retune/mode/rate
+- `[x]` Tranziții click-free aplicate explicit la retune/mode/rate (fade-out + mute + fade-in, plus flush)
 
 ## 5) Screens
 

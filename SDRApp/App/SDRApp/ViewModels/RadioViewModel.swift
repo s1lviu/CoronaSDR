@@ -419,13 +419,30 @@ final class RadioViewModel {
     // MARK: - Tuning
 
     func setFrequency(_ hz: Int) {
+        let didChangeFrequency = hz != frequencyHz
         frequencyHz = hz
-        if isPlaying {
-            beginRetuneTrace(reason: "frequency")
+        guard didChangeFrequency else {
+            updateNowPlaying()
+            updateTelemetryContext()
+            return
         }
-        applyDirectSamplingForCurrentFrequency()
-        connection.setFrequency(UInt32(hz))
-        dspPipeline.resetState()
+
+        let applyRetune = {
+            self.applyDirectSamplingForCurrentFrequency()
+            self.connection.setFrequency(UInt32(hz))
+            self.iqBuffer.flush()
+            self.audioBuffer.flush()
+            self.dspPipeline.resetState()
+        }
+
+        if isPlaying, didChangeFrequency {
+            audioEngine.performClickFreeTransition {
+                self.beginRetuneTrace(reason: "frequency")
+                applyRetune()
+            }
+        } else {
+            applyRetune()
+        }
         updateNowPlaying()
         updateTelemetryContext()
     }
@@ -436,16 +453,26 @@ final class RadioViewModel {
     }
 
     func setMode(_ newMode: DemodMode) {
-        if isPlaying, newMode != mode {
-            beginRetuneTrace(reason: "mode")
-        }
+        let didChangeMode = newMode != mode
         mode = newMode
         stepHz = newMode.defaultStepHz
         bandwidthHz = newMode.defaultBandwidthHz
-        dspPipeline.mode = newMode
-        dspPipeline.bandwidthHz = bandwidthHz
-        dspPipeline.resetState()
-        audioBuffer.flush()
+
+        let applyModeChange = {
+            self.dspPipeline.mode = newMode
+            self.dspPipeline.bandwidthHz = self.bandwidthHz
+            self.dspPipeline.resetState()
+            self.audioBuffer.flush()
+        }
+
+        if isPlaying, didChangeMode {
+            audioEngine.performClickFreeTransition {
+                self.beginRetuneTrace(reason: "mode")
+                applyModeChange()
+            }
+        } else {
+            applyModeChange()
+        }
         updateNowPlaying()
         updateTelemetryContext()
     }
@@ -726,14 +753,25 @@ final class RadioViewModel {
         }()
 
         var dspConfigChanged = false
+        var buffersFlushedInsideSampleRateTransition = false
         if effectiveSampleRate != targetSampleRate {
             effectiveSampleRate = targetSampleRate
             if isPlaying {
-                beginRetuneTrace(reason: "sample_rate")
-            }
-            dspPipeline.setSampleRate(targetSampleRate)
-            if case .connected = connection.state {
-                connection.setSampleRate(UInt32(targetSampleRate))
+                audioEngine.performClickFreeTransition {
+                    self.beginRetuneTrace(reason: "sample_rate")
+                    self.dspPipeline.setSampleRate(targetSampleRate)
+                    if case .connected = self.connection.state {
+                        self.connection.setSampleRate(UInt32(targetSampleRate))
+                    }
+                    self.iqBuffer.flush()
+                    self.audioBuffer.flush()
+                }
+                buffersFlushedInsideSampleRateTransition = true
+            } else {
+                dspPipeline.setSampleRate(targetSampleRate)
+                if case .connected = connection.state {
+                    connection.setSampleRate(UInt32(targetSampleRate))
+                }
             }
             dspConfigChanged = true
         }
@@ -744,7 +782,7 @@ final class RadioViewModel {
             dspConfigChanged = true
         }
 
-        if dspConfigChanged, isPlaying {
+        if dspConfigChanged, isPlaying, !buffersFlushedInsideSampleRateTransition {
             iqBuffer.flush()
             audioBuffer.flush()
         }

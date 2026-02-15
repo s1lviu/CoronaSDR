@@ -1,16 +1,15 @@
 import XCTest
-import SDRModels
 @testable import CoronaSDR
 
 final class DeepLinkHandlerTests: XCTestCase {
     func testParseTuneWithModeIsCaseInsensitive() {
         let url = URL(string: "coronasdr://tune?freq=100000000&mode=wfm")!
         let action = DeepLinkHandler.parse(url: url)
-
-        XCTAssertEqual(
-            action,
-            .tune(frequencyHz: 100_000_000, mode: .wfm)
-        )
+        guard case let .tune(frequencyHz, mode?)? = action else {
+            return XCTFail("Expected tune action with explicit mode")
+        }
+        XCTAssertEqual(frequencyHz, 100_000_000)
+        XCTAssertEqual(mode, .wfm)
     }
 
     func testParseStartAndStop() {
