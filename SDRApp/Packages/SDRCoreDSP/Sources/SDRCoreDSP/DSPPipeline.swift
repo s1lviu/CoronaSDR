@@ -507,12 +507,6 @@ public final class DSPPipeline: @unchecked Sendable {
         }
     }
 
-    private func rebuildFilters() {
-        withPipelineLock {
-            rebuildFiltersLocked()
-        }
-    }
-
     private func rebuildFiltersLocked() {
         let sampleRate = max(250_000, _sampleRate)
         let bandwidth = max(200, _bandwidthHz)

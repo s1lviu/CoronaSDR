@@ -14,9 +14,6 @@ struct StationsView: View {
     @State private var selectedTag: Tag?
     @State private var showAddStation = false
     @State private var showImportExport = false
-    @State private var showingImporter = false
-    @State private var showingExporter = false
-    @State private var exportCSVContent = ""
     @State private var playErrorMessage: String?
 
     var filteredStations: [Station] {

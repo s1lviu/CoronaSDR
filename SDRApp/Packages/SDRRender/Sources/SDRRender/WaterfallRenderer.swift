@@ -305,6 +305,9 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
             let visualScrollOffset = (scrollOffset + Float(rowFraction) / Float(textureHeight)).truncatingRemainder(dividingBy: 1.0)
 
             var uniforms = WaterfallUniforms(scrollOffset: visualScrollOffset, colorScheme: colorScheme.rawValue)
+            // Read back to make shader-bound usage explicit for static analyzers.
+            _ = uniforms.scrollOffset
+            _ = uniforms.colorScheme
             encoder.setFragmentBytes(&uniforms, length: MemoryLayout<WaterfallUniforms>.stride, index: 0)
 
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)

@@ -179,12 +179,6 @@ final class ScanEngine {
 
     // MARK: - Control
 
-    func pause() {
-        state = .paused
-        scanTask?.cancel()
-        scanTask = nil
-    }
-
     func stop() {
         scanTask?.cancel()
         scanTask = nil
