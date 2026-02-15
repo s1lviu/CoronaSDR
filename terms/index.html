@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terms of Use | CoronaSDR</title>
+    <meta name="description" content="Terms of Use for CoronaSDR." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono: ['IBM Plex Mono', 'ui-monospace', 'monospace']
+            }
+          }
+        }
+      };
+    </script>
+    <style type="text/tailwindcss">
+      :root {
+        --bg: #f6faf9;
+        --fg: #112f29;
+        --muted: #5a726c;
+        --line: #cee2dc;
+      }
+
+      body {
+        @apply font-sans antialiased;
+        background: radial-gradient(circle at 5% 15%, #a7f3d0 0%, transparent 28%), var(--bg);
+        color: var(--fg);
+      }
+
+      .card {
+        @apply rounded-2xl border bg-white/90 shadow-sm;
+        border-color: var(--line);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .link {
+        @apply underline decoration-emerald-500/40 underline-offset-4 hover:decoration-emerald-700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mx-auto max-w-3xl px-5 py-8 sm:px-8 sm:py-10">
+      <header class="card flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+        <a href="/" class="text-sm font-semibold">CoronaSDR</a>
+        <nav class="flex items-center gap-4 text-sm">
+          <a class="muted hover:text-black" href="/">Home</a>
+          <a class="muted hover:text-black" href="/privacy/">Privacy</a>
+        </nav>
+      </header>
+
+      <main class="card mt-5 space-y-6 px-5 py-6 sm:px-8 sm:py-8">
+        <section>
+          <h1 class="text-2xl font-bold sm:text-3xl">Terms of Use</h1>
+          <p class="mt-2 text-sm muted">Last updated: February 15, 2026</p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">1. Acceptance of terms</h2>
+          <p>
+            By using CoronaSDR and this website, you agree to these Terms. If you do not agree, do not use the app or website.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">2. Intended use</h2>
+          <p>
+            CoronaSDR is software for receiving and processing SDR streams from servers you configure.
+            You are responsible for lawful and compliant radio usage in your jurisdiction.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">3. Your responsibilities</h2>
+          <ul class="list-disc space-y-1 pl-5 muted">
+            <li>Use only servers and networks you are authorized to access.</li>
+            <li>Do not use the app for illegal interception or unauthorized monitoring.</li>
+            <li>Protect your own device and local network security.</li>
+          </ul>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">4. No emergency or safety-critical use</h2>
+          <p>
+            CoronaSDR is provided for hobby, research, and general listening use. It is not intended for emergency response,
+            life-safety, or mission-critical communications.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">5. Third-party components and services</h2>
+          <p>
+            The app may include third-party libraries and optional diagnostics services (for example Firebase Crashlytics and
+            Firebase Performance). Those services are governed by their own terms and policies.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">6. Warranty disclaimer</h2>
+          <p>
+            CoronaSDR is provided "as is" and "as available" without warranties of any kind, express or implied,
+            including fitness for a particular purpose, accuracy, or uninterrupted availability.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">7. Limitation of liability</h2>
+          <p>
+            To the maximum extent permitted by law, the project owner is not liable for indirect, incidental,
+            special, consequential, or punitive damages arising from use of the app or website.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">8. Changes to these terms</h2>
+          <p>
+            These Terms may be updated from time to time. The updated version is effective from the date shown on this page.
+          </p>
+        </section>
+
+        <section class="space-y-2 text-sm leading-6">
+          <h2 class="text-base font-semibold">9. Contact</h2>
+          <p>
+            For support or terms questions:
+            <a class="link" href="https://www.buymeacoffee.com/silviu" target="_blank" rel="noopener noreferrer">buymeacoffee.com/silviu</a>
+          </p>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

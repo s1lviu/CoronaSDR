@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CoronaSDR | Local-First SDR for iPhone</title>
+    <meta
+      name="description"
+      content="CoronaSDR is an iOS app for connecting to rtl_tcp SDR servers on your local network, with live spectrum, waterfall, and stable audio playback."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))'
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))'
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))'
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))'
+              }
+            },
+            borderRadius: {
+              lg: '0.85rem',
+              md: '0.65rem',
+              sm: '0.45rem'
+            },
+            fontFamily: {
+              sans: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono: ['IBM Plex Mono', 'ui-monospace', 'monospace']
+            },
+            boxShadow: {
+              soft: '0 12px 40px -18px rgba(0, 0, 0, 0.35)'
+            },
+            keyframes: {
+              rise: {
+                '0%': { opacity: '0', transform: 'translateY(14px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' }
+              },
+              pulseGlow: {
+                '0%,100%': { opacity: '0.25' },
+                '50%': { opacity: '0.45' }
+              }
+            },
+            animation: {
+              rise: 'rise 680ms ease-out both',
+              pulseGlow: 'pulseGlow 4s ease-in-out infinite'
+            }
+          }
+        }
+      };
+    </script>
+
+    <style type="text/tailwindcss">
+      :root {
+        --background: 165 20% 98%;
+        --foreground: 168 31% 14%;
+        --card: 0 0% 100%;
+        --card-foreground: 168 31% 14%;
+        --primary: 162 66% 35%;
+        --primary-foreground: 160 40% 98%;
+        --secondary: 165 25% 92%;
+        --secondary-foreground: 168 31% 20%;
+        --muted: 168 23% 94%;
+        --muted-foreground: 168 12% 39%;
+        --border: 166 18% 85%;
+        --input: 166 18% 85%;
+        --ring: 162 66% 35%;
+      }
+
+      @layer base {
+        * {
+          @apply border-border;
+        }
+
+        body {
+          @apply bg-background text-foreground antialiased;
+          background-image:
+            radial-gradient(circle at 10% 0%, rgba(74, 222, 128, 0.12), transparent 35%),
+            radial-gradient(circle at 90% 15%, rgba(45, 212, 191, 0.14), transparent 32%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(243, 249, 247, 0.95) 100%);
+        }
+      }
+
+      @layer components {
+        .chip {
+          @apply inline-flex items-center rounded-full border bg-white/80 px-3 py-1 text-xs font-medium text-muted-foreground;
+        }
+
+        .card-surface {
+          @apply rounded-lg border bg-card/90 p-5 shadow-soft backdrop-blur;
+        }
+
+        .btn-primary {
+          @apply inline-flex items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+        }
+
+        .btn-secondary {
+          @apply inline-flex items-center justify-center rounded-md border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+        }
+
+        .reveal {
+          opacity: 0;
+          transform: translateY(14px);
+          transition: opacity 500ms ease, transform 500ms ease;
+        }
+
+        .reveal.in-view {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mx-auto min-h-screen max-w-6xl px-5 pb-10 pt-6 sm:px-8">
+      <header class="reveal flex items-center justify-between rounded-lg border bg-white/80 px-4 py-3 shadow-soft backdrop-blur sm:px-6">
+        <a href="/" class="flex items-center gap-3">
+          <div class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground">📻</div>
+          <div>
+            <p class="text-sm font-semibold leading-tight">CoronaSDR</p>
+            <p class="font-mono text-[11px] text-muted-foreground">rtl_tcp on iPhone</p>
+          </div>
+        </a>
+        <nav class="flex items-center gap-2 text-sm">
+          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="#features">Features</a>
+          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="#setup">Setup</a>
+          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="/privacy/">Privacy</a>
+          <a class="rounded-md px-3 py-2 hover:bg-secondary" href="/terms/">Terms</a>
+        </nav>
+      </header>
+
+      <main class="mt-10 space-y-10">
+        <section class="grid items-center gap-8 lg:grid-cols-2">
+          <div class="space-y-5">
+            <span class="chip reveal">Local-first SDR listening</span>
+            <h1 class="reveal text-4xl font-bold leading-tight sm:text-5xl">
+              Clean SDR listening from your own
+              <span class="text-primary">rtl_tcp server</span>.
+            </h1>
+            <p class="reveal max-w-xl text-base text-muted-foreground sm:text-lg">
+              CoronaSDR connects your iPhone to an RTL-SDR server on your LAN and gives you live spectrum,
+              waterfall, multiple demod modes, and practical tuning controls without cloud dependency for radio data.
+            </p>
+            <div class="reveal flex flex-wrap gap-3 pt-2">
+              <a class="btn-primary" href="#setup">Quick setup</a>
+            </div>
+            <p class="reveal text-xs text-muted-foreground">
+              Compatible with `rtl_tcp` servers on Raspberry Pi, Linux, or macOS.
+            </p>
+          </div>
+
+          <div class="reveal relative">
+            <div class="pointer-events-none absolute -inset-4 -z-10 rounded-[1.4rem] bg-emerald-300/30 blur-3xl animate-pulseGlow"></div>
+            <div class="card-surface overflow-hidden p-2">
+              <img
+                src="./assets/sdr.png"
+                alt="CoronaSDR screenshot"
+                class="w-full rounded-md border object-cover"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section id="features" class="space-y-4">
+          <div class="reveal flex items-end justify-between gap-3">
+            <h2 class="text-2xl font-bold sm:text-3xl">What you get</h2>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <article class="card-surface reveal">
+              <h3 class="font-semibold">Live RF + DSP</h3>
+              <p class="mt-2 text-sm text-muted-foreground">AM, NFM, WFM, USB, LSB, and CW with squelch, AGC, and DSP filtering.</p>
+            </article>
+            <article class="card-surface reveal">
+              <h3 class="font-semibold">Spectrum + Waterfall</h3>
+              <p class="mt-2 text-sm text-muted-foreground">Real-time FFT and Metal-rendered waterfall with performance profiles.</p>
+            </article>
+            <article class="card-surface reveal">
+              <h3 class="font-semibold">Reliable audio path</h3>
+              <p class="mt-2 text-sm text-muted-foreground">Jitter-aware buffers, reconnect flow, and click-free retune transitions.</p>
+            </article>
+            <article class="card-surface reveal">
+              <h3 class="font-semibold">Station memory</h3>
+              <p class="mt-2 text-sm text-muted-foreground">Favorites, tags, and CSV/TSV import/export stored on device.</p>
+            </article>
+            <article class="card-surface reveal">
+              <h3 class="font-semibold">Advanced tuner controls</h3>
+              <p class="mt-2 text-sm text-muted-foreground">PPM, direct sampling, offset tuning, and bias-tee (hardware/server dependent).</p>
+            </article>
+            <article class="card-surface reveal">
+              <h3 class="font-semibold">Diagnostics</h3>
+              <p class="mt-2 text-sm text-muted-foreground">Throughput, buffer health, and performance traces for troubleshooting.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="setup" class="card-surface reveal">
+          <h2 class="text-2xl font-bold">Quick setup</h2>
+          <p class="mt-2 text-sm text-muted-foreground">You need an RTL-SDR dongle and an `rtl_tcp` server reachable from your phone on the same LAN.</p>
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-md border bg-white p-4">
+              <p class="font-mono text-xs text-muted-foreground">1</p>
+              <p class="mt-1 text-sm">Run `rtl_tcp -a 0.0.0.0 -p 1234` on your server.</p>
+            </div>
+            <div class="rounded-md border bg-white p-4">
+              <p class="font-mono text-xs text-muted-foreground">2</p>
+              <p class="mt-1 text-sm">Open CoronaSDR and enter server host + port.</p>
+            </div>
+            <div class="rounded-md border bg-white p-4">
+              <p class="font-mono text-xs text-muted-foreground">3</p>
+              <p class="mt-1 text-sm">Test connection, then tune and listen.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="reveal mt-12 rounded-lg border bg-white/80 px-5 py-4 text-xs text-muted-foreground shadow-soft backdrop-blur">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <span id="year"></span> CoronaSDR. Built for local-network SDR listening on iOS.
+          </p>
+          <div class="flex flex-wrap items-center gap-4">
+            <a class="hover:text-foreground" href="/privacy/">Privacy</a>
+            <a class="hover:text-foreground" href="/terms/">Terms</a>
+            <a
+              class="opacity-80 transition hover:opacity-100 hover:text-foreground"
+              href="https://www.buymeacoffee.com/silviu"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Support this project on Buy Me a Coffee"
+              >Support the project</a
+            >
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      const reveals = document.querySelectorAll('.reveal');
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.12 }
+      );
+
+      reveals.forEach((el, index) => {
+        el.style.transitionDelay = `${Math.min(index * 35, 250)}ms`;
+        observer.observe(el);
+      });
+    </script>
+  </body>
+</html>
