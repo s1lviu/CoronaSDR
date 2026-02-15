@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,7 @@
 		2F25DD1DDE53B1CEA55CD3A7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = B63CF84D09D95EFDF91453F3 /* GoogleService-Info.plist */; };
 		32C1EF701ADD5C6E69628B45 /* ConnectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B59A687F723120DCCD38ED5 /* ConnectionSheet.swift */; };
 		3359A6D117DB1B6A138EA7DA /* AppIcon60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 527E468E8EBC22C438C03A89 /* AppIcon60x60@2x.png */; };
+		3F10D1B10CE4E7BD05B446B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */; };
 		4BDF8185D6B67A8C35719E1D /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC7DDB76A7DC51532C9B36D /* ScanView.swift */; };
 		55421875F4F708985508453E /* RadioViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B903E9DB5D8272DC08C3F8A5 /* RadioViewModel.swift */; };
 		556A08BF9A567D43C6190694 /* StationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900250F99F9EBEEC55B043DB /* StationsView.swift */; };
@@ -70,7 +71,7 @@
 		55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IQRingBufferTests.swift; sourceTree = "<group>"; };
 		565BB40C80E668A8E367BE28 /* RFControlsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFControlsTests.swift; sourceTree = "<group>"; };
 		5C7E5486B627308AA580B3FA /* AppIcon60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon60x60@3x.png"; sourceTree = "<group>"; };
-		67EB21079C4468171086D34E /* CoronaSDR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoronaSDR.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		67EB21079C4468171086D34E /* CoronaSDR.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CoronaSDR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6CFC38E087C49B1FFA363F1C /* ImportExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportExportSheet.swift; sourceTree = "<group>"; };
 		70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDRAppMain.swift; sourceTree = "<group>"; };
 		7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandlerTests.swift; sourceTree = "<group>"; };
@@ -78,6 +79,7 @@
 		900250F99F9EBEEC55B043DB /* StationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationsView.swift; sourceTree = "<group>"; };
 		A0A488ACFE29F4CC1ACDDDBD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon83.5x83.5@2x.png"; sourceTree = "<group>"; };
+		B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B63CF84D09D95EFDF91453F3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		B903E9DB5D8272DC08C3F8A5 /* RadioViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioViewModel.swift; sourceTree = "<group>"; };
 		C1BCC6BA54AA9D77D3C3DFBB /* CoronaSDRTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoronaSDRTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -223,6 +225,7 @@
 				43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */,
 				4ACE8830C5D0667D4F0603EF /* AppIcon76x76@2x.png */,
 				AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */,
+				B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */,
 				B63CF84D09D95EFDF91453F3 /* GoogleService-Info.plist */,
 			);
 			path = Resources;
@@ -313,6 +316,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					0A465B18A70006CD09ACA9F9 = {
+						DevelopmentTeam = DDJCP893KF;
 						ProvisioningStyle = Automatic;
 					};
 					71254B783638C6D0FE798B0B = {
@@ -334,6 +338,7 @@
 				B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				0EE6404CD2A0314F0B28A61F /* XCLocalSwiftPackageReference "." */,
 			);
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -354,6 +359,7 @@
 				9555334D9074956824F792FD /* AppIcon76x76.png in Resources */,
 				ED53BC5EC0A0EB4C48FDF55F /* AppIcon76x76@2x.png in Resources */,
 				B5FB6385913993F9E1D5ADFC /* AppIcon83.5x83.5@2x.png in Resources */,
+				3F10D1B10CE4E7BD05B446B4 /* Assets.xcassets in Resources */,
 				2F25DD1DDE53B1CEA55CD3A7 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
