@@ -3,6 +3,8 @@ import SDRModels
 
 struct SettingsView: View {
     @Environment(SettingsStore.self) private var settings
+    private let landingPageURL = URL(string: "https://coronasdr.pages.dev/")!
+    private let issuesURL = URL(string: "https://github.com/s1lviu/CoronaSDR/issues")!
 
     var body: some View {
         @Bindable var settings = settings
@@ -109,13 +111,60 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                        Text(appVersion)
                             .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text("Build")
+                        Spacer()
+                        Text(appBuild)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("The app was built by Silviu YO6SAY for the radio community.")
+                        Text("Free to use, with updates and support provided on a best-effort basis.")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    Link(destination: landingPageURL) {
+                        HStack {
+                            Text("Project Website")
+                            Spacer()
+                            Text("coronasdr.pages.dev")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+
+                    Link(destination: issuesURL) {
+                        HStack {
+                            Text("Issues")
+                            Spacer()
+                            Text("github.com/s1lviu/CoronaSDR/issues")
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                 }
 
             }
             .navigationTitle("Settings")
         }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    private var appBuild: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
     }
 }
