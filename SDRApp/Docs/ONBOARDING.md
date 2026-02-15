@@ -58,28 +58,6 @@ sudo systemctl enable rtl_tcp
 sudo systemctl start rtl_tcp
 ```
 
-## Bonjour/mDNS Discovery (Optional)
-
-To enable automatic discovery from the iOS app, advertise the service via Avahi.
-
-Create `/etc/avahi/services/rtltcp.service`:
-
-```xml
-<?xml version="1.0" standalone='no'?>
-<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
-<service-group>
-  <name>RTL-SDR Server</name>
-  <service>
-    <type>_rtltcp._tcp</type>
-    <port>1234</port>
-  </service>
-</service-group>
-```
-
-```bash
-sudo systemctl restart avahi-daemon
-```
-
 ## Network Recommendations
 
 - **Wired Ethernet** for the server provides the most stable throughput

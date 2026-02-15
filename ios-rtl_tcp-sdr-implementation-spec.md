@@ -51,7 +51,7 @@
 ### 2.1 Apple Frameworks (obligatorii)
 - **SwiftUI** + **Observation** (iOS 18)
 - **SwiftData** (persistence)
-- **Network.framework** (TCP: `NWConnection`; discovery `NWBrowser`)
+- **Network.framework** (TCP: `NWConnection`)
 - **Accelerate (vDSP/vForce)** (FFT + vector math)
 - **AVFoundation** (`AVAudioEngine`, `AVAudioSession`, `AVAudioConverter`)
 - **Metal / MetalKit** (waterfall render performant)
@@ -135,17 +135,14 @@ SDRApp/
 
 ---
 
-## 5) Networking + Discovery
+## 5) Networking
 
 ### 5.1 Local Network Permissions
 - `NSLocalNetworkUsageDescription`: mesaj clar “Connect to SDR server on your local network”.
-- `NSBonjourServices`: `_rtltcp._tcp`, `_hfp._tcp`, `_rsp._tcp` (extensibil).
 
-### 5.2 Discovery (LAN)
-- `NWBrowser` browse Bonjour services:
-  - prefer `_rtltcp._tcp` (custom)
-  - fallback manual add: IP + port.
-- Provide `mdns_advertiser` docs for Raspberry Pi (Avahi service file).
+### 5.2 Manual server setup
+- Conexiunea se configurează manual: `host/IP + port`.
+- Nu se folosește browsing Bonjour/mDNS în aplicație.
 
 ### 5.3 TCP Streaming
 - Use `NWConnection` with:
@@ -400,11 +397,10 @@ Performance: scanning retune must flush buffers and fade audio to avoid clicks.
 3) Add Crashlytics + Firebase Performance + os.Logger
 
 ### Step B — Networking
-1) Implement discovery `NWBrowser`
-2) Implement `RTLTCPConnection` with handshake validation
-3) Implement command writer (freq, rate, gain, ppm)
-4) Implement `IQRingBuffer`
-5) Implement reconnect/backoff + path monitor
+1) Implement `RTLTCPConnection` with handshake validation
+2) Implement command writer (freq, rate, gain, ppm)
+3) Implement `IQRingBuffer`
+4) Implement reconnect/backoff + path monitor
 
 ### Step C — Audio Engine
 1) Implement `AudioRingBuffer`

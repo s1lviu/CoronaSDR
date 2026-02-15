@@ -52,12 +52,6 @@
 			</array>
 		</dict>
 	</dict>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_rtltcp._tcp</string>
-		<string>_hfp._tcp</string>
-		<string>_rsp._tcp</string>
-	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Connect to SDR server on your local network</string>
 	<key>UIBackgroundModes</key>

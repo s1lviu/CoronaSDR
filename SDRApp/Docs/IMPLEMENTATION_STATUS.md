@@ -39,7 +39,7 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 
 - `[x]` SwiftUI + Observation
 - `[x]` SwiftData
-- `[x]` Network.framework (`NWConnection`, `NWBrowser`, `NWPathMonitor`)
+- `[x]` Network.framework (`NWConnection`, `NWPathMonitor`)
 - `[x]` Accelerate (vDSP)
 - `[x]` AVFoundation audio engine
 - `[x]` Metal waterfall
@@ -50,15 +50,14 @@ Reference spec: `ios-rtl_tcp-sdr-implementation-spec.md`
 - `[ ]` `CSV.swift` dependency (se folosește parser custom)
 - `[x]` Firebase Crashlytics + Firebase Performance
 
-## 3) Networking + Discovery
+## 3) Networking
 
-- `[x]` Local network permissions + Bonjour services în `Info.plist`
-- `[x]` Discovery Bonjour + manual host/port
+- `[x]` Local network permission în `Info.plist`
+- `[x]` Manual host/port workflow
 - `[x]` TCP stream loop + separare de DSP
 - `[x]` Reconnect exponential backoff + jitter
 - `[x]` `NWPathMonitor` pentru rețea
 - `[x]` Flush + settle window la retune/rate change
-- `[~]` Discovery folosit în UX doar pe `_rtltcp._tcp` (nu workflow complet multi-protocol)
 
 ## 4) DSP / Audio / Rendering
 
