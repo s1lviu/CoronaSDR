@@ -107,6 +107,11 @@ final class RadioViewModel {
     private var lastWaterfallRow: [Float] = []
     private var powerModeObserver: NSObjectProtocol?
     private var thermalStateObserver: NSObjectProtocol?
+    private var shouldStartListeningOnConnect: Bool = false
+    private var connectTrace: PerformanceTrace?
+    private var firstAudioTrace: PerformanceTrace?
+    private var pendingRetuneTrace: PerformanceTrace?
+    private var lastSevereAudioUnderrunAt: CFAbsoluteTime = 0
 
     init() {
         connection = RTLTCPConnection(iqBuffer: iqBuffer)
@@ -134,6 +139,15 @@ final class RadioViewModel {
         }
         audioEngine.onPreviousStation = { [weak self] in
             self?.stepFrequency(up: false)
+        }
+        audioEngine.onFirstAudioFrame = { [weak self] in
+            self?.handleFirstAudioFrame()
+        }
+
+        connection.onStateChange = { [weak self] state in
+            Task { @MainActor [weak self] in
+                self?.handleConnectionStateChange(state)
+            }
         }
 
         // Create Metal renderer
@@ -163,9 +177,15 @@ final class RadioViewModel {
         }
 
         updateFFTUITimerState()
+        updateTelemetryContext()
     }
 
     @MainActor deinit {
+        cancelConnectTrace()
+        cancelFirstAudioTrace()
+        cancelPendingRetuneTrace()
+        connection.onStateChange = nil
+        audioEngine.onFirstAudioFrame = nil
         diagnosticsTimer?.invalidate()
         fftDisplayLink?.invalidate()
         if let powerModeObserver {
@@ -180,6 +200,7 @@ final class RadioViewModel {
 
     func connect(host: String, port: UInt16) {
         SDRDebug.print("📻 RadioViewModel.connect(\(host):\(port))")
+        startConnectTrace()
         connection.connect(host: host, port: port)
         updateDiagnosticsTimerState()
     }
@@ -198,6 +219,8 @@ final class RadioViewModel {
     }
 
     func disconnect() {
+        shouldStartListeningOnConnect = false
+        cancelConnectTrace()
         stopListening()
         connection.disconnect()
         updateDiagnosticsTimerState()
@@ -226,12 +249,15 @@ final class RadioViewModel {
     // MARK: - Listening
 
     func startListening() {
+        guard !isPlaying else { return }
         SDRDebug.print("📻 startListening called, connection.state=\(connection.state)")
         guard case .connected = connection.state else {
             SDRDebug.print("📻 startListening: NOT connected, aborting")
             return
         }
         SDRDebug.print("📻 startListening: connected, proceeding")
+        shouldStartListeningOnConnect = false
+        beginFirstAudioTrace()
 
         // Send initial commands
         applyDirectSamplingForCurrentFrequency()
@@ -255,9 +281,19 @@ final class RadioViewModel {
         // Start audio
         do {
             try audioEngine.configureSession()
+            audioEngine.armAudioSignalEvent()
             try audioEngine.start()
         } catch {
             SDRLogger.audio.error("Failed to start audio: \(error)")
+            TelemetryService.shared.recordNonFatal(
+                kind: "audio_start_failed",
+                message: error.localizedDescription,
+                metadata: [
+                    "mode": mode.rawValue,
+                    "sample_rate": String(dspPipeline.sampleRate)
+                ]
+            )
+            cancelFirstAudioTrace()
             return
         }
 
@@ -272,6 +308,7 @@ final class RadioViewModel {
         updateDiagnosticsTimerState()
         updateFFTUITimerState()
         updateNowPlaying()
+        updateTelemetryContext()
     }
 
     func setAppActive(_ isActive: Bool) {
@@ -290,6 +327,9 @@ final class RadioViewModel {
     }
 
     func stopListening() {
+        shouldStartListeningOnConnect = false
+        cancelFirstAudioTrace()
+        cancelPendingRetuneTrace()
         scanEngine.stop()
         dspPipeline.stop()
         audioEngine.stop()
@@ -303,6 +343,17 @@ final class RadioViewModel {
         fftMailbox.clear()
         lastWaterfallRow.removeAll(keepingCapacity: true)
         resetNetworkQualityState(hint: "Idle")
+    }
+
+    func requestStartListeningWhenConnected() {
+        shouldStartListeningOnConnect = true
+        if case .connected = connection.state {
+            startListening()
+        }
+    }
+
+    func cancelPendingStartListening() {
+        shouldStartListeningOnConnect = false
     }
 
     // MARK: - Scan
@@ -357,10 +408,14 @@ final class RadioViewModel {
 
     func setFrequency(_ hz: Int) {
         frequencyHz = hz
+        if isPlaying {
+            beginRetuneTrace(reason: "frequency")
+        }
         applyDirectSamplingForCurrentFrequency()
         connection.setFrequency(UInt32(hz))
         dspPipeline.resetState()
         updateNowPlaying()
+        updateTelemetryContext()
     }
 
     func stepFrequency(up: Bool) {
@@ -369,6 +424,9 @@ final class RadioViewModel {
     }
 
     func setMode(_ newMode: DemodMode) {
+        if isPlaying, newMode != mode {
+            beginRetuneTrace(reason: "mode")
+        }
         mode = newMode
         stepHz = newMode.defaultStepHz
         bandwidthHz = newMode.defaultBandwidthHz
@@ -377,6 +435,7 @@ final class RadioViewModel {
         dspPipeline.resetState()
         audioBuffer.flush()
         updateNowPlaying()
+        updateTelemetryContext()
     }
 
     func setBandwidth(_ hz: Int) {
@@ -424,6 +483,7 @@ final class RadioViewModel {
         preferredFFTSize = profile.fftSize
         preferredUIFPS = profile.uiFps
         applyPerformancePolicy()
+        updateTelemetryContext()
     }
 
     func applyWaterfallColorScheme(_ schemeName: String) {
@@ -615,6 +675,9 @@ final class RadioViewModel {
         var dspConfigChanged = false
         if effectiveSampleRate != targetSampleRate {
             effectiveSampleRate = targetSampleRate
+            if isPlaying {
+                beginRetuneTrace(reason: "sample_rate")
+            }
             dspPipeline.setSampleRate(targetSampleRate)
             if case .connected = connection.state {
                 connection.setSampleRate(UInt32(targetSampleRate))
@@ -774,6 +837,10 @@ final class RadioViewModel {
                 networkQualityHint = "Good"
             }
         }
+
+        if hadAudioUnderrun && lowAudioHeadroomCritical {
+            reportSevereAudioUnderrunIfNeeded()
+        }
     }
 
     private func resetNetworkQualityState(hint: String) {
@@ -811,5 +878,127 @@ final class RadioViewModel {
         } else {
             return "\(hz) Hz"
         }
+    }
+
+    private func handleConnectionStateChange(_ newState: ConnectionState) {
+        connectionState = newState
+        if case .connected = newState {
+            isConnected = true
+            completeConnectTrace()
+
+            if shouldStartListeningOnConnect {
+                shouldStartListeningOnConnect = false
+                startListening()
+            }
+        } else {
+            isConnected = false
+            if case .disconnected = newState {
+                cancelConnectTrace()
+            }
+        }
+
+        if case .failed(let message) = newState {
+            cancelConnectTrace()
+            TelemetryService.shared.recordNonFatal(
+                kind: "network_connection_failed",
+                message: message,
+                metadata: ["state": "failed"]
+            )
+        }
+        updateDiagnosticsTimerState()
+    }
+
+    private func handleFirstAudioFrame() {
+        completeFirstAudioTrace()
+        completePendingRetuneTrace()
+    }
+
+    private func startConnectTrace() {
+        cancelConnectTrace()
+        connectTrace = PerformanceTrace(
+            name: .connectLatency,
+            metadata: ["protocol": SDRProtocol.rtlTcp.rawValue]
+        )
+        connectTrace?.start()
+    }
+
+    private func beginFirstAudioTrace() {
+        cancelFirstAudioTrace()
+        firstAudioTrace = PerformanceTrace(
+            name: .firstAudioLatency,
+            metadata: [
+                "mode": mode.rawValue,
+                "sample_rate": String(dspPipeline.sampleRate)
+            ]
+        )
+        firstAudioTrace?.start()
+    }
+
+    private func beginRetuneTrace(reason: String) {
+        cancelPendingRetuneTrace()
+        pendingRetuneTrace = PerformanceTrace(
+            name: .retuneLatency,
+            metadata: [
+                "reason": reason,
+                "mode": mode.rawValue,
+                "sample_rate": String(dspPipeline.sampleRate)
+            ]
+        )
+        pendingRetuneTrace?.start()
+        audioEngine.armAudioSignalEvent()
+    }
+
+    private func completeConnectTrace() {
+        connectTrace?.stop()
+        connectTrace = nil
+    }
+
+    private func cancelConnectTrace() {
+        connectTrace?.cancel()
+        connectTrace = nil
+    }
+
+    private func completeFirstAudioTrace() {
+        firstAudioTrace?.stop()
+        firstAudioTrace = nil
+    }
+
+    private func cancelFirstAudioTrace() {
+        firstAudioTrace?.cancel()
+        firstAudioTrace = nil
+    }
+
+    private func completePendingRetuneTrace() {
+        pendingRetuneTrace?.stop()
+        pendingRetuneTrace = nil
+    }
+
+    private func cancelPendingRetuneTrace() {
+        pendingRetuneTrace?.cancel()
+        pendingRetuneTrace = nil
+    }
+
+    private func updateTelemetryContext() {
+        TelemetryService.shared.updateRuntimeContext(
+            mode: mode,
+            sampleRate: dspPipeline.sampleRate,
+            protocolType: .rtlTcp
+        )
+    }
+
+    private func reportSevereAudioUnderrunIfNeeded() {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastSevereAudioUnderrunAt >= 30 else { return }
+        lastSevereAudioUnderrunAt = now
+        TelemetryService.shared.recordNonFatal(
+            kind: "audio_underrun_severe",
+            message: "Audio underrun with critically low headroom",
+            metadata: [
+                "audio_headroom_ms": String(format: "%.1f", audioHeadroomMs),
+                "audio_fill_pct": String(format: "%.1f", audioBufferFill * 100),
+                "mode": mode.rawValue,
+                "sample_rate": String(dspPipeline.sampleRate)
+            ]
+        )
     }
 }

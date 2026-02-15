@@ -50,15 +50,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Diagnostics") {
-                    Toggle("Debug Logs", isOn: $settings.debugLogsEnabled)
-                        .accessibilityLabel("Enable debug logging")
-
-                    Text("Enable only while troubleshooting; can impact performance.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
                 Section("About") {
                     HStack {
                         Text("Version")

@@ -33,9 +33,10 @@ TEAM_ID=<YOUR_TEAM_ID> CODE_SIGN_IDENTITY="Apple Development" ./build.sh build
 
 ## Open in Xcode
 
-Open `SDRApp/SDRApp.xcodeproj` and run target `SDRApp` on a physical device.
+Open `SDRApp/CoronaSDR.xcodeproj` and run target `CoronaSDR` on a physical device.
 
 ## Notes
 
 - `CLiquidDSP/lib/libliquid.a` is a local static dependency used by `SDRCoreDSP`.
 - If you need to rebuild it, use `SDRApp/Tools/build_liquid_ios.sh`.
+- Firebase local config is not committed: copy `SDRApp/App/SDRApp/Resources/GoogleService-Info.plist.example` to `SDRApp/App/SDRApp/Resources/GoogleService-Info.plist` for local Firebase upload.

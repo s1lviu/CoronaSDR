@@ -78,12 +78,6 @@ public final class SettingsStore {
         didSet { defaults.set(deemphasis, forKey: "deemphasis") }
     }
 
-    // MARK: - Debug
-
-    public var debugLogsEnabled: Bool {
-        didSet { defaults.set(debugLogsEnabled, forKey: "debugLogsEnabled") }
-    }
-
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
@@ -101,6 +95,5 @@ public final class SettingsStore {
         self.selectedSampleProfileLabel = defaults.string(forKey: "selectedSampleProfileLabel") ?? "Low"
         self.waterfallColorScheme = defaults.string(forKey: "waterfallColorScheme") ?? "classic"
         self.deemphasis = defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75
-        self.debugLogsEnabled = defaults.bool(forKey: "debugLogsEnabled")
     }
 }

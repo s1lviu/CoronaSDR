@@ -35,11 +35,14 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private var mediaServicesResetObserver: NSObjectProtocol?
     private var remoteCommandsConfigured: Bool = false
     @ObservationIgnored private let nowPlayingArtwork: MPMediaItemArtwork?
+    private let audioSignalLock = NSLock()
+    private var isAudioSignalEventArmed = false
 
     // Callbacks for lock screen remote commands
     public var onPlayPause: (() -> Void)?
     public var onNextStation: (() -> Void)?
     public var onPreviousStation: (() -> Void)?
+    public var onFirstAudioFrame: (() -> Void)?
 
     public init(audioBuffer: AudioRingBuffer) {
         self.audioBuffer = audioBuffer
@@ -77,6 +80,9 @@ public final class SDRAudioEngine: @unchecked Sendable {
         }
 
         let buffer = self.audioBuffer
+        let onAudioSignal: () -> Void = { [weak self] in
+            self?.consumeAudioSignalArmIfNeeded()
+        }
         let node = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
             guard let dest = ablPointer.first?.mData?.assumingMemoryBound(to: Float.self) else {
@@ -84,7 +90,10 @@ public final class SDRAudioEngine: @unchecked Sendable {
             }
 
             let destBuf = UnsafeMutableBufferPointer(start: dest, count: Int(frameCount))
-            _ = buffer.read(into: destBuf, count: Int(frameCount))
+            let actual = buffer.read(into: destBuf, count: Int(frameCount))
+            if actual > 0 {
+                onAudioSignal()
+            }
 
             return noErr
         }
@@ -96,6 +105,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
         try engine.start()
         isPlaying = true
+        armAudioSignalEvent()
         updateNowPlaying()
 
         SDRLogger.audio.info("Audio engine started")
@@ -111,6 +121,9 @@ public final class SDRAudioEngine: @unchecked Sendable {
             self.sourceNode = nil
         }
         isPlaying = false
+        audioSignalLock.lock()
+        isAudioSignalEventArmed = false
+        audioSignalLock.unlock()
         clearNowPlaying()
 
         SDRLogger.audio.info("Audio engine stopped")
@@ -283,6 +296,28 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
     private func clearNowPlaying() {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    /// Arms a one-shot callback that fires when the next non-silent render callback pulls samples.
+    public func armAudioSignalEvent() {
+        audioSignalLock.lock()
+        isAudioSignalEventArmed = true
+        audioSignalLock.unlock()
+    }
+
+    private func consumeAudioSignalArmIfNeeded() {
+        var shouldFire = false
+        audioSignalLock.lock()
+        if isAudioSignalEventArmed {
+            isAudioSignalEventArmed = false
+            shouldFire = true
+        }
+        audioSignalLock.unlock()
+
+        guard shouldFire else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.onFirstAudioFrame?()
+        }
     }
 
     private static func loadNowPlayingArtwork() -> MPMediaItemArtwork? {

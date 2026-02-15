@@ -4,6 +4,7 @@ import SDRSupport
 
 struct MainTabView: View {
     @Environment(SettingsStore.self) private var settings
+    @Environment(DeepLinkCoordinator.self) private var deepLinkCoordinator
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = 0
     @State private var viewModel = RadioViewModel()
@@ -47,6 +48,7 @@ struct MainTabView: View {
             if scenePhase == .active {
                 attemptAutoReconnectIfNeeded()
             }
+            processPendingDeepLinkIfNeeded()
         }
         .onChange(of: selectedTab) { _, newValue in
             viewModel.setRadioTabVisible(newValue == 0 && scenePhase == .active)
@@ -67,8 +69,8 @@ struct MainTabView: View {
         .onChange(of: settings.deemphasis) { _, newValue in
             viewModel.applyDeemphasis(newValue)
         }
-        .onChange(of: settings.debugLogsEnabled) { _, isEnabled in
-            SDRDebug.setEnabled(isEnabled)
+        .onChange(of: deepLinkCoordinator.lastEventToken) { _, _ in
+            processPendingDeepLinkIfNeeded()
         }
     }
 
@@ -80,7 +82,6 @@ struct MainTabView: View {
         viewModel.applySampleProfile(label: settings.selectedSampleProfileLabel)
         viewModel.applyWaterfallColorScheme(settings.waterfallColorScheme)
         viewModel.applyDeemphasis(settings.deemphasis)
-        SDRDebug.setEnabled(settings.debugLogsEnabled)
     }
 
     private func attemptAutoReconnectIfNeeded() {
@@ -88,5 +89,28 @@ struct MainTabView: View {
             host: settings.lastServerHost,
             port: UInt16(settings.lastServerPort)
         )
+    }
+
+    private func processPendingDeepLinkIfNeeded() {
+        guard let action = deepLinkCoordinator.consumePendingAction() else { return }
+        selectedTab = 0
+
+        switch action {
+        case .tune(let frequencyHz, let mode):
+            if let mode {
+                viewModel.setMode(mode)
+            }
+            viewModel.setFrequency(max(1_000, frequencyHz))
+            viewModel.requestStartListeningWhenConnected()
+            attemptAutoReconnectIfNeeded()
+
+        case .start:
+            viewModel.requestStartListeningWhenConnected()
+            attemptAutoReconnectIfNeeded()
+
+        case .stop:
+            viewModel.cancelPendingStartListening()
+            viewModel.stopListening()
+        }
     }
 }

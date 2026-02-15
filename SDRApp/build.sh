@@ -14,16 +14,30 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build"
-APP_PATH="${BUILD_DIR}/Debug-iphoneos/CoronaSDR.app"
-APP_PROJECT="${PROJECT_DIR}/SDRApp.xcodeproj"
+APP_PATH="${BUILD_DIR}/DerivedData/Build/Products/Debug-iphoneos/CoronaSDR.app"
 GENERATED_PROJECT="${PROJECT_DIR}/CoronaSDR.xcodeproj"
 BUNDLE_ID="yo6say.coronasdr"
 TEAM_ID="DDJCP893KF"
 CRASH_DIR="${PROJECT_DIR}/CrashLogs"
+XCODEGEN_INPUT_STAMP="${PROJECT_DIR}/.xcodegen_inputs.sha256"
+
+project_inputs_fingerprint() {
+    (
+        cd "$PROJECT_DIR"
+        {
+            printf '%s\n' "project.yml"
+            find App/SDRApp Packages Tests -type f \
+                \( -name "*.swift" -o -name "*.metal" -o -name "*.plist" -o -name "*.c" -o -name "*.h" -o -name "*.m" -o -name "*.mm" \) \
+                -print
+        } | LC_ALL=C sort | shasum -a 256 | awk '{print $1}'
+    )
+}
 
 ensure_generated_project() {
     local spec_file="${PROJECT_DIR}/project.yml"
     local pbxproj_file="${GENERATED_PROJECT}/project.pbxproj"
+    local current_fingerprint
+    local previous_fingerprint=""
 
     if ! command -v xcodegen >/dev/null 2>&1; then
         echo "ERROR: xcodegen is required to generate test scheme/project from project.yml." >&2
@@ -31,9 +45,17 @@ ensure_generated_project() {
         exit 1
     fi
 
-    if [ ! -f "$pbxproj_file" ] || [ "$spec_file" -nt "$pbxproj_file" ]; then
+    current_fingerprint="$(project_inputs_fingerprint)"
+    if [ -f "$XCODEGEN_INPUT_STAMP" ]; then
+        previous_fingerprint="$(cat "$XCODEGEN_INPUT_STAMP")"
+    fi
+
+    if [ ! -f "$pbxproj_file" ] || [ "$spec_file" -nt "$pbxproj_file" ] || [ "$current_fingerprint" != "$previous_fingerprint" ]; then
         echo "=== Generating Xcode project from project.yml ==="
         (cd "$PROJECT_DIR" && xcodegen generate)
+        printf '%s\n' "$current_fingerprint" > "$XCODEGEN_INPUT_STAMP"
+    else
+        echo "=== Using existing CoronaSDR.xcodeproj (no project structure changes) ==="
     fi
 }
 
@@ -72,36 +94,31 @@ get_test_destination_id() {
     echo "$destination_id"
 }
 
-get_build_project() {
-    if [ -d "$APP_PROJECT" ]; then
-        echo "$APP_PROJECT"
-    elif [ -d "$GENERATED_PROJECT" ]; then
-        echo "$GENERATED_PROJECT"
-    else
-        echo "ERROR: No Xcode project found for app build." >&2
-        exit 1
-    fi
-}
-
 do_build() {
-    local build_project
-    build_project=$(get_build_project)
+    ensure_generated_project
 
     echo "=== Building CoronaSDR ==="
     cd "$PROJECT_DIR"
     mkdir -p "$BUILD_DIR"
+    local derived_data_path="${BUILD_DIR}/DerivedData"
+    local source_packages_path="${BUILD_DIR}/SourcePackages"
+    local package_cache_path="${BUILD_DIR}/PackageCache"
+    mkdir -p "$derived_data_path" "$source_packages_path" "$package_cache_path"
 
     xcodebuild \
-        -project "$build_project" \
-        -target CoronaSDR \
+        -project "$GENERATED_PROJECT" \
+        -scheme CoronaSDR \
         -sdk iphoneos \
         -arch arm64 \
+        -derivedDataPath "$derived_data_path" \
+        -clonedSourcePackagesDirPath "$source_packages_path" \
+        -packageCachePath "$package_cache_path" \
         DEVELOPMENT_TEAM="$TEAM_ID" \
         CODE_SIGN_IDENTITY="Apple Development" \
         CODE_SIGNING_ALLOWED=YES \
         ONLY_ACTIVE_ARCH=YES \
         -configuration Debug \
-        build 2>&1 | tee "${BUILD_DIR}/build.log" | grep -E '(error:|warning:|BUILD|Signing|fatal)'
+        build 2>&1 | tee "${BUILD_DIR}/build.log"
 
     local status=${PIPESTATUS[0]}
     if [ $status -ne 0 ]; then
@@ -234,6 +251,10 @@ do_test() {
     ensure_generated_project
     destination_id=$(get_test_destination_id)
     mkdir -p "$BUILD_DIR"
+    local derived_data_path="${BUILD_DIR}/DerivedData"
+    local source_packages_path="${BUILD_DIR}/SourcePackages"
+    local package_cache_path="${BUILD_DIR}/PackageCache"
+    mkdir -p "$derived_data_path" "$source_packages_path" "$package_cache_path"
 
     echo "=== Running tests on device ${device_id} (xcode destination: ${destination_id}) ==="
 
@@ -242,11 +263,14 @@ do_test() {
         -project "$GENERATED_PROJECT" \
         -scheme CoronaSDRTests \
         -destination "id=${destination_id}" \
+        -derivedDataPath "$derived_data_path" \
+        -clonedSourcePackagesDirPath "$source_packages_path" \
+        -packageCachePath "$package_cache_path" \
         DEVELOPMENT_TEAM="$TEAM_ID" \
         CODE_SIGN_IDENTITY="Apple Development" \
         CODE_SIGNING_ALLOWED=YES \
         -configuration Debug \
-        test 2>&1 | tee "${BUILD_DIR}/test.log" | grep -E '(error:|warning:|Test Suite|Test Case|\*\* TEST|\*\* BUILD|Failing tests:|Executed)'
+        test 2>&1 | tee "${BUILD_DIR}/test.log"
     local status=${PIPESTATUS[0]}
     set -e
 
@@ -269,6 +293,10 @@ do_test_perf() {
     ensure_generated_project
     destination_id=$(get_test_destination_id)
     mkdir -p "$BUILD_DIR"
+    local derived_data_path="${BUILD_DIR}/DerivedData"
+    local source_packages_path="${BUILD_DIR}/SourcePackages"
+    local package_cache_path="${BUILD_DIR}/PackageCache"
+    mkdir -p "$derived_data_path" "$source_packages_path" "$package_cache_path"
 
     echo "=== Running performance tests on device ${device_id} (xcode destination: ${destination_id}) ==="
 
@@ -277,13 +305,16 @@ do_test_perf() {
         -project "$GENERATED_PROJECT" \
         -scheme CoronaSDRTests \
         -destination "id=${destination_id}" \
+        -derivedDataPath "$derived_data_path" \
+        -clonedSourcePackagesDirPath "$source_packages_path" \
+        -packageCachePath "$package_cache_path" \
         DEVELOPMENT_TEAM="$TEAM_ID" \
         CODE_SIGN_IDENTITY="Apple Development" \
         CODE_SIGNING_ALLOWED=YES \
         -configuration Debug \
         -only-testing:CoronaSDRTests/IQRingBufferTests/testPerformanceWriteReadRawPath \
         -only-testing:CoronaSDRTests/AudioRingBufferTests/testPerformanceWriteReadHotPath \
-        test 2>&1 | tee "${BUILD_DIR}/test-perf.log" | grep -E '(error:|warning:|Test Suite|Test Case|\*\* TEST|\*\* BUILD|Failing tests:|Executed|measure)'
+        test 2>&1 | tee "${BUILD_DIR}/test-perf.log"
     local status=${PIPESTATUS[0]}
     set -e
 
