@@ -37,8 +37,11 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "CoronaSDR",
-      "operatingSystem": "iOS",
+      "operatingSystem": "iOS 18.0+",
       "applicationCategory": "UtilityApplication",
+      "url": "https://coronasdr.pages.dev/",
+      "downloadUrl": "https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137",
+      "screenshot": "https://coronasdr.pages.dev/assets/coronasdr-waterfall.webp",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -48,7 +51,7 @@
         "@type": "Person",
         "name": "Silviu YO6SAY"
       },
-      "description": "CoronaSDR is an iOS app for connecting to rtl_tcp SDR servers on your local network, with live spectrum, waterfall, and stable audio playback."
+      "description": "Turn your RTL-SDR dongle into a portable software-defined radio. Listen to FM broadcasts, aircraft, marine, amateur radio, and weather stations from your iPhone or iPad."
     }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -213,11 +216,12 @@
           <div class="hidden md:flex items-center gap-8">
             <a href="#features" class="nav-link">Features</a>
             <a href="#setup" class="nav-link">Setup</a>
+            <a href="#frequencies" class="nav-link">Frequencies</a>
           </div>
 
           <div class="flex items-center gap-3">
-            <a href="#setup" class="hidden sm:inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-              Get Started
+            <a href="https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137" target="_blank" rel="noopener noreferrer" class="hidden sm:inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+              Download Free
             </a>
             <button id="mobile-menu-btn" class="md:hidden p-2 text-muted-foreground hover:text-foreground">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
@@ -238,8 +242,11 @@
           <nav class="flex flex-col gap-6">
             <a href="#features" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Features</a>
             <a href="#setup" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Setup</a>
+            <a href="#frequencies" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Frequencies</a>
             <a href="/privacy/" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Privacy</a>
             <a href="/terms/" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Terms</a>
+            <hr class="border-border" />
+            <a href="https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137" target="_blank" rel="noopener noreferrer" class="text-lg font-semibold text-primary hover:text-primary/80 transition-colors mobile-link">Download Free</a>
           </nav>
         </div>
       </div>
@@ -251,32 +258,35 @@
             <div class="space-y-8 animate-fade-in-up">
               <div class="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary">
                 <span class="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse"></span>
-                v1.0 Now Available
+                Free on the App Store
               </div>
-              
+
               <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
-                Professional SDR <br />
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">on your local network.</span>
+                Your RTL-SDR dongle, <br />
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">now on iPhone.</span>
               </h1>
-              
+
               <p class="text-lg text-muted-foreground max-w-xl leading-relaxed">
-                Connect your iPhone to any rtl_tcp server. Experience smooth waterfall displays, precise tuning, and crystal-clear audio without the cloud.
+                Listen to FM broadcasts, aircraft, marine, amateur radio, and weather stations. Connect to any rtl_tcp server and get a GPU-accelerated spectrum analyzer with crystal-clear audio in your pocket.
               </p>
 
-              <div class="flex flex-col sm:flex-row gap-4">
-                <a href="#setup" class="inline-flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                  Start Listening
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <a href="https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137" target="_blank" rel="noopener noreferrer" class="inline-flex transition-all hover:scale-[1.02] hover:opacity-90">
+                  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" class="h-[52px]" />
+                </a>
+                <a href="#setup" class="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-card px-6 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-muted hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                  How it works
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                 </a>
               </div>
-              
+
               <div class="flex items-center gap-4 text-sm text-muted-foreground">
                 <div class="flex -space-x-2">
-                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-100 flex items-center justify-center text-[10px] font-bold">RPi</div>
-                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-200 flex items-center justify-center text-[10px] font-bold">Mac</div>
-                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-300 flex items-center justify-center text-[10px] font-bold">Lnx</div>
+                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-[10px] font-bold">RPi</div>
+                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold">Mac</div>
+                  <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-[10px] font-bold">Lnx</div>
                 </div>
-                <p>Compatible with Raspberry Pi, macOS & Linux</p>
+                <p>Works with any rtl_tcp server &mdash; Raspberry Pi, macOS, Linux</p>
               </div>
             </div>
 
@@ -284,9 +294,9 @@
               <div class="absolute -inset-1 bg-gradient-to-r from-primary to-emerald-400 rounded-2xl blur opacity-20 dark:opacity-40"></div>
               <div class="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
                  <img
-                  src="./assets/sdr.png"
-                  alt="CoronaSDR App Screenshot"
-                  class="w-full h-auto object-cover"
+                  src="./assets/coronasdr-waterfall.webp"
+                  alt="CoronaSDR app showing live spectrum waterfall on iPhone"
+                  class="w-full max-h-[600px] object-cover object-top"
                   loading="lazy"
                 />
                 <!-- Reflection/Glare effect -->
@@ -299,63 +309,81 @@
         <!-- Features Bento Grid -->
         <section id="features" class="py-20">
           <div class="text-center max-w-2xl mx-auto mb-16">
-            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Everything you need</h2>
-            <p class="text-muted-foreground text-lg">Powerful features packed into a clean, modern iOS interface.</p>
+            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">A real SDR client, not a toy</h2>
+            <p class="text-muted-foreground text-lg">Six demodulation modes, GPU-accelerated visuals, and pro-grade controls &mdash; designed for iOS from the ground up.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Feature 1 -->
+            <!-- Feature 1: Spectrum -->
             <div class="bento-card group col-span-1 lg:col-span-2">
               <div class="bento-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M6 12v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M8 12v5a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-5"/></svg>
               </div>
               <h3 class="text-xl font-semibold mb-2">Live Spectrum & Waterfall</h3>
-              <p class="text-muted-foreground">High-performance real-time FFT rendering using Metal. Visualize signals with clarity and precision, spotting transmissions instantly across the spectrum.</p>
+              <p class="text-muted-foreground">Real-time FFT spectrum analyzer and waterfall display rendered with Metal GPU acceleration. Spot transmissions at a glance and drag to tune directly on the display.</p>
             </div>
 
-            <!-- Feature 2 -->
+            <!-- Feature 2: Demod -->
             <div class="bento-card group">
               <div class="bento-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M2 12h20"/><path d="m4.929 4.929 14.14 14.14"/><path d="m19.071 4.929-14.14 14.14"/></svg>
               </div>
-              <h3 class="text-xl font-semibold mb-2">Multi-Mode Demod</h3>
-              <p class="text-muted-foreground">Support for AM, NFM, WFM, USB, LSB, and CW. Includes squelch and AGC controls.</p>
+              <h3 class="text-xl font-semibold mb-2">6 Demodulation Modes</h3>
+              <p class="text-muted-foreground">AM, NFM, WFM, USB, LSB, CW &mdash; with squelch, FM de-emphasis (50/75 &micro;s), configurable audio filters, and BFO tuning for SSB.</p>
             </div>
 
-            <!-- Feature 3 -->
+            <!-- Feature 3: Scanning -->
             <div class="bento-card group">
               <div class="bento-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18h.01"/><path d="M8 18h.01"/><path d="M16 18h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M12 6h.01"/><path d="M8 6h.01"/><path d="M16 6h.01"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" x2="17" y1="12" y2="12"/></svg>
               </div>
-              <h3 class="text-xl font-semibold mb-2">Audio Buffering</h3>
-              <p class="text-muted-foreground">Jitter-aware audio path ensures smooth playback even on busy networks.</p>
+              <h3 class="text-xl font-semibold mb-2">Scanner</h3>
+              <p class="text-muted-foreground">List scan and range scan with configurable dwell, hold, and skip via squelch. Find active frequencies automatically.</p>
             </div>
 
-            <!-- Feature 4 -->
+            <!-- Feature 4: Stations -->
             <div class="bento-card group">
               <div class="bento-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
               </div>
               <h3 class="text-xl font-semibold mb-2">Station Memory</h3>
-              <p class="text-muted-foreground">Save your favorite frequencies with tags. Import and export via CSV/TSV.</p>
+              <p class="text-muted-foreground">Save favorites with custom tags. Import and export your frequency lists via CSV or TSV &mdash; share between devices effortlessly.</p>
             </div>
 
-             <!-- Feature 5 -->
-             <div class="bento-card group">
+            <!-- Feature 5: Background & Now Playing -->
+            <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Background Audio</h3>
+              <p class="text-muted-foreground">Keep listening while you use other apps. Full lock screen and Now Playing integration &mdash; control playback without opening the app.</p>
+            </div>
+
+            <!-- Feature 6: Advanced Control -->
+            <div class="bento-card group">
               <div class="bento-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               </div>
-              <h3 class="text-xl font-semibold mb-2">Advanced Control</h3>
-              <p class="text-muted-foreground">PPM correction, offset tuning, direct sampling, and bias-tee control.</p>
+              <h3 class="text-xl font-semibold mb-2">Full SDR Control</h3>
+              <p class="text-muted-foreground">Gain (auto/manual), PPM correction, direct sampling, offset tuning, bias-tee, and 4 performance profiles from Ultra Low to High sample rate.</p>
             </div>
 
-            <!-- Feature 6 -->
+            <!-- Feature 7: Deep Links -->
+            <div class="bento-card group">
+              <div class="bento-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              </div>
+              <h3 class="text-xl font-semibold mb-2">Deep Link Automation</h3>
+              <p class="text-muted-foreground">Control CoronaSDR from Shortcuts, Safari, or other apps using the <code class="text-xs bg-muted px-1.5 py-0.5 rounded">coronasdr://</code> URL scheme.</p>
+            </div>
+
+            <!-- Feature 8: Diagnostics -->
             <div class="bento-card group">
               <div class="bento-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
               </div>
-              <h3 class="text-xl font-semibold mb-2">Diagnostics</h3>
-              <p class="text-muted-foreground">Throughput, buffer health, and performance traces for troubleshooting.</p>
+              <h3 class="text-xl font-semibold mb-2">Live Diagnostics</h3>
+              <p class="text-muted-foreground">Monitor throughput (Mbps), IQ/audio buffer health, overrun counters, and network quality indicators in real time.</p>
             </div>
           </div>
         </section>
@@ -365,54 +393,146 @@
           <div class="rounded-3xl border border-border bg-card p-8 lg:p-12 shadow-sm">
             <div class="grid lg:grid-cols-2 gap-12 items-center">
               <div>
-                <h2 class="text-3xl font-bold tracking-tight mb-6">Quick Setup Guide</h2>
-                <p class="text-muted-foreground text-lg mb-8">Get up and running in minutes. All you need is an RTL-SDR dongle and a computer to act as the server.</p>
-                
+                <h2 class="text-3xl font-bold tracking-tight mb-6">Up and running in 3 steps</h2>
+                <p class="text-muted-foreground text-lg mb-8">Plug in your RTL-SDR dongle, start the server, and connect from your iPhone. No cloud account, no subscription.</p>
+
                 <div class="space-y-8">
                   <div class="flex gap-4">
                     <span class="setup-step">1</span>
                     <div>
-                      <h4 class="font-semibold text-foreground">Launch rtl_tcp</h4>
-                      <p class="text-sm text-muted-foreground mt-1">Run the server on your computer or Pi:</p>
-                      <code class="mt-2 block w-fit rounded bg-muted px-3 py-1 font-mono text-sm text-foreground">rtl_tcp -a 0.0.0.0 -p 1234</code>
+                      <h4 class="font-semibold text-foreground">Start rtl_tcp on your server</h4>
+                      <p class="text-sm text-muted-foreground mt-1">Raspberry Pi, Mac, or any Linux box with an RTL-SDR plugged in:</p>
+                      <code class="mt-2 block w-fit rounded bg-muted px-3 py-1 font-mono text-sm text-foreground">rtl_tcp -a 0.0.0.0</code>
                     </div>
                   </div>
 
                   <div class="flex gap-4">
                     <span class="setup-step">2</span>
                     <div>
-                      <h4 class="font-semibold text-foreground">Connect App</h4>
-                      <p class="text-sm text-muted-foreground mt-1">Open CoronaSDR, enter your server's IP address and port.</p>
+                      <h4 class="font-semibold text-foreground">Open CoronaSDR</h4>
+                      <p class="text-sm text-muted-foreground mt-1">Enter the server's IP and port, then tap connect. The built-in connection test verifies everything works.</p>
                     </div>
                   </div>
 
                   <div class="flex gap-4">
                     <span class="setup-step">3</span>
                     <div>
-                      <h4 class="font-semibold text-foreground">Tune In</h4>
-                      <p class="text-sm text-muted-foreground mt-1">Adjust gain, pick a mode (like WFM for radio), and enjoy.</p>
+                      <h4 class="font-semibold text-foreground">Pick a mode and tune in</h4>
+                      <p class="text-sm text-muted-foreground mt-1">Try WFM at 100 MHz for your local FM station, or AM at 118&ndash;137 MHz for aircraft.</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="rounded-2xl bg-muted/50 p-6 border border-border/50">
-                 <div class="space-y-4 font-mono text-xs sm:text-sm">
-                    <div class="flex gap-2">
-                        <span class="text-green-500">$</span>
-                        <span class="text-foreground">rtl_tcp -a 0.0.0.0</span>
-                    </div>
-                    <div class="text-muted-foreground">Found 1 device(s):</div>
-                    <div class="text-muted-foreground">0:  Realtek, RTL2838UHIDIR, SN: 00000001</div>
-                    <div class="text-muted-foreground">Using device 0: Generic RTL2832U OEM</div>
-                    <div class="text-muted-foreground">Found Rafael Micro R820T tuner</div>
-                    <div class="text-muted-foreground">Tuned to 100000000 Hz.</div>
-                    <div class="text-muted-foreground">listening...</div>
-                    <div class="flex gap-2 animate-pulse">
-                        <span class="text-blue-500">client accepted!</span>
-                    </div>
-                 </div>
+              <!-- Real terminal output from RTL-SDR Blog V4 -->
+              <div class="rounded-2xl bg-gray-950 p-6 border border-white/10 shadow-lg">
+                <div class="flex items-center gap-2 mb-4">
+                  <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                  <span class="ml-2 text-xs text-gray-500 font-mono">silviu@sdr:~</span>
+                </div>
+                <div class="space-y-0.5 font-mono text-[11px] sm:text-xs leading-relaxed">
+                  <div class="flex gap-2">
+                    <span class="text-green-400">$</span>
+                    <span class="text-white">rtl_tcp -a 0.0.0.0</span>
+                  </div>
+                  <div class="text-gray-400">Found 1 device(s):</div>
+                  <div class="text-gray-400">&nbsp;&nbsp;0:  RTLSDRBlog, Blog V4, SN: 00000001</div>
+                  <div class="text-gray-400">&nbsp;</div>
+                  <div class="text-gray-400">Using device 0: Generic RTL2832U OEM</div>
+                  <div class="text-gray-300">Found Rafael Micro R828D tuner</div>
+                  <div class="text-yellow-400">RTL-SDR Blog V4 Detected</div>
+                  <div class="text-gray-400">Tuned to 100000000 Hz.</div>
+                  <div class="text-green-400">listening...</div>
+                  <div class="text-gray-500">Use the device argument 'rtl_tcp=0.0.0.0:1234' in OsmoSDR (gr-osmosdr) source</div>
+                  <div class="text-gray-500">to receive samples in GRC and control rtl_tcp parameters (frequency, gain, ...).</div>
+                  <div class="text-blue-400 mt-1">client accepted! <span class="text-gray-500">Silvius-iPhone 50930</span></div>
+                  <div class="text-gray-500">set direct sampling 0</div>
+                  <div class="text-gray-500">Disabled direct sampling mode</div>
+                  <div class="text-gray-500">set offset tuning 1</div>
+                  <div class="text-gray-500">set bias tee 0</div>
+                  <div class="text-gray-600">ll+, now 1</div>
+                  <div class="text-gray-600">ll+, now 2</div>
+                  <div class="text-gray-600">ll+, now 3</div>
+                  <div class="text-gray-600">ll-, now 0</div>
+                  <div class="text-gray-600">ll+, now 1</div>
+                  <div class="text-gray-600">ll+, now 2</div>
+                  <div class="text-gray-600 animate-pulse">ll+, now 3</div>
+                </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- What to Listen To -->
+        <section id="frequencies" class="py-20">
+          <div class="text-center max-w-2xl mx-auto mb-16">
+            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Not sure where to start?</h2>
+            <p class="text-muted-foreground text-lg">Tune to these popular frequencies and discover what's on the air around you.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">FM Broadcast</div>
+              <div class="text-2xl font-bold tracking-tight">88&ndash;108 MHz</div>
+              <div class="text-xs text-muted-foreground">WFM &mdash; Local radio stations</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">Aircraft</div>
+              <div class="text-2xl font-bold tracking-tight">118&ndash;137 MHz</div>
+              <div class="text-xs text-muted-foreground">AM &mdash; Pilots and ATC communications</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">2m Ham Radio</div>
+              <div class="text-2xl font-bold tracking-tight">144&ndash;148 MHz</div>
+              <div class="text-xs text-muted-foreground">NFM / USB &mdash; Repeaters and simplex</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">Marine VHF</div>
+              <div class="text-2xl font-bold tracking-tight">156.800 MHz</div>
+              <div class="text-xs text-muted-foreground">NFM &mdash; Channel 16, distress & calling</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">ISS Downlink</div>
+              <div class="text-2xl font-bold tracking-tight">145.800 MHz</div>
+              <div class="text-xs text-muted-foreground">NFM &mdash; International Space Station</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">NOAA Weather</div>
+              <div class="text-2xl font-bold tracking-tight">162.4&ndash;162.55</div>
+              <div class="text-xs text-muted-foreground">NFM &mdash; Weather radio (US)</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">70cm Amateur</div>
+              <div class="text-2xl font-bold tracking-tight">420&ndash;450 MHz</div>
+              <div class="text-xs text-muted-foreground">NFM &mdash; Ham radio UHF activity</div>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
+              <div class="text-sm font-medium text-primary">ADS-B</div>
+              <div class="text-2xl font-bold tracking-tight">1090 MHz</div>
+              <div class="text-xs text-muted-foreground">Aircraft position data</div>
+            </div>
+          </div>
+          <p class="text-center text-sm text-muted-foreground mt-6">Frequencies vary by region. Check your local band plans for amateur radio and public safety allocations.</p>
+        </section>
+
+        <!-- Support Section -->
+        <section class="py-20">
+          <div class="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 to-emerald-400/5 p-8 lg:p-12 text-center">
+            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Support CoronaSDR</h2>
+            <p class="text-muted-foreground text-lg max-w-xl mx-auto mb-8">CoronaSDR is free with no ads and no subscriptions. If it's useful to you, consider buying me a coffee to keep development going.</p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a href="https://www.buymeacoffee.com/silviu" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex h-12 items-center justify-center rounded-lg bg-[#FFDD00] px-6 text-sm font-semibold text-gray-900 shadow-lg shadow-yellow-500/20 transition-all hover:scale-[1.02] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" x2="6" y1="2" y2="4"/><line x1="10" x2="10" y1="2" y2="4"/><line x1="14" x2="14" y1="2" y2="4"/></svg>
+                Buy Me a Coffee
+              </a>
+              <a href="https://www.paypal.com/paypalme/silviustroe" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex h-12 items-center justify-center rounded-lg bg-[#0070BA] px-6 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="mr-2"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 2.5A.766.766 0 0 1 5.7 1.9h6.645c2.352 0 4.058.662 4.93 1.914.397.568.635 1.208.725 1.952.095.78.038 1.715-.173 2.854l-.012.068v.6l.464.237c.39.186.702.41.94.675.334.374.548.84.636 1.387.09.564.049 1.232-.124 1.984-.199.868-.52 1.623-.955 2.244a4.691 4.691 0 0 1-1.455 1.373c-.586.376-1.26.64-2.005.787-.72.142-1.528.213-2.397.213H12.51a.928.928 0 0 0-.918.787l-.035.196-.585 3.708-.027.152a.928.928 0 0 1-.918.787H7.076z"/></svg>
+                Donate via PayPal
+              </a>
             </div>
           </div>
         </section>
@@ -425,16 +545,17 @@
                 <span class="font-bold">C</span>
              </div>
              <div class="text-sm text-muted-foreground">
-                &copy; <span id="year"></span> CoronaSDR. Built by Silviu YO6SAY.
+                &copy; <span id="year"></span> CoronaSDR. Built by Silviu YO6SAY in Brașov.
              </div>
           </div>
-          
+
           <div class="flex items-center gap-6 text-sm font-medium text-muted-foreground">
              <a href="/privacy/" class="hover:text-foreground transition-colors">Privacy</a>
              <a href="/terms/" class="hover:text-foreground transition-colors">Terms</a>
              <a href="mailto:yo6say@proton.me" class="hover:text-foreground transition-colors">Contact</a>
-             <a href="https://www.buymeacoffee.com/silviu" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors text-primary">Support the project</a>
+             <a href="https://github.com/s1lviu/CoronaSDR/issues" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors">Feedback</a>
           </div>
+
         </div>
       </footer>
     </div>
