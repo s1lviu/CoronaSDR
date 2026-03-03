@@ -188,6 +188,13 @@ When reporting a bug, include:
 - Mode, frequency, and performance profile
 - Steps to reproduce with expected vs. actual behavior
 
+## Support the Project
+
+If you enjoy CoronaSDR, consider supporting its development:
+
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?style=flat-square&logo=paypal)](https://www.paypal.com/paypalme/silviustroe)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-yellow?style=flat-square&logo=buymeacoffee)](https://buymeacoffee.com/silviu)
+
 ---
 
 <div align="center">
