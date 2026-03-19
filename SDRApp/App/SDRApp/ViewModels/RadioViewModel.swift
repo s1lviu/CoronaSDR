@@ -70,6 +70,7 @@ final class RadioViewModel {
     var isAppActive: Bool = true
     var audioHighPassHz: Int = 0
     var audioLowPassHz: Int = 0
+    var waterfallZoom: Double = 1.0
 
     // Diagnostics
     var throughputMbps: Double = 0
@@ -813,18 +814,31 @@ final class RadioViewModel {
         if let bins = fftMailbox.popLatest() {
             spectrumProcessor.update(bins: bins)
             let normalized = spectrumProcessor.normalizedBins()
-            waterfallRenderer?.addWaterfallRow(normalized)
-            waterfallRenderer?.updateSpectrumBins(normalized)
-            if lastWaterfallRow.count != normalized.count {
-                lastWaterfallRow = normalized
+            let visibleBins = zoomSlice(normalized)
+            waterfallRenderer?.addWaterfallRow(visibleBins)
+            waterfallRenderer?.updateSpectrumBins(visibleBins)
+            if lastWaterfallRow.count != visibleBins.count {
+                lastWaterfallRow = visibleBins
             } else {
                 lastWaterfallRow.withUnsafeMutableBufferPointer { dst in
-                    normalized.withUnsafeBufferPointer { src in
-                        dst.baseAddress!.update(from: src.baseAddress!, count: normalized.count)
+                    visibleBins.withUnsafeBufferPointer { src in
+                        dst.baseAddress!.update(from: src.baseAddress!, count: visibleBins.count)
                     }
                 }
             }
         }
+    }
+
+    /// Extract the center portion of bins based on current zoom level.
+    private func zoomSlice(_ bins: [Float]) -> [Float] {
+        guard waterfallZoom > 1.0, !bins.isEmpty else { return bins }
+        let visibleCount = max(2, Int(Double(bins.count) / waterfallZoom))
+        let start = (bins.count - visibleCount) / 2
+        return Array(bins[start..<(start + visibleCount)])
+    }
+
+    func setWaterfallZoom(_ zoom: Double) {
+        waterfallZoom = min(8.0, max(1.0, zoom))
     }
 
     // MARK: - Helpers
