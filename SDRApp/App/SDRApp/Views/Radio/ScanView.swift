@@ -16,7 +16,9 @@ struct ScanView: View {
     @State private var rangeMode: DemodMode = .nfm
 
     @Query(sort: \Station.name) private var stations: [Station]
+    @Query(sort: \Tag.name) private var tags: [Tag]
     @State private var selectedStationIDs: Set<UUID> = []
+    @State private var selectedScanTag: Tag?
 
     @State private var dwellTimeMs: Double = 1500
     @State private var holdTimeSec: Double = 5
@@ -100,17 +102,37 @@ struct ScanView: View {
         }
     }
 
+    private var visibleStations: [Station] {
+        guard let tag = selectedScanTag else { return stations }
+        return stations.filter { $0.tags.contains(where: { $0.id == tag.id }) }
+    }
+
     private var listScanSection: some View {
         Group {
+            if !tags.isEmpty {
+                Section {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            scanTagChip(nil, label: "All")
+                            ForEach(tags) { tag in
+                                scanTagChip(tag, label: tag.name)
+                            }
+                        }
+                    }
+                }
+            }
+
             Section("Select Stations") {
-                if stations.isEmpty {
-                    Text("No stations saved. Add stations in the Stations tab first.")
+                if visibleStations.isEmpty {
+                    Text(selectedScanTag != nil
+                         ? "No stations with this tag."
+                         : "No stations saved. Add stations in the Stations tab first.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     HStack {
                         Button("Select All") {
-                            selectedStationIDs = Set(stations.map(\.id))
+                            selectedStationIDs = Set(visibleStations.map(\.id))
                         }
                         .buttonStyle(.borderless)
                         Spacer()
@@ -122,7 +144,7 @@ struct ScanView: View {
                     }
                     .font(.caption)
 
-                    ForEach(stations) { station in
+                    ForEach(visibleStations) { station in
                         HStack {
                             Image(systemName: selectedStationIDs.contains(station.id) ? "checkmark.circle.fill" : "circle")
                                 .foregroundStyle(.tint)
@@ -282,7 +304,7 @@ struct ScanView: View {
 
         switch scanMode {
         case .list:
-            let entries = stations
+            let entries = visibleStations
                 .filter { selectedStationIDs.contains($0.id) }
                 .map { (hz: $0.frequencyHz, mode: $0.mode) }
             guard !entries.isEmpty else {
@@ -340,6 +362,20 @@ struct ScanView: View {
         }
 
         return (startHz, endHz, stepHz)
+    }
+
+    private func scanTagChip(_ tag: Tag?, label: String) -> some View {
+        Button {
+            selectedScanTag = tag
+        } label: {
+            Text(label)
+                .font(.caption.bold())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(selectedScanTag?.id == tag?.id ? Color.accentColor : Color(.systemGray5))
+                .foregroundStyle(selectedScanTag?.id == tag?.id ? .white : .primary)
+                .clipShape(Capsule())
+        }
     }
 
     private func row(_ title: String, value: String) -> some View {
