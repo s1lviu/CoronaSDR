@@ -7,6 +7,7 @@ struct RadioView: View {
     var viewModel: RadioViewModel
     @State private var showFrequencyKeypad = false
     @State private var showConnectionSheet = false
+    @State private var showQuickSettings = false
     @State private var helpTopic: ControlHelpTopic?
     @State private var editingNumericField: NumericEditField?
     @State private var numericEditText = ""
@@ -116,6 +117,14 @@ struct RadioView: View {
                     connectionButton
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showQuickSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Quick Settings")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     playButton
                 }
             }
@@ -135,6 +144,10 @@ struct RadioView: View {
             }
             .sheet(item: $helpTopic) { topic in
                 controlHelpSheet(for: topic)
+                    .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showQuickSettings) {
+                quickSettingsSheet
                     .presentationDetents([.medium, .large])
             }
             .alert(
@@ -775,6 +788,92 @@ struct RadioView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Help for \(topic.title)")
+    }
+
+    private var quickSettingsSheet: some View {
+        @Bindable var settings = settings
+
+        return NavigationStack {
+            Form {
+                Section("Display") {
+                    Picker("Waterfall Palette", selection: $settings.waterfallColorScheme) {
+                        Text("Classic").tag("classic")
+                        Text("Thermal").tag("thermal")
+                        Text("Grayscale").tag("grayscale")
+                    }
+                }
+
+                Section("Audio") {
+                    Picker("FM De-emphasis", selection: $settings.deemphasis) {
+                        Text("50 \u{00B5}s (Europe)").tag(50)
+                        Text("75 \u{00B5}s (Americas)").tag(75)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Audio High-pass")
+                            Spacer()
+                            Text(settings.audioHighPassHz == 0 ? "Off" : "\(settings.audioHighPassHz) Hz")
+                                .foregroundStyle(.secondary)
+                                .font(.caption.monospacedDigit())
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { Double(settings.audioHighPassHz) },
+                                set: { settings.audioHighPassHz = Int($0.rounded()) }
+                            ),
+                            in: 0...3_000,
+                            step: 25
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Audio Low-pass")
+                            Spacer()
+                            Text(settings.audioLowPassHz == 0 ? "Off" : "\(settings.audioLowPassHz) Hz")
+                                .foregroundStyle(.secondary)
+                                .font(.caption.monospacedDigit())
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { Double(settings.audioLowPassHz) },
+                                set: { settings.audioLowPassHz = Int($0.rounded()) }
+                            ),
+                            in: 0...20_000,
+                            step: 100
+                        )
+                    }
+                }
+
+                Section("RF Controls") {
+                    Picker("Direct Sampling", selection: $settings.directSamplingPreference) {
+                        ForEach(DirectSamplingPreference.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode.rawValue)
+                        }
+                    }
+
+                    Toggle("Offset Tuning", isOn: $settings.isOffsetTuningEnabled)
+                    Toggle("Bias-Tee", isOn: $settings.isBiasTeeEnabled)
+                }
+
+                Section("Performance") {
+                    Picker("Processing Profile", selection: $settings.selectedSampleProfileLabel) {
+                        Text("Ultra Low (250k SPS)").tag("Ultra Low")
+                        Text("Low (1.024 MSPS)").tag("Low")
+                        Text("Medium (2.048 MSPS)").tag("Medium")
+                        Text("High (2.4 MSPS)").tag("High")
+                    }
+                }
+            }
+            .navigationTitle("Quick Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showQuickSettings = false }
+                }
+            }
+        }
     }
 
     @ViewBuilder
