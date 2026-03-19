@@ -80,6 +80,24 @@ public final class SettingsStore {
         didSet { defaults.set(selectedSampleProfileLabel, forKey: "selectedSampleProfileLabel") }
     }
 
+    // MARK: - Last Range Scan
+
+    public var lastRangeScanStartMHz: String {
+        didSet { defaults.set(lastRangeScanStartMHz, forKey: "lastRangeScanStartMHz") }
+    }
+
+    public var lastRangeScanEndMHz: String {
+        didSet { defaults.set(lastRangeScanEndMHz, forKey: "lastRangeScanEndMHz") }
+    }
+
+    public var lastRangeScanStepKHz: String {
+        didSet { defaults.set(lastRangeScanStepKHz, forKey: "lastRangeScanStepKHz") }
+    }
+
+    public var lastRangeScanMode: String {
+        didSet { defaults.set(lastRangeScanMode, forKey: "lastRangeScanMode") }
+    }
+
     // MARK: - Display
 
     public var waterfallColorScheme: String {
@@ -118,6 +136,10 @@ public final class SettingsStore {
         self.isOffsetTuningEnabled = defaults.bool(forKey: "isOffsetTuningEnabled")
         self.isBiasTeeEnabled = defaults.bool(forKey: "isBiasTeeEnabled")
         self.selectedSampleProfileLabel = defaults.string(forKey: "selectedSampleProfileLabel") ?? "Low"
+        self.lastRangeScanStartMHz = defaults.string(forKey: "lastRangeScanStartMHz") ?? "118.000"
+        self.lastRangeScanEndMHz = defaults.string(forKey: "lastRangeScanEndMHz") ?? "137.000"
+        self.lastRangeScanStepKHz = defaults.string(forKey: "lastRangeScanStepKHz") ?? "25"
+        self.lastRangeScanMode = defaults.string(forKey: "lastRangeScanMode") ?? "NFM"
         self.waterfallColorScheme = defaults.string(forKey: "waterfallColorScheme") ?? "classic"
         self.deemphasis = defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75
         self.audioHighPassHz = defaults.object(forKey: "audioHighPassHz") != nil ? defaults.integer(forKey: "audioHighPassHz") : 0
