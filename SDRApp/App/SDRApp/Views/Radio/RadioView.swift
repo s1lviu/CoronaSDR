@@ -390,6 +390,9 @@ struct RadioView: View {
 
     @State private var waterfallDragStartFrequency: Int?
     @State private var waterfallTuneMarkerX: CGFloat?
+    @State private var waterfallDragAxis: DragAxis = .undecided
+
+    private enum DragAxis { case undecided, horizontal, vertical }
     @State private var pinchBaseZoom: Double = 1.0
 
     private var waterfallTuneMarker: some View {
@@ -411,8 +414,17 @@ struct RadioView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .gesture(
-                    DragGesture(minimumDistance: 1)
+                    DragGesture(minimumDistance: 10)
                         .onChanged { value in
+                            let tx = abs(value.translation.width)
+                            let ty = abs(value.translation.height)
+
+                            if waterfallDragAxis == .undecided {
+                                guard tx + ty >= 10 else { return }
+                                waterfallDragAxis = tx >= ty ? .horizontal : .vertical
+                            }
+                            guard waterfallDragAxis == .horizontal else { return }
+
                             let width = geometry.size.width
                             guard width > 0 else { return }
                             if waterfallDragStartFrequency == nil {
@@ -428,6 +440,7 @@ struct RadioView: View {
                         .onEnded { _ in
                             waterfallDragStartFrequency = nil
                             waterfallTuneMarkerX = nil
+                            waterfallDragAxis = .undecided
                         }
                 )
                 .simultaneousGesture(
