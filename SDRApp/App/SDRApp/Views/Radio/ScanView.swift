@@ -5,6 +5,8 @@ import UIKit
 
 struct ScanView: View {
     let viewModel: RadioViewModel
+    @Environment(SettingsStore.self) private var settings
+    @Environment(\.modelContext) private var modelContext
 
     private enum FocusField: Hashable {
         case start
@@ -17,6 +19,7 @@ struct ScanView: View {
 
     @Query(sort: \Station.name) private var stations: [Station]
     @Query(sort: \Tag.name) private var tags: [Tag]
+    @Query(sort: \RangeScanPreset.name) private var presets: [RangeScanPreset]
     @State private var selectedStationIDs: Set<UUID> = []
     @State private var selectedScanTag: Tag?
 
@@ -28,6 +31,8 @@ struct ScanView: View {
     @State private var stepFreqStr = "25"
 
     @State private var validationError: String?
+    @State private var showSavePreset = false
+    @State private var presetName = ""
     @FocusState private var focusedField: FocusField?
 
     enum ScanMode: String, CaseIterable {
@@ -91,6 +96,12 @@ struct ScanView: View {
                 }
             }
             .navigationTitle("Scan")
+            .onAppear {
+                startFreqStr = settings.lastRangeScanStartMHz
+                endFreqStr = settings.lastRangeScanEndMHz
+                stepFreqStr = settings.lastRangeScanStepKHz
+                rangeMode = DemodMode(rawValue: settings.lastRangeScanMode) ?? .nfm
+            }
             .alert("Cannot Start Scan", isPresented: Binding(
                 get: { validationError != nil },
                 set: { if !$0 { validationError = nil } }
@@ -98,6 +109,13 @@ struct ScanView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(validationError ?? "Unknown error")
+            }
+            .alert("Save Preset", isPresented: $showSavePreset) {
+                TextField("Preset name", text: $presetName)
+                Button("Save") { savePreset() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Save the current range scan settings as a preset.")
             }
         }
     }
@@ -172,6 +190,30 @@ struct ScanView: View {
 
     private var rangeScanSection: some View {
         Group {
+            if !presets.isEmpty {
+                Section("Presets") {
+                    ForEach(presets) { preset in
+                        Button {
+                            loadPreset(preset)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(preset.name).font(.subheadline)
+                                    Text("\(formatFrequency(preset.startHz)) – \(formatFrequency(preset.endHz)) • \(preset.mode.displayName)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.down.circle")
+                                    .foregroundStyle(.tint)
+                            }
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                    .onDelete(perform: deletePresets)
+                }
+            }
+
             Section("Frequency Range") {
                 HStack {
                     Text("Start")
@@ -205,6 +247,14 @@ struct ScanView: View {
                         Text(mode.displayName).tag(mode)
                     }
                 }
+
+                Button {
+                    presetName = ""
+                    showSavePreset = true
+                } label: {
+                    Label("Save as Preset", systemImage: "square.and.arrow.down")
+                }
+                .disabled(parseRangeInputs(emitError: false) == nil)
             }
         }
     }
@@ -322,6 +372,7 @@ struct ScanView: View {
 
         case .range:
             guard let range = parseRangeInputs(emitError: true) else { return }
+            persistRangeParams()
             let started = viewModel.startRangeScan(
                 startHz: range.startHz,
                 endHz: range.endHz,
@@ -362,6 +413,47 @@ struct ScanView: View {
         }
 
         return (startHz, endHz, stepHz)
+    }
+
+    private func savePreset() {
+        guard let range = parseRangeInputs(emitError: false),
+              !presetName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let preset = RangeScanPreset(
+            name: presetName.trimmingCharacters(in: .whitespaces),
+            startHz: range.startHz,
+            endHz: range.endHz,
+            stepHz: range.stepHz,
+            mode: rangeMode
+        )
+        modelContext.insert(preset)
+        try? modelContext.save()
+    }
+
+    private func loadPreset(_ preset: RangeScanPreset) {
+        startFreqStr = String(format: "%.6f", Double(preset.startHz) / 1_000_000)
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+        endFreqStr = String(format: "%.6f", Double(preset.endHz) / 1_000_000)
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+        stepFreqStr = String(format: "%.3f", Double(preset.stepHz) / 1_000)
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+        rangeMode = preset.mode
+    }
+
+    private func deletePresets(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(presets[index])
+        }
+        try? modelContext.save()
+    }
+
+    private func persistRangeParams() {
+        settings.lastRangeScanStartMHz = startFreqStr
+        settings.lastRangeScanEndMHz = endFreqStr
+        settings.lastRangeScanStepKHz = stepFreqStr
+        settings.lastRangeScanMode = rangeMode.rawValue
     }
 
     private func scanTagChip(_ tag: Tag?, label: String) -> some View {

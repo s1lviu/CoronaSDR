@@ -49,7 +49,7 @@ struct CoronaSDRApp: App {
         SDRDebug.print("📻 CoronaSDR init starting")
 
         do {
-            let schema = Schema([Station.self, Tag.self, ServerProfile.self, SampleProfile.self])
+            let schema = Schema([Station.self, Tag.self, ServerProfile.self, SampleProfile.self, RangeScanPreset.self])
             let config = ModelConfiguration(isStoredInMemoryOnly: false)
             modelContainer = try ModelContainer(for: schema, configurations: [config])
             containerError = nil
