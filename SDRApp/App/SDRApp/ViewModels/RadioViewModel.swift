@@ -795,6 +795,13 @@ final class RadioViewModel {
             iqBuffer.flush()
             audioBuffer.flush()
         }
+
+        if dspConfigChanged {
+            fftMailbox.clear()
+            lastWaterfallRow.removeAll(keepingCapacity: true)
+            spectrumProcessor.reset()
+            waterfallRenderer?.clearWaterfall()
+        }
     }
 
     private func updateFFTUITimerState() {

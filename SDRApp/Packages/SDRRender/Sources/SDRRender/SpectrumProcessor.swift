@@ -34,6 +34,16 @@ public final class SpectrumProcessor {
 
     public init() {}
 
+    /// Reset all internal state. Call when FFT size or sample rate changes.
+    public func reset() {
+        currentBins = []
+        smoothedBins = []
+        smoothingWork = []
+        peakBins = []
+        normalizedCurrentBins = []
+        normalizedPeakBins = []
+    }
+
     /// Update with a new FFT frame.
     public func update(bins: [Float]) {
         let count = bins.count

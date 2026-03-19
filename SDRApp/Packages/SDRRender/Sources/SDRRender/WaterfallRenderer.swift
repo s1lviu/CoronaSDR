@@ -147,6 +147,32 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
         }
     }
 
+    /// Clear the waterfall texture and reset scroll state.
+    /// Call when sample rate or FFT size changes to avoid stale rows.
+    public func clearWaterfall() {
+        guard let texture = waterfallTexture else { return }
+        let zeros = [Float](repeating: 0, count: textureWidth)
+        let bytesPerRow = textureWidth * MemoryLayout<Float>.stride
+        zeros.withUnsafeBytes { ptr in
+            for row in 0..<textureHeight {
+                let region = MTLRegion(
+                    origin: MTLOrigin(x: 0, y: row, z: 0),
+                    size: MTLSize(width: textureWidth, height: 1, depth: 1)
+                )
+                texture.replace(region: region, mipmapLevel: 0,
+                              withBytes: ptr.baseAddress!,
+                              bytesPerRow: bytesPerRow)
+            }
+        }
+        currentRow = 0
+        scrollOffset = 0
+        rowsWritten = 0
+
+        spectrumLock.lock()
+        spectrumSampleCount = 0
+        spectrumLock.unlock()
+    }
+
     public func setColorScheme(named schemeName: String) {
         switch schemeName.lowercased() {
         case "thermal":
