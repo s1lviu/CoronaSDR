@@ -299,10 +299,50 @@ struct RadioView: View {
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Spacer()
+                if viewModel.waterfallZoom > 1.01 {
+                    Button {
+                        viewModel.setWaterfallZoom(1.0)
+                        pinchBaseZoom = 1.0
+                    } label: {
+                        Text(String(format: "%.1f×", viewModel.waterfallZoom))
+                            .font(.caption2.monospacedDigit().bold())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.tint.opacity(0.2))
+                            .clipShape(Capsule())
+                    }
+                    .accessibilityLabel("Reset zoom")
+                }
                 Text("Center \(formatAxisFrequency(viewModel.frequencyHz))")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
+
+            waterfallRangeControl
+        }
+    }
+
+    private var waterfallRangeControl: some View {
+        HStack(spacing: 6) {
+            Text("Range")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .leading)
+
+            Slider(
+                value: Binding(
+                    get: { Double(viewModel.spectrumProcessor.dynamicRangeDB) },
+                    set: { viewModel.spectrumProcessor.dynamicRangeDB = Float($0) }
+                ),
+                in: 20...120,
+                step: 5
+            )
+            .accessibilityLabel("Waterfall dynamic range")
+
+            Text(String(format: "%.0f dB", viewModel.spectrumProcessor.dynamicRangeDB))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .trailing)
         }
     }
 
@@ -350,6 +390,7 @@ struct RadioView: View {
 
     @State private var waterfallDragStartFrequency: Int?
     @State private var waterfallTuneMarkerX: CGFloat?
+    @State private var pinchBaseZoom: Double = 1.0
 
     private var waterfallTuneMarker: some View {
         GeometryReader { geometry in
@@ -387,6 +428,16 @@ struct RadioView: View {
                         .onEnded { _ in
                             waterfallDragStartFrequency = nil
                             waterfallTuneMarkerX = nil
+                        }
+                )
+                .simultaneousGesture(
+                    MagnificationGesture()
+                        .onChanged { scale in
+                            let newZoom = pinchBaseZoom * scale
+                            viewModel.setWaterfallZoom(newZoom)
+                        }
+                        .onEnded { _ in
+                            pinchBaseZoom = viewModel.waterfallZoom
                         }
                 )
                 .onTapGesture { location in
@@ -739,7 +790,7 @@ struct RadioView: View {
     }
 
     private var spectrumSpanHz: Int {
-        max(1, viewModel.dspPipeline.sampleRate)
+        max(1, Int(Double(viewModel.dspPipeline.sampleRate) / viewModel.waterfallZoom))
     }
 
     private var spectrumStartHz: Int {
