@@ -63,13 +63,7 @@ struct FrequencyKeypadView: View {
                 }
                 .padding(.horizontal)
 
-                if let hz = computedHz, hz < directSamplingThresholdHz {
-                    Text("Below 24 MHz, the app automatically enables Direct Sampling (Q).")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                directSamplingHint
 
                 // Quick presets
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -156,11 +150,26 @@ struct FrequencyKeypadView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
+        .frame(height: 44)
     }
 
     private var computedHz: Int? {
         guard let value = Double(input), value > 0 else { return nil }
         return Int(value * unit.multiplier)
+    }
+
+    private var showDirectSamplingHint: Bool {
+        guard let hz = computedHz else { return false }
+        return hz < directSamplingThresholdHz
+    }
+
+    private var directSamplingHint: some View {
+        Text("Below 24 MHz, the app automatically enables Direct Sampling (Q).")
+            .font(.caption)
+            .foregroundStyle(.orange)
+            .padding(.horizontal)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .opacity(showDirectSamplingHint ? 1 : 0)
     }
 
     private func handleKey(_ key: String) {
