@@ -108,7 +108,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Last Server")
                         Spacer()
-                        Text(settings.lastServerHost.isEmpty ? "None" : "\(settings.lastServerHost):\(settings.lastServerPort)")
+                        Text(settings.lastServerHost.isEmpty ? "None" : "\(settings.lastServerHost):\(String(settings.lastServerPort))")
                             .foregroundStyle(.secondary)
                     }
                 }
