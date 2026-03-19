@@ -246,6 +246,8 @@ struct RadioView: View {
                 }
 
                 waterfallCenterMarker
+                waterfallTuneMarker
+                waterfallTuningOverlay
             }
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
@@ -262,16 +264,28 @@ struct RadioView: View {
     }
 
     private var spectrumFrequencyScale: some View {
-        HStack {
-            Text(formatAxisFrequency(spectrumStartHz))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(formatAxisFrequency(viewModel.frequencyHz))
-                .frame(maxWidth: .infinity, alignment: .center)
-            Text(formatAxisFrequency(spectrumEndHz))
-                .frame(maxWidth: .infinity, alignment: .trailing)
+        waterfallTickMarks
+    }
+
+    private let waterfallTickCount = 5
+
+    private var waterfallTickMarks: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<waterfallTickCount, id: \.self) { i in
+                let fraction = Double(i) / Double(waterfallTickCount - 1)
+                let hz = spectrumStartHz + Int(fraction * Double(spectrumSpanHz))
+                let alignment: Alignment = i == 0 ? .leading : (i == waterfallTickCount - 1 ? .trailing : .center)
+                VStack(spacing: 1) {
+                    Text(formatAxisFrequency(hz))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "arrowtriangle.down.fill")
+                        .font(.system(size: 5))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: alignment)
+            }
         }
-        .font(.caption2.monospacedDigit())
-        .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Spectrum scale from \(formatAxisFrequency(spectrumStartHz)) to \(formatAxisFrequency(spectrumEndHz)), center \(formatAxisFrequency(viewModel.frequencyHz))")
     }
@@ -289,6 +303,61 @@ struct RadioView: View {
             )
         }
         .allowsHitTesting(false)
+    }
+
+    @State private var waterfallDragStartFrequency: Int?
+    @State private var waterfallTuneMarkerX: CGFloat?
+
+    private var waterfallTuneMarker: some View {
+        GeometryReader { geometry in
+            if let markerX = waterfallTuneMarkerX {
+                Path { path in
+                    let x = min(max(0, markerX), geometry.size.width)
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: geometry.size.height))
+                }
+                .stroke(Color.accentColor, lineWidth: 1.5)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var waterfallTuningOverlay: some View {
+        GeometryReader { geometry in
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 1)
+                        .onChanged { value in
+                            let width = geometry.size.width
+                            guard width > 0 else { return }
+                            if waterfallDragStartFrequency == nil {
+                                waterfallDragStartFrequency = viewModel.frequencyHz
+                            }
+                            guard let startFreq = waterfallDragStartFrequency else { return }
+                            let deltaFraction = value.translation.width / width
+                            let deltaHz = Int(Double(spectrumSpanHz) * deltaFraction)
+                            let newFreq = startFreq - deltaHz
+                            viewModel.setFrequency(max(1_000, newFreq))
+                            waterfallTuneMarkerX = value.location.x
+                        }
+                        .onEnded { _ in
+                            waterfallDragStartFrequency = nil
+                            waterfallTuneMarkerX = nil
+                        }
+                )
+                .onTapGesture { location in
+                    let width = geometry.size.width
+                    guard width > 0 else { return }
+                    let fraction = location.x / width
+                    let tappedHz = spectrumStartHz + Int(fraction * Double(spectrumSpanHz))
+                    viewModel.setFrequency(max(1_000, tappedHz))
+                    waterfallTuneMarkerX = location.x
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        waterfallTuneMarkerX = nil
+                    }
+                }
+        }
     }
 
     // MARK: - Frequency Display
