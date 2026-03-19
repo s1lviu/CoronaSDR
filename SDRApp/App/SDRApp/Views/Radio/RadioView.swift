@@ -8,6 +8,24 @@ struct RadioView: View {
     @State private var showFrequencyKeypad = false
     @State private var showConnectionSheet = false
     @State private var helpTopic: ControlHelpTopic?
+    @State private var editingNumericField: NumericEditField?
+    @State private var numericEditText = ""
+
+    private enum NumericEditField: Identifiable {
+        case gain, ppm
+        var id: String {
+            switch self {
+            case .gain: return "gain"
+            case .ppm: return "ppm"
+            }
+        }
+        var title: String {
+            switch self {
+            case .gain: return "Set Gain (dB)"
+            case .ppm: return "Set PPM"
+            }
+        }
+    }
 
     private enum ControlHelpTopic: String, Identifiable {
         case step
@@ -118,6 +136,18 @@ struct RadioView: View {
             .sheet(item: $helpTopic) { topic in
                 controlHelpSheet(for: topic)
                     .presentationDetents([.medium, .large])
+            }
+            .alert(
+                editingNumericField?.title ?? "",
+                isPresented: Binding(
+                    get: { editingNumericField != nil },
+                    set: { if !$0 { editingNumericField = nil } }
+                )
+            ) {
+                TextField("Value", text: $numericEditText)
+                    .keyboardType(.numbersAndPunctuation)
+                Button("Set") { applyNumericEdit() }
+                Button("Cancel", role: .cancel) {}
             }
             .onChange(of: viewModel.frequencyHz) { _, newFrequency in
                 settings.lastFrequencyHz = newFrequency
@@ -537,9 +567,11 @@ struct RadioView: View {
                     ), in: 0...50, step: 1)
                     .accessibilityLabel("Manual gain")
 
-                    Text(String(format: "%.0f", viewModel.gainValue))
-                        .font(.caption.monospacedDigit())
-                        .frame(width: 30)
+                    tappableValue(
+                        String(format: "%.0f", viewModel.gainValue),
+                        width: 30,
+                        field: .gain
+                    )
                 }
             }
 
@@ -599,11 +631,40 @@ struct RadioView: View {
                 ), in: -100...100, step: 1)
                 .accessibilityLabel("PPM correction")
 
-                Text(String(format: "%+.0f", viewModel.ppm))
-                    .font(.caption.monospacedDigit())
-                    .frame(width: 40)
+                tappableValue(
+                    String(format: "%+.0f", viewModel.ppm),
+                    width: 40,
+                    field: .ppm
+                )
             }
 
+        }
+    }
+
+    private func tappableValue(_ text: String, width: CGFloat, field: NumericEditField) -> some View {
+        Text(text)
+            .font(.caption.monospacedDigit())
+            .frame(width: width)
+            .padding(.vertical, 4)
+            .background(Color(.systemGray5))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .onTapGesture {
+                numericEditText = text.trimmingCharacters(in: .whitespaces)
+                    .replacingOccurrences(of: "+", with: "")
+                editingNumericField = field
+            }
+    }
+
+    private func applyNumericEdit() {
+        guard let field = editingNumericField,
+              let value = Float(numericEditText) else { return }
+        switch field {
+        case .gain:
+            let clamped = min(50, max(0, value))
+            viewModel.setGain(mode: .manual, value: clamped)
+        case .ppm:
+            let clamped = min(100, max(-100, value))
+            viewModel.setPPM(clamped)
         }
     }
 
