@@ -25,10 +25,12 @@ public final class SampleProfile {
         self.audioDecimationTarget = audioDecimationTarget
     }
 
-    /// Default sample profiles: Ultra Low, Low, Medium, High.
+    /// Default sample profiles: Ultra Low, Low, Medium, High, plus Airspy HF+ rates.
     public static func defaults() -> [SampleProfile] {
         [
+            SampleProfile(label: "HF+ Low", sampleRate: 192_000, fftSize: 1024, uiFps: 12),
             SampleProfile(label: "Ultra Low", sampleRate: 250_000, fftSize: 1024, uiFps: 12),
+            SampleProfile(label: "HF+ High", sampleRate: 768_000, fftSize: 2048, uiFps: 20),
             SampleProfile(label: "Low", sampleRate: 1_024_000, fftSize: 2048, uiFps: 20),
             SampleProfile(label: "Medium", sampleRate: 2_048_000, fftSize: 4096, uiFps: 24),
             SampleProfile(label: "High", sampleRate: 2_400_000, fftSize: 4096, uiFps: 30),

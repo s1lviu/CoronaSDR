@@ -910,10 +910,16 @@ struct RadioView: View {
 
                 Section("Performance") {
                     Picker("Processing Profile", selection: $settings.selectedSampleProfileLabel) {
-                        Text("Ultra Low (250k SPS)").tag("Ultra Low")
-                        Text("Low (1.024 MSPS)").tag("Low")
-                        Text("Medium (2.048 MSPS)").tag("Medium")
-                        Text("High (2.4 MSPS)").tag("High")
+                        Section("RTL-SDR") {
+                            Text("Ultra Low (250k SPS)").tag("Ultra Low")
+                            Text("Low (1.024 MSPS)").tag("Low")
+                            Text("Medium (2.048 MSPS)").tag("Medium")
+                            Text("High (2.4 MSPS)").tag("High")
+                        }
+                        Section("Airspy HF+") {
+                            Text("HF+ Low (192k SPS)").tag("HF+ Low")
+                            Text("HF+ High (768k SPS)").tag("HF+ High")
+                        }
                     }
                 }
             }
