@@ -1008,8 +1008,12 @@ final class RadioViewModel {
 
     private func sampleProfile(for label: String) -> (sampleRate: Int, fftSize: Int, uiFps: Int) {
         switch label {
+        case "HF+ Low":
+            return (192_000, 1024, 12)
         case "Ultra Low":
             return (250_000, 1024, 12)
+        case "HF+ High":
+            return (768_000, 2048, 20)
         case "Medium":
             return (2_048_000, 4096, 24)
         case "High":
