@@ -114,11 +114,19 @@ public final class RTLTCPConnection: @unchecked Sendable {
             case .failed(let error):
                 SDRLogger.network.error("Connection failed: \(error)")
                 SDRDebug.print("🔌 TCP failed: \(error)")
-                self.setState(.failed(error.localizedDescription))
-                self.attemptReconnect()
+                if RTLTCPConnection.isLocalNetworkDeniedError(error) {
+                    self.setState(.failed("Local network access denied"))
+                } else {
+                    self.setState(.failed(error.localizedDescription))
+                    self.attemptReconnect()
+                }
             case .waiting(let error):
                 SDRLogger.network.warning("Connection waiting: \(error)")
                 SDRDebug.print("🔌 TCP waiting: \(error)")
+                if RTLTCPConnection.isLocalNetworkDeniedError(error) {
+                    self.setState(.failed("Local network access denied"))
+                    conn.cancel()
+                }
             default:
                 SDRDebug.print("🔌 NWConnection other state: \(state)")
                 break
@@ -440,6 +448,29 @@ public final class RTLTCPConnection: @unchecked Sendable {
         }
         monitor.start(queue: networkQueue)
         self.pathMonitor = monitor
+    }
+
+    /// Detect NWError patterns that indicate iOS denied local network access.
+    /// POSIX ENETDOWN/EHOSTUNREACH in the .waiting state, or DNS PolicyDenied (-65570)
+    /// when resolving .local hostnames without permission.
+    public static func isLocalNetworkDeniedError(_ error: any Error) -> Bool {
+        if let nwError = error as? NWError {
+            switch nwError {
+            case .posix(let code):
+                return code == .ENETDOWN || code == .EHOSTUNREACH
+            case .dns(let dnsCode):
+                // kDNSServiceErr_PolicyDenied = -65570
+                return dnsCode == -65570
+            default:
+                return false
+            }
+        }
+        // NWError sometimes wraps inside NSError with domain "Network.NWError"
+        let nsError = error as NSError
+        if nsError.domain == "Network.NWError" {
+            return nsError.code == -65570
+        }
+        return error.localizedDescription.contains("PolicyDenied")
     }
 
     private func setState(_ newState: ConnectionState) {

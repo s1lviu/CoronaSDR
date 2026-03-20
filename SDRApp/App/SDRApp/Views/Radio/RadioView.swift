@@ -1,6 +1,7 @@
 import SwiftUI
 import SDRModels
 import SDRRender
+import RTLTCPClientKit
 
 struct RadioView: View {
     @Environment(SettingsStore.self) private var settings
@@ -203,6 +204,16 @@ struct RadioView: View {
 
     // MARK: - Connection Bar
 
+    private var isLocalNetworkDenied: Bool {
+        if case .failed(let msg) = viewModel.connectionState {
+            return msg.contains("Local network access denied")
+                || msg.contains("Network is down")
+                || msg.contains("No route to host")
+                || msg.contains("PolicyDenied")
+        }
+        return false
+    }
+
     private var connectionBar: some View {
         HStack(spacing: 8) {
             Circle()
@@ -210,9 +221,26 @@ struct RadioView: View {
                 .frame(width: 8, height: 8)
                 .accessibilityLabel(viewModel.isConnected ? "Connected" : "Disconnected")
 
-            Text(connectionStatusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if isLocalNetworkDenied {
+                Text("Local Network access required")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Label("Settings", systemImage: "gear")
+                        .font(.caption.bold())
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.mini)
+            } else {
+                Text(connectionStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
 

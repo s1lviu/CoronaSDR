@@ -11,6 +11,7 @@ struct OnboardingFlow: View {
     @State private var testResult: String?
     @State private var isTesting = false
     @State private var testSuccess = false
+    @State private var isNetworkPermissionDenied = false
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
@@ -192,6 +193,24 @@ struct OnboardingFlow: View {
 
                 if let result = testResult {
                     statusCard(text: result, success: testSuccess)
+
+                    if isNetworkPermissionDenied {
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "gear")
+                                Text("Open Settings to Allow Local Network")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        .controlSize(.large)
+                    }
                 }
 
             }
@@ -326,6 +345,7 @@ struct OnboardingFlow: View {
         isTesting = true
         testSuccess = false
         testResult = nil
+        isNetworkPermissionDenied = false
 
         host = trimmedHost
         SDRDebug.print("🔌 Testing connection to \(trimmedHost):\(portNum)")
@@ -343,7 +363,12 @@ struct OnboardingFlow: View {
                     SDRDebug.print("✅ Test success: \(header.tunerType.displayName)")
                 case .failure(let error):
                     testSuccess = false
-                    testResult = "Failed: \(error.localizedDescription)"
+                    isNetworkPermissionDenied = RTLTCPConnection.isLocalNetworkDeniedError(error)
+                    if isNetworkPermissionDenied {
+                        testResult = "Local Network access is required to connect to your SDR server."
+                    } else {
+                        testResult = "Failed: \(error.localizedDescription)"
+                    }
                     SDRDebug.print("❌ Test failed: \(error.localizedDescription)")
                 }
             }
