@@ -120,6 +120,12 @@ struct MainTabView: View {
             .onChange(of: settings.audioLowPassHz) { _, _ in
                 applyAudioToneSettings()
             }
+            .onChange(of: settings.noiseBlankerThreshold) { _, newValue in
+                viewModel.setNoiseBlankerThreshold(newValue)
+            }
+            .onChange(of: settings.audioAgcEnabled) { _, newValue in
+                viewModel.setAudioAgcEnabled(newValue)
+            }
     }
 
     private var deepLinkAwareTabs: some View {
@@ -150,6 +156,8 @@ struct MainTabView: View {
             biasTeeEnabled: settings.isBiasTeeEnabled
         )
         applyAudioToneSettings()
+        viewModel.setNoiseBlankerThreshold(settings.noiseBlankerThreshold)
+        viewModel.setAudioAgcEnabled(settings.audioAgcEnabled)
     }
 
     private func applyAudioToneSettings() {

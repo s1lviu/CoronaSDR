@@ -910,6 +910,25 @@ struct RadioView: View {
                     }
                 }
 
+                Section("Noise Reduction") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Noise Blanker")
+                            Spacer()
+                            Text(settings.noiseBlankerThreshold == 0 ? "Off" : String(format: "%.0f%%", settings.noiseBlankerThreshold * 100))
+                                .foregroundStyle(.secondary)
+                                .font(.caption.monospacedDigit())
+                        }
+                        Slider(
+                            value: $settings.noiseBlankerThreshold,
+                            in: 0...1,
+                            step: 0.05
+                        )
+                    }
+
+                    Toggle("Audio AGC", isOn: $settings.audioAgcEnabled)
+                }
+
                 Section("RF Controls") {
                     Picker("Direct Sampling", selection: $settings.directSamplingPreference) {
                         ForEach(DirectSamplingPreference.allCases, id: \.self) { mode in
