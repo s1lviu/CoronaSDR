@@ -1,5 +1,6 @@
 import SwiftUI
 import SDRModels
+import RTLTCPClientKit
 
 struct ConnectionSheet: View {
     let viewModel: RadioViewModel
@@ -11,6 +12,7 @@ struct ConnectionSheet: View {
     @State private var isTesting = false
     @State private var testResult: String?
     @State private var testSuccess = false
+    @State private var isNetworkPermissionDenied = false
 
     var body: some View {
         NavigationStack {
@@ -42,6 +44,17 @@ struct ConnectionSheet: View {
                         Label(result, systemImage: testSuccess ? "checkmark.circle" : "xmark.circle")
                             .foregroundStyle(testSuccess ? .green : .red)
                             .font(.caption)
+                    }
+
+                    if isNetworkPermissionDenied {
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            Label("Open Settings to Allow Local Network", systemImage: "gear")
+                        }
+                        .tint(.orange)
                     }
                 }
 
@@ -79,6 +92,7 @@ struct ConnectionSheet: View {
         guard let portNum = UInt16(port) else { return }
         isTesting = true
         testResult = nil
+        isNetworkPermissionDenied = false
 
         Task {
             let result = await viewModel.testConnection(host: host, port: portNum)
@@ -90,7 +104,12 @@ struct ConnectionSheet: View {
                     testResult = "OK - \(header.tunerType.displayName)"
                 case .failure(let error):
                     testSuccess = false
-                    testResult = error.localizedDescription
+                    isNetworkPermissionDenied = RTLTCPConnection.isLocalNetworkDeniedError(error)
+                    if isNetworkPermissionDenied {
+                        testResult = "Local Network access required"
+                    } else {
+                        testResult = error.localizedDescription
+                    }
                 }
             }
         }
