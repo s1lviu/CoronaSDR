@@ -65,6 +65,8 @@ public final class DSPPipeline: @unchecked Sendable {
     private var channelFilterQ: FIRFilter
     private var demodulator: Demodulator = AMDemodulator()
     private let squelch = Squelch()
+    private let noiseBlanker = NoiseBlanker()
+    private let audioAGC = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
     private var resampler: Resampler
     private var driftCompensator: DriftCompensator
     private var deemphasisUs: Float = 75
@@ -74,6 +76,8 @@ public final class DSPPipeline: @unchecked Sendable {
     private let audioToneFilter = AudioToneFilter(sampleRate: 48_000)
     private(set) var audioHighPassCutoffHz: Int = 0
     private(set) var audioLowPassCutoffHz: Int = 0
+    private var _noiseBlankerEnabled: Bool = false
+    private var _audioAgcEnabled: Bool = false
 
     // FFT output callback
     public var onFFTFrame: (([Float], Int) -> Void)? // (bins, fftSize)
@@ -285,6 +289,16 @@ public final class DSPPipeline: @unchecked Sendable {
 
                 // Demodulate
                 var audio = demodulator.demodulate(real: filteredIWork, imag: filteredQWork)
+
+                // Noise blanker (impulse spike removal, before squelch)
+                if _noiseBlankerEnabled {
+                    noiseBlanker.process(&audio)
+                }
+
+                // Audio AGC (level normalization for FM voice)
+                if _audioAgcEnabled {
+                    audioAGC.process(&audio)
+                }
 
                 // Squelch
                 if _mode.supportsSquelch {
@@ -614,6 +628,32 @@ public final class DSPPipeline: @unchecked Sendable {
     /// Smoothed squelch noise metric for diagnostics/UI.
     public var squelchNoiseLevel: Float { withPipelineLock { squelch.noiseLevel } }
 
+    /// Enable/disable noise blanker (impulse noise removal).
+    public var noiseBlankerEnabled: Bool {
+        get { withPipelineLock { _noiseBlankerEnabled } }
+        set { withPipelineLock { _noiseBlankerEnabled = newValue } }
+    }
+
+    /// Set noise blanker threshold (0 = off, higher = less aggressive).
+    public func setNoiseBlankerThreshold(_ threshold: Float) {
+        withPipelineLock {
+            noiseBlanker.threshold = threshold
+            _noiseBlankerEnabled = threshold > 0
+        }
+    }
+
+    /// Enable/disable audio AGC (post-demod level normalization).
+    public var audioAgcEnabled: Bool {
+        get { withPipelineLock { _audioAgcEnabled } }
+        set {
+            withPipelineLock {
+                _audioAgcEnabled = newValue
+                audioAGC.isEnabled = newValue
+                if !newValue { audioAGC.reset() }
+            }
+        }
+    }
+
     /// Reset all DSP state (call after retune).
     public func resetState() {
         withPipelineLock {
@@ -627,6 +667,8 @@ public final class DSPPipeline: @unchecked Sendable {
         channelFilterI.reset()
         channelFilterQ.reset()
         demodulator.reset()
+        noiseBlanker.reset()
+        if _audioAgcEnabled { audioAGC.reset() }
         squelch.reset()
         resampler.reset()
         driftCompensator.reset()

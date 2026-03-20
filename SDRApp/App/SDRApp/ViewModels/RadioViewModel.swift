@@ -70,6 +70,8 @@ final class RadioViewModel {
     var isAppActive: Bool = true
     var audioHighPassHz: Int = 0
     var audioLowPassHz: Int = 0
+    var noiseBlankerThreshold: Float = 0
+    var audioAgcEnabled: Bool = false
     var waterfallZoom: Double = 1.0
 
     // Diagnostics
@@ -581,6 +583,16 @@ final class RadioViewModel {
             highPassHz: normalized.highPass,
             lowPassHz: normalized.lowPass
         )
+    }
+
+    func setNoiseBlankerThreshold(_ threshold: Float) {
+        noiseBlankerThreshold = threshold
+        dspPipeline.setNoiseBlankerThreshold(threshold)
+    }
+
+    func setAudioAgcEnabled(_ enabled: Bool) {
+        audioAgcEnabled = enabled
+        dspPipeline.audioAgcEnabled = enabled
     }
 
     func setRadioTabVisible(_ isVisible: Bool) {

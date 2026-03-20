@@ -34,6 +34,8 @@ struct DiagnosticsView: View {
                     diagRow("Bandwidth", value: "\(viewModel.bandwidthHz) Hz")
                     diagRow("Audio HP", value: viewModel.audioHighPassHz == 0 ? "Off" : "\(viewModel.audioHighPassHz) Hz")
                     diagRow("Audio LP", value: viewModel.audioLowPassHz == 0 ? "Off" : "\(viewModel.audioLowPassHz) Hz")
+                    diagRow("Noise Blanker", value: viewModel.noiseBlankerThreshold == 0 ? "Off" : String(format: "%.0f%%", viewModel.noiseBlankerThreshold * 100))
+                    diagRow("Audio AGC", value: viewModel.audioAgcEnabled ? "On" : "Off")
                 }
 
                 Section("Display") {

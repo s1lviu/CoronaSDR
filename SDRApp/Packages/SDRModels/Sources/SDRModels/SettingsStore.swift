@@ -118,6 +118,14 @@ public final class SettingsStore {
         didSet { defaults.set(audioLowPassHz, forKey: "audioLowPassHz") }
     }
 
+    public var noiseBlankerThreshold: Float {
+        didSet { defaults.set(noiseBlankerThreshold, forKey: "noiseBlankerThreshold") }
+    }
+
+    public var audioAgcEnabled: Bool {
+        didSet { defaults.set(audioAgcEnabled, forKey: "audioAgcEnabled") }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
@@ -144,5 +152,7 @@ public final class SettingsStore {
         self.deemphasis = defaults.object(forKey: "deemphasis") != nil ? defaults.integer(forKey: "deemphasis") : 75
         self.audioHighPassHz = defaults.object(forKey: "audioHighPassHz") != nil ? defaults.integer(forKey: "audioHighPassHz") : 0
         self.audioLowPassHz = defaults.object(forKey: "audioLowPassHz") != nil ? defaults.integer(forKey: "audioLowPassHz") : 0
+        self.noiseBlankerThreshold = defaults.object(forKey: "noiseBlankerThreshold") != nil ? defaults.float(forKey: "noiseBlankerThreshold") : 0
+        self.audioAgcEnabled = defaults.bool(forKey: "audioAgcEnabled")
     }
 }
