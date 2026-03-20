@@ -29,54 +29,58 @@ struct FrequencyKeypadView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                // Display
-                VStack(spacing: 4) {
-                    inputDisplay
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Display
+                    VStack(spacing: 4) {
+                        inputDisplay
+                            .padding(.horizontal)
+                            .accessibilityLabel("Frequency input: \(input.isEmpty ? "empty" : input), cursor \(cursorOffset)")
+
+                        // Unit picker
+                        Picker("Unit", selection: $unit) {
+                            ForEach(FreqUnit.allCases, id: \.self) { u in
+                                Text(u.rawValue).tag(u)
+                            }
+                        }
+                        .pickerStyle(.segmented)
                         .padding(.horizontal)
-                        .accessibilityLabel("Frequency input: \(input.isEmpty ? "empty" : input), cursor \(cursorOffset)")
+                    }
 
-                    // Unit picker
-                    Picker("Unit", selection: $unit) {
-                        ForEach(FreqUnit.allCases, id: \.self) { u in
-                            Text(u.rawValue).tag(u)
+                    // Keypad
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                        ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "DEL"], id: \.self) { key in
+                            Button {
+                                handleKey(key)
+                            } label: {
+                                Text(key)
+                                    .font(.title2.bold())
+                                    .frame(maxWidth: .infinity, minHeight: 50)
+                                    .background(Color(.systemGray5))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            .accessibilityLabel(key == "DEL" ? "Delete" : key)
                         }
                     }
-                    .pickerStyle(.segmented)
                     .padding(.horizontal)
-                }
 
-                // Keypad
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                    ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "DEL"], id: \.self) { key in
-                        Button {
-                            handleKey(key)
-                        } label: {
-                            Text(key)
-                                .font(.title2.bold())
-                                .frame(maxWidth: .infinity, minHeight: 50)
-                                .background(Color(.systemGray5))
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                    directSamplingHint
+
+                    // Quick presets
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            presetButton("FM", freq: 100_000_000)
+                            presetButton("Air", freq: 118_000_000)
+                            presetButton("2m", freq: 144_000_000)
+                            presetButton("70cm", freq: 432_000_000)
+                            presetButton("MW", freq: 1_000_000)
                         }
-                        .accessibilityLabel(key == "DEL" ? "Delete" : key)
+                        .padding(.horizontal)
                     }
                 }
-                .padding(.horizontal)
-
-                directSamplingHint
-
-                // Quick presets
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        presetButton("FM", freq: 100_000_000)
-                        presetButton("Air", freq: 118_000_000)
-                        presetButton("2m", freq: 144_000_000)
-                        presetButton("70cm", freq: 432_000_000)
-                        presetButton("MW", freq: 1_000_000)
-                    }
-                    .padding(.horizontal)
-                }
+                .padding(.bottom, 8)
             }
+            .scrollIndicators(.hidden)
             .navigationTitle("Set Frequency")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
