@@ -710,3 +710,143 @@ final class NoiseBlankerEdgeCaseTests: XCTestCase {
         }
     }
 }
+
+// MARK: - DSPPipeline Sample Rate Switch Tests
+
+final class DSPPipelineSampleRateTests: XCTestCase {
+
+    private func makePipeline() -> DSPPipeline {
+        let iqBuffer = IQRingBuffer(capacity: 65536)
+        let audioBuffer = AudioRingBuffer(capacity: 48000)
+        return DSPPipeline(iqBuffer: iqBuffer, audioBuffer: audioBuffer, sampleRate: 1_024_000)
+    }
+
+    func testSetSampleRateUpdatesSampleRate() {
+        let pipeline = makePipeline()
+        XCTAssertEqual(pipeline.sampleRate, 1_024_000)
+
+        pipeline.setSampleRate(2_400_000)
+        XCTAssertEqual(pipeline.sampleRate, 2_400_000)
+    }
+
+    func testSetSampleRateClampsMinimum() {
+        let pipeline = makePipeline()
+        pipeline.setSampleRate(100_000)
+        XCTAssertEqual(pipeline.sampleRate, 250_000,
+                       "Sample rate should be clamped to minimum 250kHz")
+    }
+
+    func testSetSameSampleRateIsNoOp() {
+        let pipeline = makePipeline()
+        pipeline.setSampleRate(1_024_000)
+        // Should not crash or cause issues — guard prevents rebuild
+        XCTAssertEqual(pipeline.sampleRate, 1_024_000)
+    }
+
+    func testRapidSampleRateSwitchDoesNotCrash() {
+        let pipeline = makePipeline()
+        // Simulate rapid profile switching
+        let rates = [250_000, 1_024_000, 2_400_000, 768_000, 192_000,
+                     2_400_000, 250_000, 1_024_000, 2_048_000, 250_000]
+        for rate in rates {
+            pipeline.setSampleRate(rate)
+        }
+        // Should not crash; final rate should stick.
+        XCTAssertEqual(pipeline.sampleRate, 250_000)
+    }
+
+    func testSampleRateSwitchPreservesNoiseReductionFlags() {
+        let pipeline = makePipeline()
+        pipeline.setNoiseBlankerThreshold(0.5)
+        pipeline.audioAgcEnabled = true
+
+        pipeline.setSampleRate(2_400_000)
+
+        XCTAssertTrue(pipeline.noiseBlankerEnabled,
+                      "Noise blanker should remain enabled after sample rate change")
+        XCTAssertTrue(pipeline.audioAgcEnabled,
+                      "Audio AGC should remain enabled after sample rate change")
+    }
+
+    func testSampleRateSwitchResetsState() {
+        let pipeline = makePipeline()
+        // setSampleRate calls resetStateLocked internally — verify it doesn't crash
+        // by switching between very different rates.
+        pipeline.setSampleRate(192_000)
+        pipeline.resetState()
+        pipeline.setSampleRate(2_400_000)
+        pipeline.resetState()
+        XCTAssertEqual(pipeline.sampleRate, 2_400_000)
+    }
+}
+
+// MARK: - Settle Window Tests
+
+final class SettleWindowTests: XCTestCase {
+
+    func testSettleWindowUsesMaxRate() {
+        // Verify that after setSampleRate, the connection properly handles
+        // the transition by testing the IQ buffer behavior.
+        let iqBuffer = IQRingBuffer(capacity: 65536)
+        let conn = RTLTCPConnection(iqBuffer: iqBuffer)
+
+        // Not connected, so setSampleRate just sets internal state.
+        // We verify the settle window doesn't crash and the buffer is flushed.
+        let testData = Data(repeating: 128, count: 4096)
+        iqBuffer.write(testData)
+        XCTAssertGreaterThan(iqBuffer.availableForReading, 0)
+
+        // Calling setSampleRate should flush the IQ buffer via beginSettleWindow.
+        conn.setSampleRate(2_400_000)
+        XCTAssertEqual(iqBuffer.availableForReading, 0,
+                       "IQ buffer should be flushed after sample rate change")
+    }
+
+    func testRapidSampleRateChangesOnConnection() {
+        let iqBuffer = IQRingBuffer(capacity: 65536)
+        let conn = RTLTCPConnection(iqBuffer: iqBuffer)
+
+        // Rapid rate changes should not crash or leave inconsistent state.
+        let rates = [250_000, 2_400_000, 1_024_000, 192_000, 768_000, 2_048_000]
+        for rate in rates {
+            conn.setSampleRate(rate)
+        }
+        // Should complete without crash.
+    }
+}
+
+// MARK: - Profile Debounce Tests
+
+final class ProfileDebounceTests: XCTestCase {
+
+    func testDSPPipelineHandlesAllProfileRates() {
+        // Verify that every standard profile rate creates a valid pipeline config.
+        // Note: DSPPipeline init does NOT clamp — only setSampleRate clamps to 250kHz.
+        // Rates below 250kHz are valid at init time (e.g., HF+ Low 192kHz).
+        let profileRates = [192_000, 250_000, 768_000, 1_024_000, 2_048_000, 2_400_000]
+        for rate in profileRates {
+            let iqBuffer = IQRingBuffer(capacity: 65536)
+            let audioBuffer = AudioRingBuffer(capacity: 48000)
+            let pipeline = DSPPipeline(iqBuffer: iqBuffer, audioBuffer: audioBuffer, sampleRate: rate)
+            XCTAssertEqual(pipeline.sampleRate, rate,
+                           "Pipeline should accept rate \(rate) at init")
+        }
+    }
+
+    func testDSPPipelineSwitchBetweenAllProfiles() {
+        let iqBuffer = IQRingBuffer(capacity: 65536)
+        let audioBuffer = AudioRingBuffer(capacity: 48000)
+        let pipeline = DSPPipeline(iqBuffer: iqBuffer, audioBuffer: audioBuffer, sampleRate: 1_024_000)
+
+        // Simulate switching through every profile pair.
+        let rates = [192_000, 250_000, 768_000, 1_024_000, 2_048_000, 2_400_000]
+        for from in rates {
+            for to in rates where from != to {
+                pipeline.setSampleRate(from)
+                pipeline.setSampleRate(to)
+                XCTAssertEqual(pipeline.sampleRate, max(250_000, to),
+                               "Pipeline should handle \(from) → \(to) transition")
+            }
+        }
+    }
+}
