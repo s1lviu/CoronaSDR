@@ -126,6 +126,7 @@ final class RadioViewModel {
     private var firstAudioTrace: PerformanceTrace?
     private var pendingRetuneTrace: PerformanceTrace?
     private var lastSevereAudioUnderrunAt: CFAbsoluteTime = 0
+    private var profileSwitchTask: Task<Void, Never>?
 
     init() {
         connection = RTLTCPConnection(iqBuffer: iqBuffer)
@@ -547,8 +548,17 @@ final class RadioViewModel {
         preferredSampleRate = profile.sampleRate
         preferredFFTSize = profile.fftSize
         preferredUIFPS = profile.uiFps
-        applyPerformancePolicy()
-        updateTelemetryContext()
+
+        // Debounce: only apply after rapid switching settles (300ms).
+        // This avoids multiple back-to-back DSP rebuilds, settle windows,
+        // and main-thread-blocking transitions when the user rapidly taps profiles.
+        profileSwitchTask?.cancel()
+        profileSwitchTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, let self else { return }
+            self.applyPerformancePolicy()
+            self.updateTelemetryContext()
+        }
     }
 
     func applyWaterfallColorScheme(_ schemeName: String) {

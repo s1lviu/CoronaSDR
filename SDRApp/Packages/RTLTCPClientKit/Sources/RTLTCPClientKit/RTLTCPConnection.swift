@@ -242,9 +242,10 @@ public final class RTLTCPConnection: @unchecked Sendable {
     /// Set sample rate in Hz.
     public func setSampleRate(_ hz: Int) {
         let clampedHz = max(1, min(Int(UInt32.max), hz))
+        let previousRate = currentSampleRateHz
         currentSampleRateHz = clampedHz
         sendCommand(.setSampleRate, parameter: UInt32(clampedHz))
-        beginSettleWindow()
+        beginSettleWindow(transitionRateHz: max(previousRate, clampedHz))
     }
 
     /// Set gain mode (0 = auto, 1 = manual).
@@ -367,9 +368,13 @@ public final class RTLTCPConnection: @unchecked Sendable {
     }
 
     /// Begin settle window: flush buffer and discard incoming data for a fixed time window.
-    private func beginSettleWindow() {
+    /// - Parameter transitionRateHz: The rate to use for calculating discard bytes.
+    ///   For sample rate changes, pass max(oldRate, newRate) so the window covers
+    ///   whichever rate the data actually arrives at during the transition.
+    private func beginSettleWindow(transitionRateHz: Int? = nil) {
         iqBuffer.flush()
-        let bytesPerSecond = max(1, currentSampleRateHz * 2) // 8-bit I + 8-bit Q
+        let rateForCalc = transitionRateHz ?? currentSampleRateHz
+        let bytesPerSecond = max(1, rateForCalc * 2) // 8-bit I + 8-bit Q
         let requested = Int(Double(bytesPerSecond) * Double(settleWindowDurationMs) / 1_000.0)
         let clampedBytes = max(8_192, min(bytesPerSecond, requested))
         settleLock.lock()
