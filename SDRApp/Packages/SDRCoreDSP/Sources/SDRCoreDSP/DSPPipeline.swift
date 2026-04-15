@@ -114,12 +114,23 @@ public final class DSPPipeline: @unchecked Sendable {
             maxBlockSizeBytes: maxBlockSizeBytes
         )
 
-        let cutoff = Float(12_500) / Float(sampleRate)
-        let decimFactor = max(1, sampleRate / 48000)
-        self.channelFilterI = FIRFilter(cutoffNormalized: cutoff * 2, numTaps: 63, decimationFactor: decimFactor)
-        self.channelFilterQ = FIRFilter(cutoffNormalized: cutoff * 2, numTaps: 63, decimationFactor: decimFactor)
+        let initialFilterDesign = ChannelFilterDesigner.make(
+            inputSampleRate: sampleRate,
+            bandwidthHz: 12_500,
+            intermediateTargetHz: 48_000
+        )
+        self.channelFilterI = FIRFilter(
+            cutoffNormalized: initialFilterDesign.normalizedCutoff,
+            numTaps: initialFilterDesign.tapCount,
+            decimationFactor: initialFilterDesign.decimationFactor
+        )
+        self.channelFilterQ = FIRFilter(
+            cutoffNormalized: initialFilterDesign.normalizedCutoff,
+            numTaps: initialFilterDesign.tapCount,
+            decimationFactor: initialFilterDesign.decimationFactor
+        )
 
-        let intermediateRate = Double(sampleRate) / Double(decimFactor)
+        let intermediateRate = initialFilterDesign.intermediateRate
         self.resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         self.driftCompensator = DriftCompensator(
             baseRatio: outputRate / intermediateRate,
@@ -315,6 +326,11 @@ public final class DSPPipeline: @unchecked Sendable {
                 if resampledCount > 0 {
                     resampledWork.withUnsafeMutableBufferPointer { samples in
                         audioToneFilter.processInPlace(samples, count: resampledCount)
+                        // Soft-limit to prevent DAC clipping on strong FM signals
+                        var lo: Float = -0.95
+                        var hi: Float =  0.95
+                        let n = vDSP_Length(resampledCount)
+                        vDSP_vclip(samples.baseAddress!, 1, &lo, &hi, samples.baseAddress!, 1, n)
                         _ = audioBuffer.write(UnsafeBufferPointer(start: samples.baseAddress!, count: resampledCount))
                     }
                 }
@@ -522,30 +538,29 @@ public final class DSPPipeline: @unchecked Sendable {
     }
 
     private func rebuildFiltersLocked() {
-        let sampleRate = max(250_000, _sampleRate)
-        let bandwidth = max(200, _bandwidthHz)
-        let cutoff = Float(bandwidth) / Float(sampleRate)
-        let normalizedCutoff = min(0.99, max(0.0005, cutoff * 2))
-        let numTaps: Int
-        if bandwidth < 5000 {
-            numTaps = 127 // Narrow filter needs more taps
-        } else if bandwidth < 50_000 {
-            numTaps = 63
-        } else {
-            numTaps = 65 // WFM needs decent filter too
-        }
+        let design = ChannelFilterDesigner.make(
+            inputSampleRate: _sampleRate,
+            bandwidthHz: _bandwidthHz,
+            intermediateTargetHz: intermediateTarget
+        )
+        channelFilterI = FIRFilter(
+            cutoffNormalized: design.normalizedCutoff,
+            numTaps: design.tapCount,
+            decimationFactor: design.decimationFactor
+        )
+        channelFilterQ = FIRFilter(
+            cutoffNormalized: design.normalizedCutoff,
+            numTaps: design.tapCount,
+            decimationFactor: design.decimationFactor
+        )
 
-        let decimFactor = max(1, sampleRate / intermediateTarget)
-        channelFilterI = FIRFilter(cutoffNormalized: normalizedCutoff, numTaps: numTaps, decimationFactor: decimFactor)
-        channelFilterQ = FIRFilter(cutoffNormalized: normalizedCutoff, numTaps: numTaps, decimationFactor: decimFactor)
-
-        let intermediateRate = Double(sampleRate) / Double(decimFactor)
+        let intermediateRate = design.intermediateRate
         let newBaseRatio = outputRate / intermediateRate
         resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         driftCompensator = DriftCompensator(baseRatio: newBaseRatio, targetFill: targetAudioFill)
 
-        SDRLogger.dsp.info("Filters rebuilt: bw=\(self._bandwidthHz)Hz, decim=\(decimFactor), intermediate=\(intermediateRate)Hz")
-        SDRDebug.print("🔧 Filters: bw=\(self._bandwidthHz)Hz, taps=\(numTaps), decim=\(decimFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
+        SDRLogger.dsp.info("Filters rebuilt: bw=\(self._bandwidthHz)Hz, decim=\(design.decimationFactor), intermediate=\(intermediateRate)Hz")
+        SDRDebug.print("🔧 Filters: bw=\(self._bandwidthHz)Hz, taps=\(design.tapCount), decim=\(design.decimationFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
     }
 
     /// Update IQ sample rate and rebuild the DSP chain.
