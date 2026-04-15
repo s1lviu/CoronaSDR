@@ -1,4 +1,5 @@
 import XCTest
+@testable import CoronaSDR
 import RTLTCPClientKit
 import SDRModels
 
@@ -43,5 +44,63 @@ final class RFControlsTests: XCTestCase {
         XCTAssertTrue(reloaded.isBiasTeeEnabled)
         XCTAssertEqual(reloaded.audioHighPassHz, 250)
         XCTAssertEqual(reloaded.audioLowPassHz, 4_500)
+    }
+
+    func testSoftwareOffsetTuningPlanMatchesRtlFmQuarterRateOffset() {
+        let plan = ReceiverTuningPlan.make(
+            requestedFrequencyHz: 100_000_000,
+            sampleRateHz: 1_024_000,
+            supportsHardwareOffsetTuning: true,
+            hardwareOffsetTuningEnabled: false,
+            directSamplingActive: false,
+            maximumFrequencyHz: Int(UInt32.max)
+        )
+
+        XCTAssertEqual(plan.requestedFrequencyHz, 100_000_000)
+        XCTAssertEqual(plan.tunerFrequencyHz, 100_256_000)
+        XCTAssertEqual(plan.softwareFrequencyShiftHz, -256_000)
+    }
+
+    func testHardwareOffsetTuningDisablesSoftwareOffsetPlan() {
+        let plan = ReceiverTuningPlan.make(
+            requestedFrequencyHz: 100_000_000,
+            sampleRateHz: 1_024_000,
+            supportsHardwareOffsetTuning: true,
+            hardwareOffsetTuningEnabled: true,
+            directSamplingActive: false,
+            maximumFrequencyHz: Int(UInt32.max)
+        )
+
+        XCTAssertEqual(plan.tunerFrequencyHz, 100_000_000)
+        XCTAssertEqual(plan.softwareFrequencyShiftHz, 0)
+    }
+
+    func testDirectSamplingDisablesSoftwareOffsetPlan() {
+        let plan = ReceiverTuningPlan.make(
+            requestedFrequencyHz: 7_100_000,
+            sampleRateHz: 250_000,
+            supportsHardwareOffsetTuning: true,
+            hardwareOffsetTuningEnabled: false,
+            directSamplingActive: true,
+            maximumFrequencyHz: Int(UInt32.max)
+        )
+
+        XCTAssertEqual(plan.tunerFrequencyHz, 7_100_000)
+        XCTAssertEqual(plan.softwareFrequencyShiftHz, 0)
+    }
+
+    func testSoftwareOffsetPlanClampsNearMaximumTunableFrequency() {
+        let maxFrequency = Int(UInt32.max)
+        let plan = ReceiverTuningPlan.make(
+            requestedFrequencyHz: maxFrequency - 10_000,
+            sampleRateHz: 1_024_000,
+            supportsHardwareOffsetTuning: true,
+            hardwareOffsetTuningEnabled: false,
+            directSamplingActive: false,
+            maximumFrequencyHz: maxFrequency
+        )
+
+        XCTAssertEqual(plan.tunerFrequencyHz, maxFrequency)
+        XCTAssertEqual(plan.softwareFrequencyShiftHz, -10_000)
     }
 }

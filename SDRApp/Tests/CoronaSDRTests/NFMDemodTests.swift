@@ -26,6 +26,7 @@ final class ChannelFilterAliasingTests: XCTestCase {
     /// discriminator as distortion.
     func testFilterTapCountScalesWithDecimation() {
         let profiles: [(label: String, sampleRate: Int, expectedTaps: Int)] = [
+            ("HF+ Low", 192_000, 63),
             ("Ultra Low", 250_000, 63),
             ("HF+ High", 768_000, 135),
             ("Low", 1_024_000, 173),
@@ -53,6 +54,7 @@ final class ChannelFilterAliasingTests: XCTestCase {
     /// boundary for every built-in NFM profile.
     func testDesignedFilterRejectsAliasBoundary() {
         let profiles: [(label: String, sampleRate: Int)] = [
+            ("HF+ Low", 192_000),
             ("Ultra Low", 250_000),
             ("HF+ High", 768_000),
             ("Low", 1_024_000),
@@ -187,6 +189,98 @@ final class ChannelFilterAliasingTests: XCTestCase {
 
         // With only 63 taps the out-of-band tone leaks through, so RMS stays high.
         XCTAssertGreaterThan(rms, 0.03, "63-tap filter should fail to reject 50 kHz at 2.4 MSPS (regression baseline)")
+    }
+}
+
+// MARK: - WFM channel filter tests
+
+final class WFMChannelFilterTests: XCTestCase {
+    func testWFMUsesOneSidedChannelCutoff() {
+        let profiles: [(label: String, sampleRate: Int, expectedTaps: Int)] = [
+            ("Ultra Low", 250_000, 65),
+            ("HF+ High", 768_000, 65),
+            ("Low", 1_024_000, 75),
+            ("Medium", 2_048_000, 147),
+            ("High", 2_400_000, 241),
+        ]
+
+        for profile in profiles {
+            let design = ChannelFilterDesigner.make(
+                inputSampleRate: profile.sampleRate,
+                bandwidthHz: 200_000,
+                intermediateTargetHz: 240_000,
+                cutoffHz: 100_000
+            )
+
+            XCTAssertEqual(design.bandwidthHz, 200_000, "\(profile.label): display bandwidth should stay 200 kHz")
+            XCTAssertEqual(design.cutoffHz, 100_000, "\(profile.label): WFM FIR cutoff should be one-sided")
+            XCTAssertEqual(design.tapCount, profile.expectedTaps, "\(profile.label): unexpected WFM tap count")
+            XCTAssertLessThan(Float(design.cutoffHz), Float(design.intermediateRate / 2.0),
+                              "\(profile.label): WFM cutoff must fit below decimated Nyquist")
+        }
+    }
+
+    func testWFMDesignedFilterRejectsAliasBoundary() {
+        let profiles: [(label: String, sampleRate: Int)] = [
+            ("HF+ High", 768_000),
+            ("Low", 1_024_000),
+            ("Medium", 2_048_000),
+            ("High", 2_400_000),
+        ]
+
+        for profile in profiles {
+            let design = ChannelFilterDesigner.make(
+                inputSampleRate: profile.sampleRate,
+                bandwidthHz: 200_000,
+                intermediateTargetHz: 240_000,
+                cutoffHz: 100_000
+            )
+            let taps = FIRFilter.designLowPass(
+                cutoff: design.normalizedCutoff,
+                numTaps: design.tapCount
+            )
+            let attenuationDb = responseDb(
+                taps: taps,
+                sampleRate: Float(design.inputSampleRate),
+                frequencyHz: Float(design.intermediateRate / 2.0)
+            )
+
+            XCTAssertLessThanOrEqual(
+                attenuationDb,
+                -45.0,
+                "\(profile.label): WFM alias boundary attenuation is only \(attenuationDb)dB"
+            )
+        }
+    }
+}
+
+// MARK: - NCO offset tuning tests
+
+final class NCOMixerOffsetTuningTests: XCTestCase {
+    func testNegativeQuarterRateShiftMatchesRtlFmRotation() {
+        let sampleRate: Float = 1_024_000
+        let offsetHz: Float = sampleRate / 4
+        let count = 512
+        var real = [Float]()
+        var imag = [Float]()
+        real.reserveCapacity(count)
+        imag.reserveCapacity(count)
+
+        for index in 0..<count {
+            let phase = -2.0 * Float.pi * offsetHz * Float(index) / sampleRate
+            real.append(cosf(phase))
+            imag.append(sinf(phase))
+        }
+
+        let mixer = NCOMixer()
+        mixer.setFrequency(-offsetHz, sampleRate: sampleRate)
+        mixer.mix(real: &real, imag: &imag, count: count)
+
+        let meanReal = real.reduce(0, +) / Float(count)
+        let meanImag = imag.reduce(0, +) / Float(count)
+
+        XCTAssertEqual(meanReal, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(meanImag, 0.0, accuracy: 0.0001)
     }
 }
 
