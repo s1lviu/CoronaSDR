@@ -31,6 +31,7 @@
 		921B4040B2923407E791E124 /* SDRAppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */; };
 		953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */; };
 		9555334D9074956824F792FD /* AppIcon76x76.png in Resources */ = {isa = PBXBuildFile; fileRef = 43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */; };
+		B90C6AD4E1144F779A24F4D6 /* NFMDemodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */; };
 		A030BA19E04E1C72105984DF /* SDRRender in Frameworks */ = {isa = PBXBuildFile; productRef = 8DE39D29C59EB576ABD3CF6F /* SDRRender */; };
 		A80583CE4E40FF9E36503B6A /* FrequencyKeypadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E481225ED87D67930777F977 /* FrequencyKeypadView.swift */; };
 		B024E493E1804F385D66908A /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = FFE3E3D1850D6234D19B5B50 /* FirebasePerformance */; };
@@ -71,15 +72,16 @@
 		5479E9108B6A98B1000F44A4 /* RadioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioView.swift; sourceTree = "<group>"; };
 		55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IQRingBufferTests.swift; sourceTree = "<group>"; };
 		565BB40C80E668A8E367BE28 /* RFControlsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFControlsTests.swift; sourceTree = "<group>"; };
-		A1C3F90B7D2E48F6B5E71A33 /* AudioFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFilterTests.swift; sourceTree = "<group>"; };
 		5C7E5486B627308AA580B3FA /* AppIcon60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon60x60@3x.png"; sourceTree = "<group>"; };
 		67EB21079C4468171086D34E /* CoronaSDR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoronaSDR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6CFC38E087C49B1FFA363F1C /* ImportExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportExportSheet.swift; sourceTree = "<group>"; };
 		70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDRAppMain.swift; sourceTree = "<group>"; };
 		7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandlerTests.swift; sourceTree = "<group>"; };
 		7DC7DDB76A7DC51532C9B36D /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFMDemodTests.swift; sourceTree = "<group>"; };
 		900250F99F9EBEEC55B043DB /* StationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationsView.swift; sourceTree = "<group>"; };
 		A0A488ACFE29F4CC1ACDDDBD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		A1C3F90B7D2E48F6B5E71A33 /* AudioFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFilterTests.swift; sourceTree = "<group>"; };
 		AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon83.5x83.5@2x.png"; sourceTree = "<group>"; };
 		B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B63CF84D09D95EFDF91453F3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 				F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */,
 				7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */,
 				55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */,
+				8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */,
 				565BB40C80E668A8E367BE28 /* RFControlsTests.swift */,
 			);
 			name = CoronaSDRTests;
@@ -377,6 +380,7 @@
 				953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */,
 				060450D988F56FD0835821C2 /* DeepLinkHandlerTests.swift in Sources */,
 				C6686AF665A8D0120B39D71B /* IQRingBufferTests.swift in Sources */,
+				B90C6AD4E1144F779A24F4D6 /* NFMDemodTests.swift in Sources */,
 				20A9B3A996EC6EF055A873D0 /* RFControlsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -444,7 +448,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = DDJCP893KF;
 				INFOPLIST_FILE = App/SDRApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
@@ -453,7 +457,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -555,7 +559,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = DDJCP893KF;
 				INFOPLIST_FILE = App/SDRApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
@@ -564,7 +568,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;

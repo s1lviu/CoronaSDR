@@ -70,7 +70,8 @@ public final class AMDemodulator: Demodulator {
 public final class FMDemodulator: Demodulator {
     private var q: freqdem
     private var outputScratch: [Float] = []
-    
+    private var complexScratch: [liquid_float_complex] = []
+
     // De-emphasis state
     private var deemphPrev: Float = 0
     private let deemphAlpha: Float
@@ -81,16 +82,17 @@ public final class FMDemodulator: Demodulator {
     ///   - deviation: The frequency deviation in Hz (e.g. 5000 for NFM, 75000 for WFM).
     ///   - deemphasisUs: De-emphasis time constant in microseconds (default 75 for US/KR, 50 for EU).
     public init(sampleRate: Float, deviation: Float, deemphasisUs: Float = 75.0) {
-        // kf = deviation / sample_rate
         let kf = deviation / sampleRate
         self.q = freqdem_create(kf)
-        
-        // De-emphasis: alpha = 1 - exp(-1 / (sampleRate * tau))
-        // tau = deemphasis_us * 1e-6
-        let tau = deemphasisUs * 1e-6
-        self.deemphAlpha = 1.0 - exp(-1.0 / (sampleRate * tau))
+
+        if deemphasisUs <= 0 {
+            self.deemphAlpha = 1.0
+        } else {
+            let tau = deemphasisUs * 1e-6
+            self.deemphAlpha = 1.0 - exp(-1.0 / (sampleRate * tau))
+        }
     }
-    
+
     deinit {
         freqdem_destroy(q)
     }
@@ -99,25 +101,33 @@ public final class FMDemodulator: Demodulator {
         let count = min(real.count, imag.count)
         guard count > 0 else { return [] }
         if outputScratch.count != count { outputScratch = [Float](repeating: 0, count: count) }
-        
-        // Local state capture for loop
+        if complexScratch.count != count { complexScratch = [liquid_float_complex](repeating: liquid_float_complex(real: 0, imag: 0), count: count) }
+
+        // Build interleaved complex array from separate I/Q
+        real.withUnsafeBufferPointer { rBuf in
+            imag.withUnsafeBufferPointer { iBuf in
+                complexScratch.withUnsafeMutableBufferPointer { cBuf in
+                    for i in 0..<count {
+                        cBuf[i] = liquid_float_complex(real: rBuf[i], imag: iBuf[i])
+                    }
+                }
+            }
+        }
+
+        // Block demodulate with one C call for the entire block.
+        complexScratch.withUnsafeMutableBufferPointer { cBuf in
+            outputScratch.withUnsafeMutableBufferPointer { outBuf in
+                _ = freqdem_demodulate_block(q, cBuf.baseAddress!, UInt32(count), outBuf.baseAddress!)
+            }
+        }
+
+        // De-emphasis as a separate pass (single-pole IIR low-pass)
         var prev = deemphPrev
         let alpha = deemphAlpha
-        
         for i in 0..<count {
-            // Construct complex sample
-            let sample = liquid_float_complex(real: real[i], imag: imag[i])
-            var outSample: Float = 0
-            
-            // Demodulate
-            freqdem_demodulate(q, sample, &outSample)
-            
-            // De-emphasis (IIR single pole)
-            // y[n] = y[n-1] + alpha * (x[n] - y[n-1])
-            prev = prev + alpha * (outSample - prev)
+            prev = prev + alpha * (outputScratch[i] - prev)
             outputScratch[i] = prev
         }
-        
         deemphPrev = prev
 
         return outputScratch

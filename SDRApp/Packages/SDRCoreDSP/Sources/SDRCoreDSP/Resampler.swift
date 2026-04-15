@@ -6,10 +6,6 @@ import CLiquidDSP
 public final class Resampler {
     private var q: resamp_rrrf?
     private var _ratio: Float
-    
-    // Internal buffer for liquid-dsp output (needs to be large enough for max decimation/interpolation)
-    private var outputBuffer: UnsafeMutablePointer<Float>
-    private let maxOutputPerSample: Int = 16 // Safety margin
     private var outputScratch: [Float] = []
 
     /// Current resampling ratio (output_rate / input_rate).
@@ -31,14 +27,12 @@ public final class Resampler {
     /// - Parameter ratio: output_rate / input_rate.
     public init(ratio: Double) {
         self._ratio = Float(ratio)
-        
+
         // m: semi-length of filter (delay). 13 is a good balance for audio quality.
         // fc: cutoff frequency. 0.49 to avoid aliasing near Nyquist.
         // as: stop-band attenuation. 60dB is decent for SDR audio.
         // npfb: number of polyphase filter banks. 32 is standard.
         self.q = resamp_rrrf_create(_ratio, 13, 0.49, 60.0, 32)
-        
-        self.outputBuffer = UnsafeMutablePointer<Float>.allocate(capacity: maxOutputPerSample)
     }
 
     /// Convenience: create from input and output sample rates.
@@ -50,7 +44,6 @@ public final class Resampler {
         if let q = q {
             resamp_rrrf_destroy(q)
         }
-        outputBuffer.deallocate()
     }
 
     /// Resample a block of input samples.
@@ -70,42 +63,40 @@ public final class Resampler {
             return 0
         }
 
-        let maxNeeded = input.count * maxOutputPerSample
+        let maxNeeded = max(1, Int(resamp_rrrf_get_num_output(q, UInt32(input.count))))
         if outputScratch.count < maxNeeded {
             outputScratch = [Float](repeating: 0, count: maxNeeded)
         }
 
-        var writeIndex = 0
-        outputScratch.withUnsafeMutableBufferPointer { scratch in
-            guard let scratchBase = scratch.baseAddress else { return }
-
-            for sample in input {
-                var numWritten: UInt32 = 0
-                resamp_rrrf_execute(q, sample, outputBuffer, &numWritten)
-
-                let produced = Int(numWritten)
-                if produced > 0 {
-                    scratchBase.advanced(by: writeIndex).update(from: outputBuffer, count: produced)
-                    writeIndex += produced
-                }
+        var numWritten: UInt32 = 0
+        input.withUnsafeBufferPointer { inBuf in
+            outputScratch.withUnsafeMutableBufferPointer { outBuf in
+                _ = resamp_rrrf_execute_block(
+                    q,
+                    UnsafeMutablePointer(mutating: inBuf.baseAddress!),
+                    UInt32(input.count),
+                    outBuf.baseAddress!,
+                    &numWritten
+                )
             }
         }
 
-        if writeIndex <= 0 {
+        let written = Int(numWritten)
+        if written <= 0 {
             output.removeAll(keepingCapacity: true)
             return 0
         }
 
-        if output.count != writeIndex {
-            output = [Float](repeating: 0, count: writeIndex)
+        if output.count != written {
+            output = [Float](repeating: 0, count: written)
         }
         output.withUnsafeMutableBufferPointer { dest in
             outputScratch.withUnsafeBufferPointer { scratch in
-                dest.baseAddress!.update(from: scratch.baseAddress!, count: writeIndex)
+                dest.baseAddress!.update(from: scratch.baseAddress!, count: written)
             }
         }
 
-        return writeIndex
+        return written
     }
 
     public func reset() {
