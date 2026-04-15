@@ -3,6 +3,7 @@ import Foundation
 public struct ChannelFilterDesign: Equatable {
     public let inputSampleRate: Int
     public let bandwidthHz: Int
+    public let cutoffHz: Int
     public let intermediateTargetHz: Int
     public let decimationFactor: Int
     public let intermediateRate: Double
@@ -11,7 +12,7 @@ public struct ChannelFilterDesign: Equatable {
 }
 
 public enum ChannelFilterDesigner {
-    private static let minimumInputSampleRate = 250_000
+    private static let minimumInputSampleRate = 192_000
     private static let minimumBandwidthHz = 200
     private static let minimumNormalizedCutoff: Float = 0.0005
     private static let maximumNormalizedCutoff: Float = 0.99
@@ -24,21 +25,23 @@ public enum ChannelFilterDesigner {
     public static func make(
         inputSampleRate: Int,
         bandwidthHz: Int,
-        intermediateTargetHz: Int
+        intermediateTargetHz: Int,
+        cutoffHz requestedCutoffHz: Int? = nil
     ) -> ChannelFilterDesign {
         let sampleRate = max(minimumInputSampleRate, inputSampleRate)
         let bandwidth = max(minimumBandwidthHz, bandwidthHz)
+        let cutoffHz = max(minimumBandwidthHz, requestedCutoffHz ?? bandwidth)
         let target = max(1, intermediateTargetHz)
         let decimationFactor = max(1, sampleRate / target)
         let intermediateRate = Double(sampleRate) / Double(decimationFactor)
-        let cutoff = Float(bandwidth) / Float(sampleRate)
+        let cutoff = Float(cutoffHz) / Float(sampleRate)
         let normalizedCutoff = min(maximumNormalizedCutoff, max(minimumNormalizedCutoff, cutoff * 2))
         let tapCount = makeOdd(
             max(
-                baseTapCount(forBandwidthHz: bandwidth),
+                baseTapCount(forCutoffHz: cutoffHz),
                 transitionLimitedTapCount(
                     sampleRate: sampleRate,
-                    bandwidthHz: bandwidth,
+                    cutoffHz: cutoffHz,
                     decimationFactor: decimationFactor
                 )
             )
@@ -47,6 +50,7 @@ public enum ChannelFilterDesigner {
         return ChannelFilterDesign(
             inputSampleRate: sampleRate,
             bandwidthHz: bandwidth,
+            cutoffHz: cutoffHz,
             intermediateTargetHz: target,
             decimationFactor: decimationFactor,
             intermediateRate: intermediateRate,
@@ -55,10 +59,10 @@ public enum ChannelFilterDesigner {
         )
     }
 
-    private static func baseTapCount(forBandwidthHz bandwidth: Int) -> Int {
-        if bandwidth < 5_000 {
+    private static func baseTapCount(forCutoffHz cutoffHz: Int) -> Int {
+        if cutoffHz < 5_000 {
             return 127
-        } else if bandwidth < 50_000 {
+        } else if cutoffHz < 50_000 {
             return 63
         } else {
             return 65
@@ -67,14 +71,14 @@ public enum ChannelFilterDesigner {
 
     private static func transitionLimitedTapCount(
         sampleRate: Int,
-        bandwidthHz: Int,
+        cutoffHz: Int,
         decimationFactor: Int
     ) -> Int {
         guard decimationFactor > 1 else { return 1 }
 
         let inputNyquist = Double(sampleRate) / 2.0
         let decimatedNyquist = Double(sampleRate) / Double(decimationFactor) / 2.0
-        let transitionHz = decimatedNyquist - Double(bandwidthHz)
+        let transitionHz = decimatedNyquist - Double(cutoffHz)
         guard transitionHz > 0 else {
             return 1
         }

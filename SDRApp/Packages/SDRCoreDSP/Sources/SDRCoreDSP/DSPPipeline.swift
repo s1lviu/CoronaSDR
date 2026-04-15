@@ -8,6 +8,9 @@ import RTLTCPClientKit
 /// Central DSP pipeline: reads IQ from ring buffer, processes, outputs audio and FFT frames.
 /// Runs on a dedicated DSP thread — never on the audio callback or network thread.
 public final class DSPPipeline: @unchecked Sendable {
+    private static let minimumSampleRateHz = 192_000
+    private static let minimumWFMSampleRateHz = 250_000
+
     // Configuration
     private let pipelineLock = NSRecursiveLock()
     private let lifecycleLock = NSLock()
@@ -15,6 +18,7 @@ public final class DSPPipeline: @unchecked Sendable {
     private var _bandwidthHz: Int = 12_500
     private var _sampleRate: Int = 1_024_000
     private var _bfoOffsetHz: Float = 0
+    private var _softwareFrequencyShiftHz: Float = 0
     private var _dcBlockEnabled = true
     private var shouldRun = false
     private var loopStopSignal: DispatchSemaphore?
@@ -24,6 +28,15 @@ public final class DSPPipeline: @unchecked Sendable {
         set {
             withPipelineLock {
                 guard _mode != newValue else { return }
+                let clampedSampleRate = Self.clampedSampleRate(_sampleRate, for: newValue)
+                if _sampleRate != clampedSampleRate {
+                    _sampleRate = clampedSampleRate
+                    blockSizeBytes = DSPPipeline.computeBlockSizeBytes(
+                        for: clampedSampleRate,
+                        minBlockSizeBytes: minBlockSizeBytes,
+                        maxBlockSizeBytes: maxBlockSizeBytes
+                    )
+                }
                 _mode = newValue
                 rebuildDemodChainLocked(preservingBandwidth: false)
             }
@@ -46,6 +59,13 @@ public final class DSPPipeline: @unchecked Sendable {
     public var bfoOffsetHz: Float {
         get { withPipelineLock { _bfoOffsetHz } }
         set { withPipelineLock { _bfoOffsetHz = newValue } }
+    }
+
+    /// Software tuner-center correction in Hz. Used when the RF tuner is
+    /// deliberately offset from the requested station to avoid DC artifacts.
+    public var softwareFrequencyShiftHz: Float {
+        get { withPipelineLock { _softwareFrequencyShiftHz } }
+        set { withPipelineLock { _softwareFrequencyShiftHz = newValue } }
     }
 
     // DC blocking
@@ -107,17 +127,19 @@ public final class DSPPipeline: @unchecked Sendable {
     public init(iqBuffer: IQRingBuffer, audioBuffer: AudioRingBuffer, sampleRate: Int = 1_024_000) {
         self.iqBuffer = iqBuffer
         self.audioBuffer = audioBuffer
-        self._sampleRate = sampleRate
+        let clampedSampleRate = Self.clampedSampleRate(sampleRate, for: .nfm)
+        self._sampleRate = clampedSampleRate
         self.blockSizeBytes = DSPPipeline.computeBlockSizeBytes(
-            for: sampleRate,
+            for: clampedSampleRate,
             minBlockSizeBytes: minBlockSizeBytes,
             maxBlockSizeBytes: maxBlockSizeBytes
         )
 
         let initialFilterDesign = ChannelFilterDesigner.make(
-            inputSampleRate: sampleRate,
+            inputSampleRate: clampedSampleRate,
             bandwidthHz: 12_500,
-            intermediateTargetHz: 48_000
+            intermediateTargetHz: 48_000,
+            cutoffHz: 12_500
         )
         self.channelFilterI = FIRFilter(
             cutoffNormalized: initialFilterDesign.normalizedCutoff,
@@ -269,9 +291,10 @@ public final class DSPPipeline: @unchecked Sendable {
                     iqDcBlocker.process(real: &realWork, imag: &imagWork)
                 }
 
-                // NCO mix (if needed for offset tuning or BFO)
-                if _bfoOffsetHz != 0 {
-                    ncoMixer.setFrequency(_bfoOffsetHz, sampleRate: Float(_sampleRate))
+                // NCO mix (if needed for software offset tuning or BFO)
+                let mixerOffsetHz = _softwareFrequencyShiftHz + _bfoOffsetHz
+                if mixerOffsetHz != 0 {
+                    ncoMixer.setFrequency(mixerOffsetHz, sampleRate: Float(_sampleRate))
                     ncoMixer.mix(real: &realWork, imag: &imagWork, count: sampleCount)
                 }
 
@@ -541,7 +564,8 @@ public final class DSPPipeline: @unchecked Sendable {
         let design = ChannelFilterDesigner.make(
             inputSampleRate: _sampleRate,
             bandwidthHz: _bandwidthHz,
-            intermediateTargetHz: intermediateTarget
+            intermediateTargetHz: intermediateTarget,
+            cutoffHz: channelFilterCutoffHz
         )
         channelFilterI = FIRFilter(
             cutoffNormalized: design.normalizedCutoff,
@@ -559,14 +583,14 @@ public final class DSPPipeline: @unchecked Sendable {
         resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         driftCompensator = DriftCompensator(baseRatio: newBaseRatio, targetFill: targetAudioFill)
 
-        SDRLogger.dsp.info("Filters rebuilt: bw=\(self._bandwidthHz)Hz, decim=\(design.decimationFactor), intermediate=\(intermediateRate)Hz")
-        SDRDebug.print("🔧 Filters: bw=\(self._bandwidthHz)Hz, taps=\(design.tapCount), decim=\(design.decimationFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
+        SDRLogger.dsp.info("Filters rebuilt: bw=\(self._bandwidthHz)Hz, cutoff=\(design.cutoffHz)Hz, decim=\(design.decimationFactor), intermediate=\(intermediateRate)Hz")
+        SDRDebug.print("🔧 Filters: bw=\(self._bandwidthHz)Hz, cutoff=\(design.cutoffHz)Hz, taps=\(design.tapCount), decim=\(design.decimationFactor), rate=\(intermediateRate)Hz, ratio=\(String(format: "%.6f", newBaseRatio))")
     }
 
     /// Update IQ sample rate and rebuild the DSP chain.
     public func setSampleRate(_ hz: Int) {
-        let clamped = max(250_000, hz)
         withPipelineLock {
+            let clamped = Self.clampedSampleRate(hz, for: _mode)
             guard _sampleRate != clamped else { return }
             _sampleRate = clamped
             blockSizeBytes = DSPPipeline.computeBlockSizeBytes(
@@ -576,6 +600,19 @@ public final class DSPPipeline: @unchecked Sendable {
             )
             rebuildDemodChainLocked(preservingBandwidth: true)
             resetStateLocked()
+        }
+    }
+
+    private static func clampedSampleRate(_ hz: Int, for mode: DemodMode) -> Int {
+        max(minimumSampleRate(for: mode), hz)
+    }
+
+    private static func minimumSampleRate(for mode: DemodMode) -> Int {
+        switch mode {
+        case .wfm:
+            return minimumWFMSampleRateHz
+        default:
+            return minimumSampleRateHz
         }
     }
 
@@ -594,6 +631,15 @@ public final class DSPPipeline: @unchecked Sendable {
                     pendingDemodChainRebuild = true
                 }
             }
+        }
+    }
+
+    private var channelFilterCutoffHz: Int {
+        switch _mode {
+        case .wfm:
+            return max(1, _bandwidthHz / 2)
+        default:
+            return _bandwidthHz
         }
     }
 

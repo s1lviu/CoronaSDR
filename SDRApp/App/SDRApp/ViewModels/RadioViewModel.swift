@@ -34,6 +34,34 @@ private final class FFTFrameMailbox: @unchecked Sendable {
     }
 }
 
+struct ReceiverTuningPlan: Equatable {
+    let requestedFrequencyHz: Int
+    let tunerFrequencyHz: Int
+    let softwareFrequencyShiftHz: Int
+
+    static func make(
+        requestedFrequencyHz: Int,
+        sampleRateHz: Int,
+        supportsHardwareOffsetTuning: Bool,
+        hardwareOffsetTuningEnabled: Bool,
+        directSamplingActive: Bool,
+        maximumFrequencyHz: Int
+    ) -> ReceiverTuningPlan {
+        let requested = max(0, min(maximumFrequencyHz, requestedFrequencyHz))
+        let hardwareOffsetActive = supportsHardwareOffsetTuning && hardwareOffsetTuningEnabled
+        let canUseSoftwareOffset = !hardwareOffsetActive && !directSamplingActive && sampleRateHz > 0
+        let requestedOffset = canUseSoftwareOffset ? max(0, sampleRateHz / 4) : 0
+        let availableUpperOffset = max(0, maximumFrequencyHz - requested)
+        let appliedOffset = min(requestedOffset, availableUpperOffset)
+
+        return ReceiverTuningPlan(
+            requestedFrequencyHz: requested,
+            tunerFrequencyHz: requested + appliedOffset,
+            softwareFrequencyShiftHz: -appliedOffset
+        )
+    }
+}
+
 /// Main view model coordinating all SDR subsystems.
 @Observable
 @MainActor
@@ -101,6 +129,8 @@ final class RadioViewModel {
     private var fftDisplayLink: CADisplayLink?
     private let directSamplingThresholdHz = 24_000_000
     private let maxTunableFrequencyHz = Int(UInt32.max)
+    private let minimumSampleRateHz = 192_000
+    private let minimumWFMSampleRateHz = 250_000
     private let maxAudioFilterCutoffHz = 20_000
     private let minAudioFilterGapHz = 150
     private let iqBytesPerSamplePair: Double = 2.0
@@ -278,8 +308,9 @@ final class RadioViewModel {
         applyDirectSamplingForCurrentFrequency()
         applyOffsetTuningIfSupported()
         applyBiasTeeIfSupported()
-        connection.setFrequency(frequencyHz)
+        applyPerformancePolicy()
         connection.setSampleRate(dspPipeline.sampleRate)
+        applyReceiverTuning()
         connection.setGainMode(gainMode)
         connection.setAGCMode(gainMode == .auto)
         if gainMode == .manual {
@@ -435,7 +466,8 @@ final class RadioViewModel {
 
         let applyRetune = {
             self.applyDirectSamplingForCurrentFrequency()
-            self.connection.setFrequency(self.frequencyHz)
+            self.applyOffsetTuningIfSupported()
+            self.applyReceiverTuning()
             self.iqBuffer.flush()
             self.audioBuffer.flush()
             self.dspPipeline.resetState()
@@ -484,6 +516,7 @@ final class RadioViewModel {
         } else {
             applyModeChange()
         }
+        applyPerformancePolicy()
         updateNowPlaying()
         updateTelemetryContext()
     }
@@ -512,11 +545,13 @@ final class RadioViewModel {
     func setDirectSamplingPreference(_ preference: DirectSamplingPreference) {
         directSamplingPreference = preference
         applyDirectSamplingForCurrentFrequency()
+        retuneForRFControlChange()
     }
 
     func setOffsetTuningEnabled(_ enabled: Bool) {
         isOffsetTuningEnabled = enabled
         applyOffsetTuningIfSupported()
+        retuneForRFControlChange()
     }
 
     func setBiasTeeEnabled(_ enabled: Bool) {
@@ -580,6 +615,7 @@ final class RadioViewModel {
         applyDirectSamplingForCurrentFrequency()
         applyOffsetTuningIfSupported()
         applyBiasTeeIfSupported()
+        retuneForRFControlChange()
     }
 
     func setAudioToneFilters(highPassHz: Int, lowPassHz: Int) {
@@ -771,7 +807,7 @@ final class RadioViewModel {
             sampleRateCap = lowPower ? 1_024_000 : Int.max
         }
 
-        let targetSampleRate = min(preferredSampleRate, sampleRateCap)
+        let targetSampleRate = max(minimumSampleRate(for: mode), min(preferredSampleRate, sampleRateCap))
         let targetFFTSize: Int = {
             let desired = preferredFFTSize
             if targetSampleRate <= 512_000 {
@@ -793,6 +829,7 @@ final class RadioViewModel {
                     self.dspPipeline.setSampleRate(targetSampleRate)
                     if case .connected = self.connection.state {
                         self.connection.setSampleRate(targetSampleRate)
+                        self.applyReceiverTuning()
                     }
                     self.iqBuffer.flush()
                     self.audioBuffer.flush()
@@ -802,6 +839,7 @@ final class RadioViewModel {
                 dspPipeline.setSampleRate(targetSampleRate)
                 if case .connected = connection.state {
                     connection.setSampleRate(targetSampleRate)
+                    applyReceiverTuning()
                 }
             }
             dspConfigChanged = true
@@ -921,6 +959,46 @@ final class RadioViewModel {
 
     private func applyOffsetTuningIfSupported() {
         connection.setOffsetTuning(supportsOffsetTuning && isOffsetTuningEnabled)
+    }
+
+    private func applyReceiverTuning() {
+        let plan = ReceiverTuningPlan.make(
+            requestedFrequencyHz: frequencyHz,
+            sampleRateHz: dspPipeline.sampleRate,
+            supportsHardwareOffsetTuning: supportsOffsetTuning,
+            hardwareOffsetTuningEnabled: isOffsetTuningEnabled,
+            directSamplingActive: isDirectSamplingActive,
+            maximumFrequencyHz: maxTunableFrequencyHz
+        )
+        dspPipeline.softwareFrequencyShiftHz = Float(plan.softwareFrequencyShiftHz)
+        connection.setFrequency(plan.tunerFrequencyHz)
+    }
+
+    private func retuneForRFControlChange() {
+        let applyRetune = {
+            self.applyReceiverTuning()
+            self.iqBuffer.flush()
+            self.audioBuffer.flush()
+            self.dspPipeline.resetState()
+        }
+
+        if isPlaying {
+            audioEngine.performClickFreeTransition {
+                self.beginRetuneTrace(reason: "rf_control")
+                applyRetune()
+            }
+        } else {
+            applyReceiverTuning()
+        }
+    }
+
+    private func minimumSampleRate(for mode: DemodMode) -> Int {
+        switch mode {
+        case .wfm:
+            return minimumWFMSampleRateHz
+        default:
+            return minimumSampleRateHz
+        }
     }
 
     private func applyBiasTeeIfSupported() {

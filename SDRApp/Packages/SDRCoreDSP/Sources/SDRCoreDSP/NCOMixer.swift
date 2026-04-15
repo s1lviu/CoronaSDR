@@ -14,6 +14,8 @@ public final class NCOMixer {
     private var newReal: [Float] = []
     private var newImag: [Float] = []
 
+    public init() {}
+
     /// Set the NCO frequency.
     /// - Parameters:
     ///   - frequencyHz: Offset frequency in Hz (can be negative).

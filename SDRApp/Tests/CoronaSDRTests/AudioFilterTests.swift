@@ -732,8 +732,35 @@ final class DSPPipelineSampleRateTests: XCTestCase {
     func testSetSampleRateClampsMinimum() {
         let pipeline = makePipeline()
         pipeline.setSampleRate(100_000)
+        XCTAssertEqual(pipeline.sampleRate, 192_000,
+                       "Sample rate should be clamped to minimum supported profile rate")
+    }
+
+    func testInitClampsBelowMinimum() {
+        let iqBuffer = IQRingBuffer(capacity: 65536)
+        let audioBuffer = AudioRingBuffer(capacity: 48000)
+        let pipeline = DSPPipeline(iqBuffer: iqBuffer, audioBuffer: audioBuffer, sampleRate: 100_000)
+
+        XCTAssertEqual(pipeline.sampleRate, 192_000,
+                       "Pipeline init should clamp below the minimum supported profile rate")
+    }
+
+    func testWFMClampsSampleRateToUsableMinimum() {
+        let pipeline = makePipeline()
+        pipeline.setSampleRate(192_000)
+
+        pipeline.mode = .wfm
         XCTAssertEqual(pipeline.sampleRate, 250_000,
-                       "Sample rate should be clamped to minimum 250kHz")
+                       "WFM needs enough input rate for the 100 kHz one-sided channel cutoff")
+
+        pipeline.setSampleRate(192_000)
+        XCTAssertEqual(pipeline.sampleRate, 250_000,
+                       "WFM should keep rejecting rates below its usable minimum")
+
+        pipeline.mode = .nfm
+        pipeline.setSampleRate(192_000)
+        XCTAssertEqual(pipeline.sampleRate, 192_000,
+                       "NFM should still accept the HF+ Low 192 kHz profile")
     }
 
     func testSetSameSampleRateIsNoOp() {
@@ -821,8 +848,7 @@ final class ProfileDebounceTests: XCTestCase {
 
     func testDSPPipelineHandlesAllProfileRates() {
         // Verify that every standard profile rate creates a valid pipeline config.
-        // Note: DSPPipeline init does NOT clamp — only setSampleRate clamps to 250kHz.
-        // Rates below 250kHz are valid at init time (e.g., HF+ Low 192kHz).
+        // Rates down to the HF+ Low 192kHz profile are valid.
         let profileRates = [192_000, 250_000, 768_000, 1_024_000, 2_048_000, 2_400_000]
         for rate in profileRates {
             let iqBuffer = IQRingBuffer(capacity: 65536)
@@ -844,7 +870,7 @@ final class ProfileDebounceTests: XCTestCase {
             for to in rates where from != to {
                 pipeline.setSampleRate(from)
                 pipeline.setSampleRate(to)
-                XCTAssertEqual(pipeline.sampleRate, max(250_000, to),
+                XCTAssertEqual(pipeline.sampleRate, max(192_000, to),
                                "Pipeline should handle \(from) → \(to) transition")
             }
         }
