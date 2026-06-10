@@ -31,11 +31,11 @@
 		921B4040B2923407E791E124 /* SDRAppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */; };
 		953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */; };
 		9555334D9074956824F792FD /* AppIcon76x76.png in Resources */ = {isa = PBXBuildFile; fileRef = 43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */; };
-		B90C6AD4E1144F779A24F4D6 /* NFMDemodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */; };
 		A030BA19E04E1C72105984DF /* SDRRender in Frameworks */ = {isa = PBXBuildFile; productRef = 8DE39D29C59EB576ABD3CF6F /* SDRRender */; };
 		A80583CE4E40FF9E36503B6A /* FrequencyKeypadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E481225ED87D67930777F977 /* FrequencyKeypadView.swift */; };
 		B024E493E1804F385D66908A /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = FFE3E3D1850D6234D19B5B50 /* FirebasePerformance */; };
 		B5FB6385913993F9E1D5ADFC /* AppIcon83.5x83.5@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */; };
+		B90C6AD4E1144F779A24F4D6 /* NFMDemodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */; };
 		BB89978967770302A7F289E8 /* AudioEngineKit in Frameworks */ = {isa = PBXBuildFile; productRef = B944FB32AC46FB8D436B3C6B /* AudioEngineKit */; };
 		C3860BC03AAA0419436FEFDF /* RadioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5479E9108B6A98B1000F44A4 /* RadioView.swift */; };
 		C6686AF665A8D0120B39D71B /* IQRingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */; };
@@ -448,7 +448,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = DDJCP893KF;
 				INFOPLIST_FILE = App/SDRApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
@@ -457,7 +457,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -559,7 +559,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = DDJCP893KF;
 				INFOPLIST_FILE = App/SDRApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
@@ -568,7 +568,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.2;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
