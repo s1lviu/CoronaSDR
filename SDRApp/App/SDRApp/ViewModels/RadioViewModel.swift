@@ -100,6 +100,7 @@ final class RadioViewModel {
     var audioLowPassHz: Int = 0
     var noiseBlankerThreshold: Float = 0
     var audioAgcEnabled: Bool = false
+    var wfmStereoEnabled: Bool = true
     var waterfallZoom: Double = 1.0
 
     // Diagnostics
@@ -117,7 +118,7 @@ final class RadioViewModel {
 
     // Larger jitter buffers reduce audible dropouts when iOS briefly deprioritizes background work.
     let iqBuffer = IQRingBuffer(capacity: 12 * 1_024_000) // ~6 sec at 1MSPS 8-bit IQ, ~2.5 sec at 2.4MSPS
-    let audioBuffer = AudioRingBuffer(capacity: 240_000)   // 5 sec at 48kHz
+    let audioBuffer = AudioRingBuffer(capacity: 480_001)   // 5 sec usable at 48kHz stereo interleaved
     let connection: RTLTCPConnection
     let dspPipeline: DSPPipeline
     let audioEngine: SDRAudioEngine
@@ -641,6 +642,26 @@ final class RadioViewModel {
         dspPipeline.audioAgcEnabled = enabled
     }
 
+    func setWFMStereoEnabled(_ enabled: Bool) {
+        guard wfmStereoEnabled != enabled else { return }
+        wfmStereoEnabled = enabled
+
+        let applyStereoChange = {
+            self.dspPipeline.wfmStereoEnabled = enabled
+            if self.mode == .wfm {
+                self.audioBuffer.flush()
+            }
+        }
+
+        if isPlaying, mode == .wfm {
+            audioEngine.performClickFreeTransition {
+                applyStereoChange()
+            }
+        } else {
+            applyStereoChange()
+        }
+    }
+
     func setRadioTabVisible(_ isVisible: Bool) {
         isRadioTabVisible = isVisible
         let shouldRender = isVisible && isPlaying
@@ -674,7 +695,8 @@ final class RadioViewModel {
                 self.throughputMbps = self.connection.throughputBytesPerSec * 8 / 1_000_000
                 self.iqBufferFill = self.iqBuffer.fillLevel
                 self.audioBufferFill = self.audioBuffer.fillLevel
-                let audioBufferDurationSec = Double(self.audioBuffer.capacitySamples) / 48_000.0
+                let usableAudioSamples = max(0, self.audioBuffer.capacitySamples - 1)
+                let audioBufferDurationSec = Double(usableAudioSamples) / (48_000.0 * 2.0)
                 self.audioHeadroomMs = self.audioBufferFill * audioBufferDurationSec * 1000.0
                 self.currentFPS = self.waterfallRenderer?.currentFPS ?? 0
                 self.squelchNoiseLevel = self.dspPipeline.squelchNoiseLevel

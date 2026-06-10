@@ -126,6 +126,9 @@ struct MainTabView: View {
             .onChange(of: settings.audioAgcEnabled) { _, newValue in
                 viewModel.setAudioAgcEnabled(newValue)
             }
+            .onChange(of: settings.wfmStereoEnabled) { _, newValue in
+                viewModel.setWFMStereoEnabled(newValue)
+            }
     }
 
     private var deepLinkAwareTabs: some View {
@@ -158,6 +161,7 @@ struct MainTabView: View {
         applyAudioToneSettings()
         viewModel.setNoiseBlankerThreshold(settings.noiseBlankerThreshold)
         viewModel.setAudioAgcEnabled(settings.audioAgcEnabled)
+        viewModel.setWFMStereoEnabled(settings.wfmStereoEnabled)
     }
 
     private func applyAudioToneSettings() {

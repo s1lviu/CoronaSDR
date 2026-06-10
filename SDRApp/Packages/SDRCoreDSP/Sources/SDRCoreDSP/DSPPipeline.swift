@@ -20,6 +20,7 @@ public final class DSPPipeline: @unchecked Sendable {
     private var _bfoOffsetHz: Float = 0
     private var _softwareFrequencyShiftHz: Float = 0
     private var _dcBlockEnabled = true
+    private var _wfmStereoEnabled = true
     private var shouldRun = false
     private var loopStopSignal: DispatchSemaphore?
 
@@ -74,6 +75,20 @@ public final class DSPPipeline: @unchecked Sendable {
         set { withPipelineLock { _dcBlockEnabled = newValue } }
     }
 
+    public var wfmStereoEnabled: Bool {
+        get { withPipelineLock { _wfmStereoEnabled } }
+        set {
+            withPipelineLock {
+                guard _wfmStereoEnabled != newValue else { return }
+                _wfmStereoEnabled = newValue
+                if _mode == .wfm {
+                    rebuildDemodChainLocked(preservingBandwidth: true)
+                    resetStateLocked()
+                }
+            }
+        }
+    }
+
     // Components
     private let iqBuffer: IQRingBuffer
     private let audioBuffer: AudioRingBuffer
@@ -84,16 +99,25 @@ public final class DSPPipeline: @unchecked Sendable {
     private var channelFilterI: FIRFilter
     private var channelFilterQ: FIRFilter
     private var demodulator: Demodulator = AMDemodulator()
+    private var wfmStereoDemodulator: WFMStereoDemodulator?
     private let squelch = Squelch()
     private let noiseBlanker = NoiseBlanker()
+    private let noiseBlankerLeft = NoiseBlanker()
+    private let noiseBlankerRight = NoiseBlanker()
     private let audioAGC = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
+    private let audioAGCLeft = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
+    private let audioAGCRight = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
     private var resampler: Resampler
+    private var leftResampler: Resampler
+    private var rightResampler: Resampler
     private var driftCompensator: DriftCompensator
     private var deemphasisUs: Float = 75
     // When deemphasis changes while stopped, defer demod rebuild until start().
     private var pendingDemodChainRebuild = false
     private let targetAudioFill: Double = 0.65
     private let audioToneFilter = AudioToneFilter(sampleRate: 48_000)
+    private let audioToneFilterLeft = AudioToneFilter(sampleRate: 48_000)
+    private let audioToneFilterRight = AudioToneFilter(sampleRate: 48_000)
     private(set) var audioHighPassCutoffHz: Int = 0
     private(set) var audioLowPassCutoffHz: Int = 0
     private var _noiseBlankerEnabled: Bool = false
@@ -111,10 +135,14 @@ public final class DSPPipeline: @unchecked Sendable {
     private var filteredIWork: [Float] = []
     private var filteredQWork: [Float] = []
     private var resampledWork: [Float] = []
+    private var resampledLeftWork: [Float] = []
+    private var resampledRightWork: [Float] = []
+    private var interleavedAudioWork: [Float] = []
 
     // Processing state
     private var dspThread: Thread?
     private let outputRate: Double = 48000
+    private let outputChannelCount = 2
     private let maxAudioCutoffHz: Int = 20_000
     private let minAudioCutoffGapHz: Int = 150
 
@@ -154,6 +182,8 @@ public final class DSPPipeline: @unchecked Sendable {
 
         let intermediateRate = initialFilterDesign.intermediateRate
         self.resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
+        self.leftResampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
+        self.rightResampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         self.driftCompensator = DriftCompensator(
             baseRatio: outputRate / intermediateRate,
             targetFill: targetAudioFill
@@ -321,46 +351,113 @@ public final class DSPPipeline: @unchecked Sendable {
                     filteredQWork.removeSubrange(filteredCount..<filteredQWork.count)
                 }
 
-                // Demodulate
-                var audio = demodulator.demodulate(real: filteredIWork, imag: filteredQWork)
-
-                // Noise blanker (impulse spike removal, before squelch)
-                if _noiseBlankerEnabled {
-                    noiseBlanker.process(&audio)
-                }
-
-                // Audio AGC (level normalization for FM voice)
-                if _audioAgcEnabled {
-                    audioAGC.process(&audio)
-                }
-
-                // Squelch
-                if _mode.supportsSquelch {
-                    squelch.process(&audio)
-                }
-
-                // Resample to 48kHz
                 let currentFill = audioBuffer.fillLevel
                 let adjustedRatio = driftCompensator.update(currentFill: currentFill)
-                resampler.currentRatio = adjustedRatio
-                let resampledCount = resampler.process(audio, into: &resampledWork)
 
-                // Write to audio ring buffer
-                if resampledCount > 0 {
-                    resampledWork.withUnsafeMutableBufferPointer { samples in
-                        audioToneFilter.processInPlace(samples, count: resampledCount)
-                        // Soft-limit to prevent DAC clipping on strong FM signals
-                        var lo: Float = -0.95
-                        var hi: Float =  0.95
-                        let n = vDSP_Length(resampledCount)
-                        vDSP_vclip(samples.baseAddress!, 1, &lo, &hi, samples.baseAddress!, 1, n)
-                        _ = audioBuffer.write(UnsafeBufferPointer(start: samples.baseAddress!, count: resampledCount))
+                let audioCount: Int
+                let resampledCount: Int
+
+                if _mode == .wfm, let wfmStereoDemodulator {
+                    var stereo = wfmStereoDemodulator.demodulate(
+                        real: filteredIWork,
+                        imag: filteredQWork,
+                        stereoEnabled: _wfmStereoEnabled
+                    )
+                    audioCount = min(stereo.left.count, stereo.right.count)
+
+                    if _noiseBlankerEnabled {
+                        noiseBlankerLeft.process(&stereo.left)
+                        noiseBlankerRight.process(&stereo.right)
+                    }
+
+                    if _audioAgcEnabled {
+                        audioAGCLeft.process(&stereo.left)
+                        audioAGCRight.process(&stereo.right)
+                    }
+
+                    leftResampler.currentRatio = adjustedRatio
+                    rightResampler.currentRatio = adjustedRatio
+                    let leftCount = leftResampler.process(stereo.left, into: &resampledLeftWork)
+                    let rightCount = rightResampler.process(stereo.right, into: &resampledRightWork)
+                    resampledCount = min(leftCount, rightCount)
+
+                    if resampledCount > 0 {
+                        resampledLeftWork.withUnsafeMutableBufferPointer { leftSamples in
+                            audioToneFilterLeft.processInPlace(leftSamples, count: resampledCount)
+                        }
+                        resampledRightWork.withUnsafeMutableBufferPointer { rightSamples in
+                            audioToneFilterRight.processInPlace(rightSamples, count: resampledCount)
+                        }
+
+                        let interleavedCount = resampledCount * outputChannelCount
+                        if interleavedAudioWork.count != interleavedCount {
+                            interleavedAudioWork = [Float](repeating: 0, count: interleavedCount)
+                        }
+                        for i in 0..<resampledCount {
+                            interleavedAudioWork[i * 2] = resampledLeftWork[i]
+                            interleavedAudioWork[i * 2 + 1] = resampledRightWork[i]
+                        }
+
+                        interleavedAudioWork.withUnsafeMutableBufferPointer { samples in
+                            var lo: Float = -0.95
+                            var hi: Float =  0.95
+                            let n = vDSP_Length(interleavedCount)
+                            vDSP_vclip(samples.baseAddress!, 1, &lo, &hi, samples.baseAddress!, 1, n)
+                            _ = audioBuffer.write(UnsafeBufferPointer(start: samples.baseAddress!, count: interleavedCount))
+                        }
+                    }
+                } else {
+                    var audio = demodulator.demodulate(real: filteredIWork, imag: filteredQWork)
+                    audioCount = audio.count
+
+                    // Noise blanker (impulse spike removal, before squelch)
+                    if _noiseBlankerEnabled {
+                        noiseBlanker.process(&audio)
+                    }
+
+                    // Audio AGC (level normalization for FM voice)
+                    if _audioAgcEnabled {
+                        audioAGC.process(&audio)
+                    }
+
+                    // Squelch
+                    if _mode.supportsSquelch {
+                        squelch.process(&audio)
+                    }
+
+                    // Resample to 48kHz
+                    resampler.currentRatio = adjustedRatio
+                    resampledCount = resampler.process(audio, into: &resampledWork)
+
+                    // Write duplicated mono to the stereo audio ring buffer.
+                    if resampledCount > 0 {
+                        resampledWork.withUnsafeMutableBufferPointer { samples in
+                            audioToneFilter.processInPlace(samples, count: resampledCount)
+                            var lo: Float = -0.95
+                            var hi: Float =  0.95
+                            let n = vDSP_Length(resampledCount)
+                            vDSP_vclip(samples.baseAddress!, 1, &lo, &hi, samples.baseAddress!, 1, n)
+                        }
+
+                        let interleavedCount = resampledCount * outputChannelCount
+                        if interleavedAudioWork.count != interleavedCount {
+                            interleavedAudioWork = [Float](repeating: 0, count: interleavedCount)
+                        }
+                        for i in 0..<resampledCount {
+                            let sample = resampledWork[i]
+                            interleavedAudioWork[i * 2] = sample
+                            interleavedAudioWork[i * 2 + 1] = sample
+                        }
+
+                        interleavedAudioWork.withUnsafeBufferPointer { samples in
+                            _ = audioBuffer.write(UnsafeBufferPointer(start: samples.baseAddress!, count: interleavedCount))
+                        }
                     }
                 }
 
                 return (
                     filteredCount: filteredCount,
-                    audioCount: audio.count,
+                    audioCount: audioCount,
                     resampledCount: resampledCount,
                     fillLevel: currentFill,
                     ratio: adjustedRatio,
@@ -523,21 +620,31 @@ public final class DSPPipeline: @unchecked Sendable {
         switch _mode {
         case .am:
             demodulator = AMDemodulator()
+            wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 10_000 }
         case .nfm:
             demodulator = FMDemodulator(sampleRate: intermediateRate, deviation: 5000, deemphasisUs: deemphasisUs)
+            wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 12_500 }
         case .wfm:
             demodulator = FMDemodulator(sampleRate: intermediateRate, deviation: 75_000, deemphasisUs: deemphasisUs)
+            wfmStereoDemodulator = WFMStereoDemodulator(
+                sampleRate: intermediateRate,
+                deviation: 75_000,
+                deemphasisUs: deemphasisUs
+            )
             if !preservingBandwidth { _bandwidthHz = 200_000 }
         case .usb:
             demodulator = SSBDemodulator(isUSB: true)
+            wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 2_400 }
         case .lsb:
             demodulator = SSBDemodulator(isUSB: false)
+            wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 2_400 }
         case .cw:
             demodulator = CWDemodulator()
+            wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 500 }
         }
 
@@ -581,6 +688,8 @@ public final class DSPPipeline: @unchecked Sendable {
         let intermediateRate = design.intermediateRate
         let newBaseRatio = outputRate / intermediateRate
         resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
+        leftResampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
+        rightResampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         driftCompensator = DriftCompensator(baseRatio: newBaseRatio, targetFill: targetAudioFill)
 
         SDRLogger.dsp.info("Filters rebuilt: bw=\(self._bandwidthHz)Hz, cutoff=\(design.cutoffHz)Hz, decim=\(design.decimationFactor), intermediate=\(intermediateRate)Hz")
@@ -674,6 +783,10 @@ public final class DSPPipeline: @unchecked Sendable {
         audioLowPassCutoffHz = normalized.lowPass
         audioToneFilter.setHighPassCutoff(normalized.highPass)
         audioToneFilter.setLowPassCutoff(normalized.lowPass)
+        audioToneFilterLeft.setHighPassCutoff(normalized.highPass)
+        audioToneFilterLeft.setLowPassCutoff(normalized.lowPass)
+        audioToneFilterRight.setHighPassCutoff(normalized.highPass)
+        audioToneFilterRight.setLowPassCutoff(normalized.lowPass)
     }
 
     /// Update squelch threshold.
@@ -699,6 +812,8 @@ public final class DSPPipeline: @unchecked Sendable {
     public func setNoiseBlankerThreshold(_ threshold: Float) {
         withPipelineLock {
             noiseBlanker.threshold = threshold
+            noiseBlankerLeft.threshold = threshold
+            noiseBlankerRight.threshold = threshold
             _noiseBlankerEnabled = threshold > 0
         }
     }
@@ -710,7 +825,13 @@ public final class DSPPipeline: @unchecked Sendable {
             withPipelineLock {
                 _audioAgcEnabled = newValue
                 audioAGC.isEnabled = newValue
+                audioAGCLeft.isEnabled = newValue
+                audioAGCRight.isEnabled = newValue
                 if !newValue { audioAGC.reset() }
+                if !newValue {
+                    audioAGCLeft.reset()
+                    audioAGCRight.reset()
+                }
             }
         }
     }
@@ -728,12 +849,23 @@ public final class DSPPipeline: @unchecked Sendable {
         channelFilterI.reset()
         channelFilterQ.reset()
         demodulator.reset()
+        wfmStereoDemodulator?.reset()
         noiseBlanker.reset()
-        if _audioAgcEnabled { audioAGC.reset() }
+        noiseBlankerLeft.reset()
+        noiseBlankerRight.reset()
+        if _audioAgcEnabled {
+            audioAGC.reset()
+            audioAGCLeft.reset()
+            audioAGCRight.reset()
+        }
         squelch.reset()
         resampler.reset()
+        leftResampler.reset()
+        rightResampler.reset()
         driftCompensator.reset()
         audioToneFilter.reset()
+        audioToneFilterLeft.reset()
+        audioToneFilterRight.reset()
         lastFFTFrameTime = 0
     }
 

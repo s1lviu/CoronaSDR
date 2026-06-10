@@ -709,6 +709,10 @@ struct RadioView: View {
                 }
             }
 
+            if viewModel.mode == .wfm {
+                wfmStereoControl
+            }
+
             // BFO offset (for SSB/CW)
             if viewModel.mode.usesBFO {
                 HStack {
@@ -743,6 +747,20 @@ struct RadioView: View {
                 )
             }
 
+        }
+    }
+
+    private var wfmStereoControl: some View {
+        @Bindable var settings = settings
+
+        return HStack {
+            Text("Stereo")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Toggle("", isOn: $settings.wfmStereoEnabled)
+                .labelsHidden()
+                .accessibilityLabel("WFM stereo")
         }
     }
 
