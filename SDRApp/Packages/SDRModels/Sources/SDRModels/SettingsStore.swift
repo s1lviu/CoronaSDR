@@ -126,6 +126,10 @@ public final class SettingsStore {
         didSet { defaults.set(audioAgcEnabled, forKey: "audioAgcEnabled") }
     }
 
+    public var wfmStereoEnabled: Bool {
+        didSet { defaults.set(wfmStereoEnabled, forKey: "wfmStereoEnabled") }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.hasCompletedOnboarding = defaults.bool(forKey: "hasCompletedOnboarding")
@@ -154,5 +158,6 @@ public final class SettingsStore {
         self.audioLowPassHz = defaults.object(forKey: "audioLowPassHz") != nil ? defaults.integer(forKey: "audioLowPassHz") : 0
         self.noiseBlankerThreshold = defaults.object(forKey: "noiseBlankerThreshold") != nil ? defaults.float(forKey: "noiseBlankerThreshold") : 0
         self.audioAgcEnabled = defaults.bool(forKey: "audioAgcEnabled")
+        self.wfmStereoEnabled = defaults.object(forKey: "wfmStereoEnabled") != nil ? defaults.bool(forKey: "wfmStereoEnabled") : true
     }
 }

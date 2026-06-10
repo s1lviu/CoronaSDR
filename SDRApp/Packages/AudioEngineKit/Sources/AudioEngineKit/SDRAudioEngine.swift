@@ -35,7 +35,10 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private var sourceNode: AVAudioSourceNode?
     private let audioBuffer: AudioRingBuffer
     private let sampleRate: Double = 48000
+    private let channelCount: AVAudioChannelCount = 2
     private let preferredIOBufferDuration: TimeInterval = 0.02
+    private let renderScratchCapacityFrames: Int = 65_536
+    private let renderScratch: UnsafeMutableBufferPointer<Float>
     private var isInterrupted: Bool = false
     private var shouldResumeAfterInterruption: Bool = false
     private var interruptionObserver: NSObjectProtocol?
@@ -63,11 +66,19 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
     public init(audioBuffer: AudioRingBuffer) {
         self.audioBuffer = audioBuffer
+        let scratch = UnsafeMutablePointer<Float>.allocate(capacity: renderScratchCapacityFrames * Int(channelCount))
+        scratch.initialize(repeating: 0, count: renderScratchCapacityFrames * Int(channelCount))
+        self.renderScratch = UnsafeMutableBufferPointer(
+            start: scratch,
+            count: renderScratchCapacityFrames * Int(channelCount)
+        )
         self.nowPlayingArtwork = Self.loadNowPlayingArtwork()
     }
 
     deinit {
         removeObservers()
+        renderScratch.baseAddress?.deinitialize(count: renderScratch.count)
+        renderScratch.baseAddress?.deallocate()
     }
 
     /// Configure audio session for playback.
@@ -91,12 +102,20 @@ public final class SDRAudioEngine: @unchecked Sendable {
     public func start() throws {
         guard !isPlaying else { return }
 
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
+        guard let format = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: sampleRate,
+            channels: channelCount,
+            interleaved: true
+        ) else {
             SDRLogger.audio.error("Failed to create AVAudioFormat")
             return
         }
 
         let buffer = self.audioBuffer
+        let channels = Int(channelCount)
+        let scratch = renderScratch
+        let scratchCapacityFrames = renderScratchCapacityFrames
         let onAudioSignal: () -> Void = { [weak self] in
             self?.consumeAudioSignalArmIfNeeded()
         }
@@ -105,13 +124,39 @@ public final class SDRAudioEngine: @unchecked Sendable {
         }
         let node = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList -> OSStatus in
             let ablPointer = UnsafeMutableAudioBufferListPointer(audioBufferList)
-            guard let dest = ablPointer.first?.mData?.assumingMemoryBound(to: Float.self) else {
-                return kAudioUnitErr_InvalidParameter
+            let frames = Int(frameCount)
+            let requestedSamples = frames * channels
+
+            let actual: Int
+            let shouldNotifyAudioSignal: Bool
+
+            if ablPointer.count == 1,
+               let dest = ablPointer[0].mData?.assumingMemoryBound(to: Float.self) {
+                let destBuf = UnsafeMutableBufferPointer(start: dest, count: requestedSamples)
+                actual = buffer.read(into: destBuf, count: requestedSamples)
+                shouldNotifyAudioSignal = applyTransitionEnvelope(destBuf, actual)
+            } else {
+                guard frames <= scratchCapacityFrames else {
+                    for audioBuffer in ablPointer {
+                        if let dest = audioBuffer.mData?.assumingMemoryBound(to: Float.self) {
+                            UnsafeMutableBufferPointer(start: dest, count: frames).initialize(repeating: 0)
+                        }
+                    }
+                    return noErr
+                }
+
+                let scratchBuf = UnsafeMutableBufferPointer(start: scratch.baseAddress!, count: requestedSamples)
+                actual = buffer.read(into: scratchBuf, count: requestedSamples)
+                shouldNotifyAudioSignal = applyTransitionEnvelope(scratchBuf, actual)
+
+                for channel in 0..<min(channels, ablPointer.count) {
+                    guard let dest = ablPointer[channel].mData?.assumingMemoryBound(to: Float.self) else { continue }
+                    for frame in 0..<frames {
+                        dest[frame] = scratchBuf[frame * channels + channel]
+                    }
+                }
             }
 
-            let destBuf = UnsafeMutableBufferPointer(start: dest, count: Int(frameCount))
-            let actual = buffer.read(into: destBuf, count: Int(frameCount))
-            let shouldNotifyAudioSignal = applyTransitionEnvelope(destBuf, actual)
             if actual > 0, shouldNotifyAudioSignal {
                 onAudioSignal()
             }
@@ -364,7 +409,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
     }
 
     private var transitionFadeSamples: Int {
-        max(1, AudioFade.fadeSamples(durationMs: transitionFadeDurationMs, sampleRate: sampleRate))
+        max(1, AudioFade.fadeSamples(durationMs: transitionFadeDurationMs, sampleRate: sampleRate) * Int(channelCount))
     }
 
     private func resetTransitionState() {

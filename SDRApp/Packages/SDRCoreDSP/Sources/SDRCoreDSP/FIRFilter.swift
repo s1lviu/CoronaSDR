@@ -171,4 +171,20 @@ public final class FIRFilter {
 
         return taps
     }
+
+    /// Design a windowed-sinc band-pass FIR filter.
+    /// - Parameters:
+    ///   - lowCutoff: Normalized lower cutoff (0.0-1.0, where 1.0 = Nyquist).
+    ///   - highCutoff: Normalized upper cutoff (0.0-1.0, where 1.0 = Nyquist).
+    ///   - numTaps: Number of taps (odd recommended).
+    /// - Returns: Filter coefficients.
+    public static func designBandPass(lowCutoff: Float, highCutoff: Float, numTaps: Int) -> [Float] {
+        let low = max(0.0001, min(0.999, lowCutoff))
+        let high = max(low + 0.0001, min(0.999, highCutoff))
+        let highPass = designLowPass(cutoff: high, numTaps: numTaps)
+        let lowPass = designLowPass(cutoff: low, numTaps: numTaps)
+        var taps = [Float](repeating: 0, count: numTaps)
+        vDSP_vsub(lowPass, 1, highPass, 1, &taps, 1, vDSP_Length(numTaps))
+        return taps
+    }
 }

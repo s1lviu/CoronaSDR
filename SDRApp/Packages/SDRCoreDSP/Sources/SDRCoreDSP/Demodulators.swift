@@ -9,6 +9,44 @@ public protocol Demodulator {
     func reset()
 }
 
+/// Left/right stereo demodulator output before final audio resampling.
+public struct StereoAudioBlock {
+    public var left: [Float]
+    public var right: [Float]
+
+    public init(left: [Float], right: [Float]) {
+        self.left = left
+        self.right = right
+    }
+}
+
+private final class DeemphasisFilter {
+    private var previous: Float = 0
+    private let alpha: Float
+
+    init(sampleRate: Float, microseconds: Float) {
+        if microseconds <= 0 {
+            self.alpha = 1.0
+        } else {
+            let tau = microseconds * 1e-6
+            self.alpha = 1.0 - exp(-1.0 / (sampleRate * tau))
+        }
+    }
+
+    func process(_ samples: inout [Float]) {
+        var state = previous
+        for i in samples.indices {
+            state = state + alpha * (samples[i] - state)
+            samples[i] = state
+        }
+        previous = state
+    }
+
+    func reset() {
+        previous = 0
+    }
+}
+
 // MARK: - AM Demodulator (Envelope)
 
 /// AM envelope demodulator: output = sqrt(I^2 + Q^2) with DC removal and AGC.
@@ -71,10 +109,7 @@ public final class FMDemodulator: Demodulator {
     private var q: freqdem
     private var outputScratch: [Float] = []
     private var complexScratch: [liquid_float_complex] = []
-
-    // De-emphasis state
-    private var deemphPrev: Float = 0
-    private let deemphAlpha: Float
+    private let deemphasis: DeemphasisFilter
 
     /// Create FM demodulator.
     /// - Parameters:
@@ -84,13 +119,7 @@ public final class FMDemodulator: Demodulator {
     public init(sampleRate: Float, deviation: Float, deemphasisUs: Float = 75.0) {
         let kf = deviation / sampleRate
         self.q = freqdem_create(kf)
-
-        if deemphasisUs <= 0 {
-            self.deemphAlpha = 1.0
-        } else {
-            let tau = deemphasisUs * 1e-6
-            self.deemphAlpha = 1.0 - exp(-1.0 / (sampleRate * tau))
-        }
+        self.deemphasis = DeemphasisFilter(sampleRate: sampleRate, microseconds: deemphasisUs)
     }
 
     deinit {
@@ -121,21 +150,207 @@ public final class FMDemodulator: Demodulator {
             }
         }
 
-        // De-emphasis as a separate pass (single-pole IIR low-pass)
-        var prev = deemphPrev
-        let alpha = deemphAlpha
-        for i in 0..<count {
-            prev = prev + alpha * (outputScratch[i] - prev)
-            outputScratch[i] = prev
-        }
-        deemphPrev = prev
+        // De-emphasis as a separate pass (single-pole IIR low-pass).
+        deemphasis.process(&outputScratch)
 
         return outputScratch
     }
 
     public func reset() {
         freqdem_reset(q)
-        deemphPrev = 0
+        deemphasis.reset()
+    }
+}
+
+// MARK: - WFM Stereo Demodulator
+
+/// Broadcast FM stereo demodulator.
+///
+/// The input is channelized WFM IQ. The FM discriminator returns the composite
+/// MPX signal. Stereo decode then extracts L+R, locks to the 19 kHz pilot,
+/// regenerates the 38 kHz suppressed subcarrier, demodulates L-R, and matrices
+/// left/right audio with independent de-emphasis.
+public final class WFMStereoDemodulator {
+    private let sampleRate: Float
+    private var fmDemodulator: FMDemodulator
+    private var sumFilter: FIRFilter
+    private var differenceFilter: FIRFilter
+    private var pilotFilter: FIRFilter
+    private let leftDeemphasis: DeemphasisFilter
+    private let rightDeemphasis: DeemphasisFilter
+    private let pilotFilterGroupDelaySamples: Float
+
+    private var pilotPhase: Float = 0
+    private var pilotFrequency: Float
+    private var pilotIntegrator: Float = 0
+    private var pilotLevel: Float = 0
+
+    private var mpxScratch: [Float] = []
+    private var sumScratch: [Float] = []
+    private var pilotScratch: [Float] = []
+    private var differenceMixedScratch: [Float] = []
+    private var differenceScratch: [Float] = []
+    private var leftScratch: [Float] = []
+    private var rightScratch: [Float] = []
+
+    private let twoPi: Float = 2.0 * .pi
+    private let nominalPilotRadiansPerSample: Float
+    private let pllProportionalGain: Float = 0.00035
+    private let pllIntegralGain: Float = 0.0000008
+    private let maximumPilotCorrection: Float
+    private let stereoPilotOpenThreshold: Float = 0.002
+    private let stereoPilotCloseThreshold: Float = 0.001
+    private var stereoLocked = false
+
+    public init(sampleRate: Float, deviation: Float = 75_000, deemphasisUs: Float = 75.0) {
+        self.sampleRate = sampleRate
+        self.fmDemodulator = FMDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        self.leftDeemphasis = DeemphasisFilter(sampleRate: sampleRate, microseconds: deemphasisUs)
+        self.rightDeemphasis = DeemphasisFilter(sampleRate: sampleRate, microseconds: deemphasisUs)
+
+        let nyquist = sampleRate / 2.0
+        let audioCutoff = min(15_000 / nyquist, 0.95)
+        let pilotLow = max(18_500 / nyquist, 0.0001)
+        let pilotHigh = min(19_500 / nyquist, 0.95)
+        let audioTapCount = 129
+        let pilotTapCount = 257
+        self.sumFilter = FIRFilter(cutoffNormalized: audioCutoff, numTaps: audioTapCount)
+        self.differenceFilter = FIRFilter(cutoffNormalized: audioCutoff, numTaps: audioTapCount)
+        self.pilotFilter = FIRFilter(
+            taps: FIRFilter.designBandPass(lowCutoff: pilotLow, highCutoff: pilotHigh, numTaps: pilotTapCount)
+        )
+        self.pilotFilterGroupDelaySamples = Float((pilotTapCount - 1) / 2)
+
+        self.nominalPilotRadiansPerSample = twoPi * 19_000 / sampleRate
+        self.pilotFrequency = nominalPilotRadiansPerSample
+        self.maximumPilotCorrection = twoPi * 250 / sampleRate
+    }
+
+    public func demodulate(real: [Float], imag: [Float], stereoEnabled: Bool = true) -> StereoAudioBlock {
+        mpxScratch = fmDemodulator.demodulate(real: real, imag: imag)
+        guard !mpxScratch.isEmpty else {
+            return StereoAudioBlock(left: [], right: [])
+        }
+
+        let sumCount = sumFilter.process(mpxScratch, into: &sumScratch)
+        guard sumCount > 0 else {
+            return StereoAudioBlock(left: [], right: [])
+        }
+
+        if !stereoEnabled {
+            stereoLocked = false
+            pilotLevel = 0
+            return monoBlock(fromSumCount: sumCount)
+        }
+
+        _ = pilotFilter.process(mpxScratch, into: &pilotScratch)
+        let count = min(mpxScratch.count, sumScratch.count, pilotScratch.count)
+        guard count > 0 else {
+            return StereoAudioBlock(left: [], right: [])
+        }
+
+        if differenceMixedScratch.count != count {
+            differenceMixedScratch = [Float](repeating: 0, count: count)
+        }
+
+        var phase = pilotPhase
+        var frequency = pilotFrequency
+        var integrator = pilotIntegrator
+        var level = pilotLevel
+
+        for i in 0..<count {
+            let pilot = pilotScratch[i]
+            let quadrature = sinf(phase)
+            let error = max(-0.25, min(0.25, -pilot * quadrature))
+            integrator = max(-maximumPilotCorrection, min(maximumPilotCorrection, integrator + pllIntegralGain * error))
+            frequency = nominalPilotRadiansPerSample + integrator + pllProportionalGain * error
+            frequency = max(
+                nominalPilotRadiansPerSample - maximumPilotCorrection,
+                min(nominalPilotRadiansPerSample + maximumPilotCorrection, frequency)
+            )
+
+            let carrierPhase = phase + frequency * pilotFilterGroupDelaySamples
+            let carrier38 = 2.0 * cosf(2.0 * carrierPhase)
+            differenceMixedScratch[i] = mpxScratch[i] * carrier38
+
+            level = level + 0.001 * (abs(pilot) - level)
+            phase += frequency
+            if phase >= twoPi {
+                phase -= twoPi
+            } else if phase < 0 {
+                phase += twoPi
+            }
+        }
+
+        pilotPhase = phase
+        pilotFrequency = frequency
+        pilotIntegrator = integrator
+        pilotLevel = level
+
+        if stereoLocked {
+            stereoLocked = level > stereoPilotCloseThreshold
+        } else {
+            stereoLocked = level > stereoPilotOpenThreshold
+        }
+
+        _ = differenceFilter.process(differenceMixedScratch, into: &differenceScratch)
+        let matrixCount = min(sumScratch.count, differenceScratch.count)
+        guard matrixCount > 0 else {
+            return StereoAudioBlock(left: [], right: [])
+        }
+
+        if leftScratch.count != matrixCount {
+            leftScratch = [Float](repeating: 0, count: matrixCount)
+        }
+        if rightScratch.count != matrixCount {
+            rightScratch = [Float](repeating: 0, count: matrixCount)
+        }
+
+        for i in 0..<matrixCount {
+            let sum = sumScratch[i]
+            let difference = stereoLocked ? differenceScratch[i] : 0
+            leftScratch[i] = 0.5 * (sum + difference)
+            rightScratch[i] = 0.5 * (sum - difference)
+        }
+
+        leftDeemphasis.process(&leftScratch)
+        rightDeemphasis.process(&rightScratch)
+
+        return StereoAudioBlock(left: leftScratch, right: rightScratch)
+    }
+
+    private func monoBlock(fromSumCount count: Int) -> StereoAudioBlock {
+        if leftScratch.count != count {
+            leftScratch = [Float](repeating: 0, count: count)
+        }
+        if rightScratch.count != count {
+            rightScratch = [Float](repeating: 0, count: count)
+        }
+
+        for i in 0..<count {
+            let mono = 0.5 * sumScratch[i]
+            leftScratch[i] = mono
+            rightScratch[i] = mono
+        }
+
+        leftDeemphasis.process(&leftScratch)
+        rightDeemphasis.process(&rightScratch)
+
+        return StereoAudioBlock(left: leftScratch, right: rightScratch)
+    }
+
+    public func reset() {
+        fmDemodulator.reset()
+        sumFilter.reset()
+        differenceFilter.reset()
+        pilotFilter.reset()
+        leftDeemphasis.reset()
+        rightDeemphasis.reset()
+        pilotPhase = 0
+        pilotFrequency = nominalPilotRadiansPerSample
+        pilotIntegrator = 0
+        pilotLevel = 0
+        stereoLocked = false
     }
 }
 

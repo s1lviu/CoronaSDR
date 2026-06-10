@@ -388,6 +388,120 @@ final class FMDemodulatorTests: XCTestCase {
     }
 }
 
+// MARK: - WFM stereo demodulator tests
+
+final class WFMStereoDemodulatorTests: XCTestCase {
+    func testStereoPilotRecoversLeftDominantAudio() {
+        let sampleRate: Float = 240_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 0.35)
+        let toneHz: Float = 1_000
+        let (real, imag) = makeWFMTestIQ(
+            sampleRate: sampleRate,
+            deviation: deviation,
+            count: count
+        ) { index in
+            let t = Float(index) / sampleRate
+            let left = sinf(2.0 * .pi * toneHz * t)
+            let right: Float = 0
+            return (left, right, true)
+        }
+
+        let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        let output = demod.demodulate(real: real, imag: imag)
+        let drop = output.left.count / 2
+        let left = Array(output.left.dropFirst(drop))
+        let right = Array(output.right.dropFirst(drop))
+
+        XCTAssertGreaterThan(rms(left), 0.08)
+        XCTAssertLessThan(rms(right), rms(left) * 0.65)
+    }
+
+    func testMissingPilotFallsBackToCenteredMono() {
+        let sampleRate: Float = 240_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 0.25)
+        let toneHz: Float = 1_000
+        let (real, imag) = makeWFMTestIQ(
+            sampleRate: sampleRate,
+            deviation: deviation,
+            count: count
+        ) { index in
+            let t = Float(index) / sampleRate
+            let left = sinf(2.0 * .pi * toneHz * t)
+            let right: Float = 0
+            return (left, right, false)
+        }
+
+        let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        let output = demod.demodulate(real: real, imag: imag)
+        let drop = output.left.count / 2
+        let left = Array(output.left.dropFirst(drop))
+        let right = Array(output.right.dropFirst(drop))
+
+        XCTAssertGreaterThan(rms(left), 0.04)
+        XCTAssertLessThan(rms(zip(left, right).map { $0 - $1 }), 0.01)
+    }
+
+    func testStereoDisabledReturnsCenteredMonoEvenWithPilot() {
+        let sampleRate: Float = 240_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 0.25)
+        let toneHz: Float = 1_000
+        let (real, imag) = makeWFMTestIQ(
+            sampleRate: sampleRate,
+            deviation: deviation,
+            count: count
+        ) { index in
+            let t = Float(index) / sampleRate
+            let left = sinf(2.0 * .pi * toneHz * t)
+            let right: Float = 0
+            return (left, right, true)
+        }
+
+        let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        let output = demod.demodulate(real: real, imag: imag, stereoEnabled: false)
+        let drop = output.left.count / 2
+        let left = Array(output.left.dropFirst(drop))
+        let right = Array(output.right.dropFirst(drop))
+
+        XCTAssertGreaterThan(rms(left), 0.04)
+        XCTAssertLessThan(rms(zip(left, right).map { $0 - $1 }), 0.01)
+    }
+
+    private func makeWFMTestIQ(
+        sampleRate: Float,
+        deviation: Float,
+        count: Int,
+        channels: (Int) -> (left: Float, right: Float, pilot: Bool)
+    ) -> (real: [Float], imag: [Float]) {
+        var real = [Float](repeating: 0, count: count)
+        var imag = [Float](repeating: 0, count: count)
+        var phase: Float = 0
+
+        for index in 0..<count {
+            let t = Float(index) / sampleRate
+            let audio = channels(index)
+            let sum = audio.left + audio.right
+            let difference = audio.left - audio.right
+            let pilot = audio.pilot ? 0.1 * cosf(2.0 * .pi * 19_000 * t) : 0
+            let stereoSubcarrier = 0.45 * difference * cosf(2.0 * .pi * 38_000 * t)
+            let composite = 0.45 * sum + pilot + stereoSubcarrier
+
+            phase += 2.0 * .pi * deviation * composite / sampleRate
+            real[index] = cosf(phase)
+            imag[index] = sinf(phase)
+        }
+
+        return (real, imag)
+    }
+
+    private func rms(_ samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        return sqrtf(samples.reduce(0) { $0 + $1 * $1 } / Float(samples.count))
+    }
+}
+
 // MARK: - Resampler block processing tests
 
 final class ResamplerBlockTests: XCTestCase {

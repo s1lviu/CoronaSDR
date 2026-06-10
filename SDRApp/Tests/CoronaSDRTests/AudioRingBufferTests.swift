@@ -49,6 +49,21 @@ final class AudioRingBufferTests: XCTestCase {
         XCTAssertEqual(buffer.underrunCount, 1)
     }
 
+    func testInterleavedStereoSamplesPreserveChannelOrder() {
+        let buffer = AudioRingBuffer(capacity: 16)
+        let stereoFrames: [Float] = [
+            1.0, -1.0,
+            0.75, -0.75,
+            0.5, -0.5
+        ]
+
+        XCTAssertEqual(buffer.write(stereoFrames), stereoFrames.count)
+        let readResult = read(from: buffer, count: stereoFrames.count)
+
+        XCTAssertEqual(readResult.actual, stereoFrames.count)
+        XCTAssertEqual(readResult.samples, stereoFrames)
+    }
+
     func testPerformanceWriteReadHotPath() {
         let buffer = AudioRingBuffer(capacity: 65_536)
         let chunkSize = 4_096
