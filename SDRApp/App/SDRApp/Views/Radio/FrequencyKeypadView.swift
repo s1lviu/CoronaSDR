@@ -33,9 +33,12 @@ struct FrequencyKeypadView: View {
                 VStack(spacing: 16) {
                     // Display
                     VStack(spacing: 4) {
-                        inputDisplay
+                        HStack(spacing: 8) {
+                            inputDisplay
+                                .accessibilityLabel("Frequency input: \(input.isEmpty ? "empty" : input), cursor \(cursorOffset)")
+                            clearInputButton
+                        }
                             .padding(.horizontal)
-                            .accessibilityLabel("Frequency input: \(input.isEmpty ? "empty" : input), cursor \(cursorOffset)")
 
                         // Unit picker
                         Picker("Unit", selection: $unit) {
@@ -157,6 +160,20 @@ struct FrequencyKeypadView: View {
         .frame(height: 44)
     }
 
+    private var clearInputButton: some View {
+        Button {
+            clearInput()
+        } label: {
+            Image(systemName: input.isEmpty ? "xmark.circle" : "xmark.circle.fill")
+                .font(.title2)
+                .foregroundStyle(input.isEmpty ? Color.secondary : Color.accentColor)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .disabled(input.isEmpty)
+        .accessibilityLabel("Clear frequency input")
+    }
+
     private var computedHz: Int? {
         guard let value = Double(input), value > 0 else { return nil }
         return Int(value * unit.multiplier)
@@ -193,6 +210,11 @@ struct FrequencyKeypadView: View {
         let deleteIndex = input.index(input.startIndex, offsetBy: cursorOffset - 1)
         input.remove(at: deleteIndex)
         cursorOffset -= 1
+    }
+
+    private func clearInput() {
+        input.removeAll(keepingCapacity: true)
+        cursorOffset = 0
     }
 
     private func insertAtCursor(_ token: String) {
