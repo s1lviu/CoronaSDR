@@ -9,9 +9,9 @@ struct ImportExportSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showFilePicker = false
-    @State private var importResult: String?
-    @State private var exportContent = ""
-    @State private var showShareSheet = false
+    @State private var showFileExporter = false
+    @State private var statusMessage: String?
+    @State private var exportDocument = CSVExportDocument(content: "")
 
     var body: some View {
         NavigationStack {
@@ -33,7 +33,7 @@ struct ImportExportSheet: View {
                     }
                 }
 
-                if let result = importResult {
+                if let result = statusMessage {
                     Section {
                         Text(result)
                             .font(.caption)
@@ -54,24 +54,32 @@ struct ImportExportSheet: View {
             ) { result in
                 handleImport(result)
             }
-            .sheet(isPresented: $showShareSheet) {
-                if !exportContent.isEmpty {
-                    ShareSheet(text: exportContent)
+            .fileExporter(
+                isPresented: $showFileExporter,
+                document: exportDocument,
+                contentType: .commaSeparatedText,
+                defaultFilename: "stations.csv"
+            ) { result in
+                switch result {
+                case .success:
+                    statusMessage = "Exported \(stations.count) stations"
+                case .failure(let error):
+                    statusMessage = "Error: \(error.localizedDescription)"
                 }
             }
         }
     }
 
     private func exportStations() {
-        exportContent = CSVImportExport.exportCSV(stations: stations)
-        showShareSheet = true
+        exportDocument = CSVExportDocument(content: CSVImportExport.exportCSV(stations: stations))
+        showFileExporter = true
     }
 
     private func handleImport(_ result: Result<URL, Error>) {
         switch result {
         case .success(let url):
             guard url.startAccessingSecurityScopedResource() else {
-                importResult = "Could not access file"
+                statusMessage = "Could not access file"
                 return
             }
             defer { url.stopAccessingSecurityScopedResource() }
@@ -106,26 +114,36 @@ struct ImportExportSheet: View {
                     importedCount += 1
                 }
 
-                importResult = "Imported \(importedCount) stations"
+                statusMessage = "Imported \(importedCount) stations"
             } catch {
-                importResult = "Error: \(error.localizedDescription)"
+                statusMessage = "Error: \(error.localizedDescription)"
             }
 
         case .failure(let error):
-            importResult = "Error: \(error.localizedDescription)"
+            statusMessage = "Error: \(error.localizedDescription)"
         }
     }
 }
 
-struct ShareSheet: UIViewControllerRepresentable {
-    let text: String
+private struct CSVExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.commaSeparatedText] }
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let data = text.data(using: .utf8)!
-        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("stations.csv")
-        try? data.write(to: tmpURL)
-        return UIActivityViewController(activityItems: [tmpURL], applicationActivities: nil)
+    var content: String
+
+    init(content: String) {
+        self.content = content
     }
 
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let content = String(data: data, encoding: .utf8) else {
+            self.content = ""
+            return
+        }
+        self.content = content
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(content.utf8))
+    }
 }
