@@ -2,6 +2,15 @@ import XCTest
 import AudioEngineKit
 
 final class AudioRingBufferTests: XCTestCase {
+    func testAudioEngineStartsWithStereoRingBuffer() throws {
+        let buffer = AudioRingBuffer(capacity: 48_001)
+        let engine = SDRAudioEngine(audioBuffer: buffer)
+
+        try engine.configureSession()
+        try engine.start()
+        engine.stop()
+    }
+
     func testWriteReadWrapAroundPreservesOrder() {
         let buffer = AudioRingBuffer(capacity: 16)
         let first = (0..<10).map { Float($0) }
