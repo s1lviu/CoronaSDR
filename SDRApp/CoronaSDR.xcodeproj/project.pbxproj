@@ -448,7 +448,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = DDJCP893KF;
 				INFOPLIST_FILE = App/SDRApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
@@ -457,7 +457,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -559,7 +559,7 @@
 				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = DDJCP893KF;
 				INFOPLIST_FILE = App/SDRApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
@@ -568,7 +568,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
