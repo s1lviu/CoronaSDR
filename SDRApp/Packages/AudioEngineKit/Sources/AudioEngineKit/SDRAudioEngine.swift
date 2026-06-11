@@ -106,7 +106,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
             commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate,
             channels: channelCount,
-            interleaved: true
+            interleaved: false
         ) else {
             SDRLogger.audio.error("Failed to create AVAudioFormat")
             return
