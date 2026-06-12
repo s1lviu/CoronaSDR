@@ -105,8 +105,6 @@ public final class DSPPipeline: @unchecked Sendable {
     private let noiseBlankerLeft = NoiseBlanker()
     private let noiseBlankerRight = NoiseBlanker()
     private let audioAGC = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
-    private let audioAGCLeft = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
-    private let audioAGCRight = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
     private var resampler: Resampler
     private var leftResampler: Resampler
     private var rightResampler: Resampler
@@ -371,8 +369,7 @@ public final class DSPPipeline: @unchecked Sendable {
                     }
 
                     if _audioAgcEnabled {
-                        audioAGCLeft.process(&stereo.left)
-                        audioAGCRight.process(&stereo.right)
+                        audioAGC.processStereo(left: &stereo.left, right: &stereo.right)
                     }
 
                     leftResampler.currentRatio = adjustedRatio
@@ -825,13 +822,7 @@ public final class DSPPipeline: @unchecked Sendable {
             withPipelineLock {
                 _audioAgcEnabled = newValue
                 audioAGC.isEnabled = newValue
-                audioAGCLeft.isEnabled = newValue
-                audioAGCRight.isEnabled = newValue
                 if !newValue { audioAGC.reset() }
-                if !newValue {
-                    audioAGCLeft.reset()
-                    audioAGCRight.reset()
-                }
             }
         }
     }
@@ -855,8 +846,6 @@ public final class DSPPipeline: @unchecked Sendable {
         noiseBlankerRight.reset()
         if _audioAgcEnabled {
             audioAGC.reset()
-            audioAGCLeft.reset()
-            audioAGCRight.reset()
         }
         squelch.reset()
         resampler.reset()

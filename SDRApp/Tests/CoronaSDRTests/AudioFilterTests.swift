@@ -343,6 +343,49 @@ final class AudioAGCTests: XCTestCase {
         XCTAssertEqual(samples, input, "Disabled AGC should not modify samples")
     }
 
+    func testStereoAGCPreservesStereoSideSignalWithLinkedGain() {
+        let linkedAGC = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
+        var left = [Float](repeating: 0.8, count: 48_000)
+        var right = [Float](repeating: 0.2, count: 48_000)
+        var independentLeft = left
+        var independentRight = right
+
+        linkedAGC.processStereo(left: &left, right: &right)
+
+        let leftAGC = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
+        let rightAGC = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
+        leftAGC.process(&independentLeft)
+        rightAGC.process(&independentRight)
+
+        let linkedSideToMidRatio = stereoSideToMidRatio(left: left, right: right)
+        let independentSideToMidRatio = stereoSideToMidRatio(left: independentLeft, right: independentRight)
+
+        XCTAssertEqual(
+            linkedSideToMidRatio,
+            0.6,
+            accuracy: 0.001,
+            "Linked stereo AGC must apply identical gain to both channels"
+        )
+        XCTAssertLessThan(
+            independentSideToMidRatio,
+            0.2,
+            "Independent channel AGC demonstrates the production failure: it collapses side energy toward mono"
+        )
+    }
+
+    private func stereoSideToMidRatio(left: [Float], right: [Float]) -> Float {
+        var midEnergy: Float = 0
+        var sideEnergy: Float = 0
+        for (leftSample, rightSample) in zip(left.suffix(1_000), right.suffix(1_000)) {
+            let mid = 0.5 * (leftSample + rightSample)
+            let side = 0.5 * (leftSample - rightSample)
+            midEnergy += mid * mid
+            sideEnergy += side * side
+        }
+        guard midEnergy > 0 else { return 0 }
+        return sqrtf(sideEnergy / midEnergy)
+    }
+
     func testAGCResetRestoresUnityGain() {
         let agc = AGC(targetLevel: 0.3, attackRate: 0.002, decayRate: 0.00005)
 
