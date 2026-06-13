@@ -391,6 +391,82 @@ final class FMDemodulatorTests: XCTestCase {
 // MARK: - WFM stereo demodulator tests
 
 final class WFMStereoDemodulatorTests: XCTestCase {
+    func testStereoPilotMaintainsSeparationAcrossStreamingBlocks() {
+        let sampleRate: Float = 256_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 5.0)
+        let blockSize = 2_048
+        let toneHz: Float = 1_000
+        let (real, imag) = makeWFMTestIQ(
+            sampleRate: sampleRate,
+            deviation: deviation,
+            count: count
+        ) { index in
+            let t = Float(index) / sampleRate
+            let left = sinf(2.0 * .pi * toneHz * t)
+            let right: Float = 0
+            return (left, right, true)
+        }
+
+        let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        var tailLeft: [Float] = []
+        var tailRight: [Float] = []
+
+        for start in stride(from: 0, to: count, by: blockSize) {
+            let end = min(start + blockSize, count)
+            let output = demod.demodulate(
+                real: Array(real[start..<end]),
+                imag: Array(imag[start..<end])
+            )
+            if start >= count - Int(sampleRate) {
+                tailLeft.append(contentsOf: output.left)
+                tailRight.append(contentsOf: output.right)
+            }
+        }
+
+        XCTAssertGreaterThan(stereoSideToMidRatio(left: tailLeft, right: tailRight), 0.7)
+        XCTAssertLessThan(rms(tailRight), rms(tailLeft) * 0.45)
+    }
+
+    func testStereoPilotPhaseOffsetsMaintainSeparation() {
+        let sampleRate: Float = 256_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 1.0)
+        let toneHz: Float = 1_000
+        let pilotPhases: [Float] = [0, .pi / 6, .pi / 3, .pi / 2, 2 * .pi / 3]
+
+        for pilotPhase in pilotPhases {
+            let (real, imag) = makeWFMTestIQ(
+                sampleRate: sampleRate,
+                deviation: deviation,
+                count: count,
+                pilotPhase: pilotPhase
+            ) { index in
+                let t = Float(index) / sampleRate
+                let left = sinf(2.0 * .pi * toneHz * t)
+                let right: Float = 0
+                return (left, right, true)
+            }
+
+            let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+            let output = streamStereoOutput(real: real, imag: imag, through: demod, blockSize: 2_048)
+            let drop = output.left.count / 2
+            let left = Array(output.left.dropFirst(drop))
+            let right = Array(output.right.dropFirst(drop))
+
+            XCTAssertGreaterThan(
+                stereoSideToMidRatio(left: left, right: right),
+                0.7,
+                "Pilot phase \(pilotPhase) collapsed stereo separation"
+            )
+            XCTAssertLessThan(
+                rms(right),
+                rms(left) * 0.45,
+                "Pilot phase \(pilotPhase) leaked too much left-only audio into right"
+            )
+        }
+    }
+
     func testStereoPilotRecoversLeftDominantAudio() {
         let sampleRate: Float = 240_000
         let deviation: Float = 75_000
@@ -473,6 +549,7 @@ final class WFMStereoDemodulatorTests: XCTestCase {
         sampleRate: Float,
         deviation: Float,
         count: Int,
+        pilotPhase: Float = 0,
         channels: (Int) -> (left: Float, right: Float, pilot: Bool)
     ) -> (real: [Float], imag: [Float]) {
         var real = [Float](repeating: 0, count: count)
@@ -484,8 +561,9 @@ final class WFMStereoDemodulatorTests: XCTestCase {
             let audio = channels(index)
             let sum = audio.left + audio.right
             let difference = audio.left - audio.right
-            let pilot = audio.pilot ? 0.1 * cosf(2.0 * .pi * 19_000 * t) : 0
-            let stereoSubcarrier = 0.45 * difference * cosf(2.0 * .pi * 38_000 * t)
+            let pilotAngle = 2.0 * .pi * 19_000 * t + pilotPhase
+            let pilot = audio.pilot ? 0.1 * sinf(pilotAngle) : 0
+            let stereoSubcarrier = 0.45 * difference * sinf(2.0 * pilotAngle)
             let composite = 0.45 * sum + pilot + stereoSubcarrier
 
             phase += 2.0 * .pi * deviation * composite / sampleRate
@@ -496,9 +574,42 @@ final class WFMStereoDemodulatorTests: XCTestCase {
         return (real, imag)
     }
 
+    private func streamStereoOutput(
+        real: [Float],
+        imag: [Float],
+        through demod: WFMStereoDemodulator,
+        blockSize: Int
+    ) -> StereoAudioBlock {
+        var left: [Float] = []
+        var right: [Float] = []
+        for start in stride(from: 0, to: min(real.count, imag.count), by: blockSize) {
+            let end = min(start + blockSize, real.count, imag.count)
+            let output = demod.demodulate(
+                real: Array(real[start..<end]),
+                imag: Array(imag[start..<end])
+            )
+            left.append(contentsOf: output.left)
+            right.append(contentsOf: output.right)
+        }
+        return StereoAudioBlock(left: left, right: right)
+    }
+
     private func rms(_ samples: [Float]) -> Float {
         guard !samples.isEmpty else { return 0 }
         return sqrtf(samples.reduce(0) { $0 + $1 * $1 } / Float(samples.count))
+    }
+
+    private func stereoSideToMidRatio(left: [Float], right: [Float]) -> Float {
+        var midEnergy: Float = 0
+        var sideEnergy: Float = 0
+        for (leftSample, rightSample) in zip(left, right) {
+            let mid = 0.5 * (leftSample + rightSample)
+            let side = 0.5 * (leftSample - rightSample)
+            midEnergy += mid * mid
+            sideEnergy += side * side
+        }
+        guard midEnergy > 0 else { return 0 }
+        return sqrtf(sideEnergy / midEnergy)
     }
 }
 
