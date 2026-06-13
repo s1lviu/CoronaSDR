@@ -493,6 +493,58 @@ final class WFMStereoDemodulatorTests: XCTestCase {
         XCTAssertLessThan(rms(right), rms(left) * 0.65)
     }
 
+    func testStereoPilotRecoversRightDominantAudio() {
+        let sampleRate: Float = 240_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 0.35)
+        let toneHz: Float = 1_000
+        let (real, imag) = makeWFMTestIQ(
+            sampleRate: sampleRate,
+            deviation: deviation,
+            count: count
+        ) { index in
+            let t = Float(index) / sampleRate
+            let left: Float = 0
+            let right = sinf(2.0 * .pi * toneHz * t)
+            return (left, right, true)
+        }
+
+        let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        let output = demod.demodulate(real: real, imag: imag)
+        let drop = output.left.count / 2
+        let left = Array(output.left.dropFirst(drop))
+        let right = Array(output.right.dropFirst(drop))
+
+        XCTAssertGreaterThan(rms(right), 0.08)
+        XCTAssertLessThan(rms(left), rms(right) * 0.65)
+    }
+
+    func testStereoLockDropsToMonoWhenPilotDisappearsAfterLock() {
+        let sampleRate: Float = 256_000
+        let deviation: Float = 75_000
+        let count = Int(sampleRate * 2.0)
+        let pilotCutoff = count / 2
+        let toneHz: Float = 1_000
+        let (real, imag) = makeWFMTestIQ(
+            sampleRate: sampleRate,
+            deviation: deviation,
+            count: count
+        ) { index in
+            let t = Float(index) / sampleRate
+            let left = sinf(2.0 * .pi * toneHz * t)
+            let right: Float = 0
+            return (left, right, index < pilotCutoff)
+        }
+
+        let demod = WFMStereoDemodulator(sampleRate: sampleRate, deviation: deviation, deemphasisUs: 0)
+        let output = streamStereoOutput(real: real, imag: imag, through: demod, blockSize: 2_048)
+        let tailStart = output.left.count - Int(sampleRate / 4)
+        let left = Array(output.left[tailStart...])
+        let right = Array(output.right[tailStart...])
+
+        XCTAssertLessThan(rms(zip(left, right).map { $0 - $1 }), rms(left) * 0.2)
+    }
+
     func testMissingPilotFallsBackToCenteredMono() {
         let sampleRate: Float = 240_000
         let deviation: Float = 75_000
