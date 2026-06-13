@@ -195,8 +195,8 @@ public final class WFMStereoDemodulator {
 
     private let twoPi: Float = 2.0 * .pi
     private let nominalPilotRadiansPerSample: Float
-    private let pllProportionalGain: Float = 0.00035
-    private let pllIntegralGain: Float = 0.0000008
+    private let pllProportionalGain: Float = 0.01
+    private let pllIntegralGain: Float = 0.00001
     private let maximumPilotCorrection: Float
     private let stereoPilotOpenThreshold: Float = 0.002
     private let stereoPilotCloseThreshold: Float = 0.001
@@ -270,7 +270,9 @@ public final class WFMStereoDemodulator {
             )
 
             let carrierPhase = phase + frequency * pilotFilterGroupDelaySamples
-            let carrier38 = 2.0 * cosf(2.0 * carrierPhase)
+            // The pilot PLL locks 90 degrees behind a sine pilot; compensate before doubling
+            // so the regenerated 38 kHz carrier matches the FM stereo L-R subcarrier phase.
+            let carrier38 = -2.0 * sinf(2.0 * carrierPhase)
             differenceMixedScratch[i] = mpxScratch[i] * carrier38
 
             level = level + 0.001 * (abs(pilot) - level)
