@@ -1,0 +1,5 @@
+module CLiquidDSP [system] {
+    header "liquid.h"
+    link "liquid"
+    export *
+}

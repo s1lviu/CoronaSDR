@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor / local tooling
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Xcode user state
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+**/*.xcuserstate
+**/*.pbxuser
+**/*.mode1v3
+**/*.mode2v3
+**/*.perspectivev3
+**/*.moved-aside
+
+# Swift Package Manager build artifacts
+**/.build/
+**/.swiftpm/
+
+# Build outputs
+**/build/
+
+# Crash dumps and local diagnostic outputs
+SDRApp/CrashLogs/
+SDRApp/.xcodegen_inputs.sha256
+
+# Local Firebase config (never commit secrets)
+SDRApp/App/SDRApp/Resources/GoogleService-Info.plist
