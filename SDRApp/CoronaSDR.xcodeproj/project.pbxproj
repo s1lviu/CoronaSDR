@@ -1,0 +1,726 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 63;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04AF82D1E3B94C7A9D1F0E22 /* AudioFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C3F90B7D2E48F6B5E71A33 /* AudioFilterTests.swift */; };
+		060450D988F56FD0835821C2 /* DeepLinkHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */; };
+		0943DD7A280234F76854921F /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = D790FB2CD547BA1A01136FAF /* FirebaseCore */; };
+		0B67B96592A8918A07D262E0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBA2A04F38D311C2BAC137AC /* ContentView.swift */; };
+		198E17427BADB4D33AE30DA0 /* DeepLinkHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005AB8EE3ECA837D47F89617 /* DeepLinkHandler.swift */; };
+		20A9B3A996EC6EF055A873D0 /* RFControlsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 565BB40C80E668A8E367BE28 /* RFControlsTests.swift */; };
+		253D92E62048CF514EE3F2AB /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 48C0701AD5E1EA2BD87BB86F /* FirebaseCrashlytics */; };
+		2C26CF23DF73D64CAE91DF81 /* SDRSupport in Frameworks */ = {isa = PBXBuildFile; productRef = CB27B1EE55F3DC0583BE03BA /* SDRSupport */; };
+		32C1EF701ADD5C6E69628B45 /* ConnectionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B59A687F723120DCCD38ED5 /* ConnectionSheet.swift */; };
+		3359A6D117DB1B6A138EA7DA /* AppIcon60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 527E468E8EBC22C438C03A89 /* AppIcon60x60@2x.png */; };
+		3F10D1B10CE4E7BD05B446B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */; };
+		4BDF8185D6B67A8C35719E1D /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DC7DDB76A7DC51532C9B36D /* ScanView.swift */; };
+		55421875F4F708985508453E /* RadioViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B903E9DB5D8272DC08C3F8A5 /* RadioViewModel.swift */; };
+		556A08BF9A567D43C6190694 /* StationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900250F99F9EBEEC55B043DB /* StationsView.swift */; };
+		5BFE280269734D23D72F1769 /* AppIcon60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 5C7E5486B627308AA580B3FA /* AppIcon60x60@3x.png */; };
+		5FBB24024048897B2EFC66AC /* SDRModels in Frameworks */ = {isa = PBXBuildFile; productRef = 494F684A58C456D32A3B8ECB /* SDRModels */; };
+		60162AF90C4573F39E28632B /* SDRCoreDSP in Frameworks */ = {isa = PBXBuildFile; productRef = D7425E71C5BEC821349E78CE /* SDRCoreDSP */; };
+		6A64FEEBA01C57E43BC2030A /* AddStationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303710D0EBED6D64F364B627 /* AddStationView.swift */; };
+		7247B51BEC82DA9D2DD263EE /* ScanEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5362F2679EFD318CCED70EC4 /* ScanEngine.swift */; };
+		78012DEF3E70DE33C1681436 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239DE295767628C0B61417DA /* DiagnosticsView.swift */; };
+		921B4040B2923407E791E124 /* SDRAppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */; };
+		953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */; };
+		9555334D9074956824F792FD /* AppIcon76x76.png in Resources */ = {isa = PBXBuildFile; fileRef = 43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */; };
+		A030BA19E04E1C72105984DF /* SDRRender in Frameworks */ = {isa = PBXBuildFile; productRef = 8DE39D29C59EB576ABD3CF6F /* SDRRender */; };
+		A80583CE4E40FF9E36503B6A /* FrequencyKeypadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E481225ED87D67930777F977 /* FrequencyKeypadView.swift */; };
+		B024E493E1804F385D66908A /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = FFE3E3D1850D6234D19B5B50 /* FirebasePerformance */; };
+		B5FB6385913993F9E1D5ADFC /* AppIcon83.5x83.5@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */; };
+		B90C6AD4E1144F779A24F4D6 /* NFMDemodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */; };
+		BB89978967770302A7F289E8 /* AudioEngineKit in Frameworks */ = {isa = PBXBuildFile; productRef = B944FB32AC46FB8D436B3C6B /* AudioEngineKit */; };
+		C3860BC03AAA0419436FEFDF /* RadioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5479E9108B6A98B1000F44A4 /* RadioView.swift */; };
+		C6686AF665A8D0120B39D71B /* IQRingBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */; };
+		D0970DA24FD12494099D2507 /* ImportExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CFC38E087C49B1FFA363F1C /* ImportExportSheet.swift */; };
+		D2C48ECE58C05E96C9C31255 /* RTLTCPClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = BA4E6A107431EB89F7F49A97 /* RTLTCPClientKit */; };
+		D87DB38D9A5CB300B1C1FC49 /* AppIcon60x60.png in Resources */ = {isa = PBXBuildFile; fileRef = DAD6B1F6C0BD9A73F3EF725C /* AppIcon60x60.png */; };
+		D969371AA8B38478520AE6F4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8CF7495601D45F14E89C65 /* SettingsView.swift */; };
+		ED53BC5EC0A0EB4C48FDF55F /* AppIcon76x76@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 4ACE8830C5D0667D4F0603EF /* AppIcon76x76@2x.png */; };
+		F831F95CE64ACCBD3B808ECC /* OnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14D225D3F7AC73101511DD9B /* OnboardingFlow.swift */; };
+		FB777858F3413DD3C94B6768 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A488ACFE29F4CC1ACDDDBD /* MainTabView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3D2A9184A2757237143987D7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FDC89AD63FAADECEFBB7AA40 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0A465B18A70006CD09ACA9F9;
+			remoteInfo = CoronaSDR;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		005AB8EE3ECA837D47F89617 /* DeepLinkHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandler.swift; sourceTree = "<group>"; };
+		14D225D3F7AC73101511DD9B /* OnboardingFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlow.swift; sourceTree = "<group>"; };
+		239DE295767628C0B61417DA /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		2FA0905C62BC65459F8EA6EC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		303710D0EBED6D64F364B627 /* AddStationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddStationView.swift; sourceTree = "<group>"; };
+		3B59A687F723120DCCD38ED5 /* ConnectionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionSheet.swift; sourceTree = "<group>"; };
+		43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIcon76x76.png; sourceTree = "<group>"; };
+		4ACE8830C5D0667D4F0603EF /* AppIcon76x76@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon76x76@2x.png"; sourceTree = "<group>"; };
+		527E468E8EBC22C438C03A89 /* AppIcon60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon60x60@2x.png"; sourceTree = "<group>"; };
+		5362F2679EFD318CCED70EC4 /* ScanEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanEngine.swift; sourceTree = "<group>"; };
+		5479E9108B6A98B1000F44A4 /* RadioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioView.swift; sourceTree = "<group>"; };
+		55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IQRingBufferTests.swift; sourceTree = "<group>"; };
+		565BB40C80E668A8E367BE28 /* RFControlsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFControlsTests.swift; sourceTree = "<group>"; };
+		5C7E5486B627308AA580B3FA /* AppIcon60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon60x60@3x.png"; sourceTree = "<group>"; };
+		67EB21079C4468171086D34E /* CoronaSDR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoronaSDR.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CFC38E087C49B1FFA363F1C /* ImportExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportExportSheet.swift; sourceTree = "<group>"; };
+		70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDRAppMain.swift; sourceTree = "<group>"; };
+		7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandlerTests.swift; sourceTree = "<group>"; };
+		7DC7DDB76A7DC51532C9B36D /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFMDemodTests.swift; sourceTree = "<group>"; };
+		900250F99F9EBEEC55B043DB /* StationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StationsView.swift; sourceTree = "<group>"; };
+		A0A488ACFE29F4CC1ACDDDBD /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		A1C3F90B7D2E48F6B5E71A33 /* AudioFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFilterTests.swift; sourceTree = "<group>"; };
+		AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon83.5x83.5@2x.png"; sourceTree = "<group>"; };
+		B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B903E9DB5D8272DC08C3F8A5 /* RadioViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioViewModel.swift; sourceTree = "<group>"; };
+		C1BCC6BA54AA9D77D3C3DFBB /* CoronaSDRTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoronaSDRTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C7954D7C238998B531F5319C /* SDRApp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SDRApp; path = .; sourceTree = SOURCE_ROOT; };
+		DAD6B1F6C0BD9A73F3EF725C /* AppIcon60x60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppIcon60x60.png; sourceTree = "<group>"; };
+		E481225ED87D67930777F977 /* FrequencyKeypadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequencyKeypadView.swift; sourceTree = "<group>"; };
+		F77146CB5D3499EA65C5C5B0 /* SDRApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SDRApp.entitlements; sourceTree = "<group>"; };
+		F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRingBufferTests.swift; sourceTree = "<group>"; };
+		FBA2A04F38D311C2BAC137AC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		FD8CF7495601D45F14E89C65 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		453F2FA9EEC0914500E03FFB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D2C48ECE58C05E96C9C31255 /* RTLTCPClientKit in Frameworks */,
+				60162AF90C4573F39E28632B /* SDRCoreDSP in Frameworks */,
+				A030BA19E04E1C72105984DF /* SDRRender in Frameworks */,
+				BB89978967770302A7F289E8 /* AudioEngineKit in Frameworks */,
+				5FBB24024048897B2EFC66AC /* SDRModels in Frameworks */,
+				2C26CF23DF73D64CAE91DF81 /* SDRSupport in Frameworks */,
+				0943DD7A280234F76854921F /* FirebaseCore in Frameworks */,
+				253D92E62048CF514EE3F2AB /* FirebaseCrashlytics in Frameworks */,
+				B024E493E1804F385D66908A /* FirebasePerformance in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0E6969148A31450C94DF51FE = {
+			isa = PBXGroup;
+			children = (
+				46626C1A31DC777F9490EBFF /* CoronaSDRTests */,
+				E8056FAA58CBC4E9FB5123F8 /* Packages */,
+				5BDC00F5E14BE317B6AEDDF1 /* SDRApp */,
+				AA48B0F3157DE2C86EB1DB0A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0FDBAFE5C17403C351F20114 /* Diagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				239DE295767628C0B61417DA /* DiagnosticsView.swift */,
+			);
+			path = Diagnostics;
+			sourceTree = "<group>";
+		};
+		2F19B4ACAB91D5DB1C61C45D /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				14D225D3F7AC73101511DD9B /* OnboardingFlow.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		39D2A156FE08C015340CF2DD /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				0FDBAFE5C17403C351F20114 /* Diagnostics */,
+				2F19B4ACAB91D5DB1C61C45D /* Onboarding */,
+				FC3C324F01DBE8696538610A /* Radio */,
+				8432917A5E5D6B3007E775B7 /* Settings */,
+				CBC09F536A26059B5FC1BB17 /* Stations */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		46626C1A31DC777F9490EBFF /* CoronaSDRTests */ = {
+			isa = PBXGroup;
+			children = (
+				A1C3F90B7D2E48F6B5E71A33 /* AudioFilterTests.swift */,
+				F811EF81C34FB462ABC90D56 /* AudioRingBufferTests.swift */,
+				7DBD348B57C5BCE4B1C33506 /* DeepLinkHandlerTests.swift */,
+				55E9A14960C9579E53B6C882 /* IQRingBufferTests.swift */,
+				8C65FA1D135C4B8AAFA10D62 /* NFMDemodTests.swift */,
+				565BB40C80E668A8E367BE28 /* RFControlsTests.swift */,
+			);
+			name = CoronaSDRTests;
+			path = Tests/CoronaSDRTests;
+			sourceTree = "<group>";
+		};
+		5BDC00F5E14BE317B6AEDDF1 /* SDRApp */ = {
+			isa = PBXGroup;
+			children = (
+				FBA2A04F38D311C2BAC137AC /* ContentView.swift */,
+				005AB8EE3ECA837D47F89617 /* DeepLinkHandler.swift */,
+				2FA0905C62BC65459F8EA6EC /* Info.plist */,
+				A0A488ACFE29F4CC1ACDDDBD /* MainTabView.swift */,
+				F77146CB5D3499EA65C5C5B0 /* SDRApp.entitlements */,
+				70CEAE7F80E2DEE46708D885 /* SDRAppMain.swift */,
+				D37F66D47B6065A4F1809ABB /* Resources */,
+				EE4E6690416BA3B562888B0C /* Telemetry */,
+				8595C6A569DAC2FFF99A434F /* ViewModels */,
+				39D2A156FE08C015340CF2DD /* Views */,
+			);
+			name = SDRApp;
+			path = App/SDRApp;
+			sourceTree = "<group>";
+		};
+		8432917A5E5D6B3007E775B7 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				FD8CF7495601D45F14E89C65 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		8595C6A569DAC2FFF99A434F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				B903E9DB5D8272DC08C3F8A5 /* RadioViewModel.swift */,
+				5362F2679EFD318CCED70EC4 /* ScanEngine.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AA48B0F3157DE2C86EB1DB0A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				67EB21079C4468171086D34E /* CoronaSDR.app */,
+				C1BCC6BA54AA9D77D3C3DFBB /* CoronaSDRTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CBC09F536A26059B5FC1BB17 /* Stations */ = {
+			isa = PBXGroup;
+			children = (
+				303710D0EBED6D64F364B627 /* AddStationView.swift */,
+				6CFC38E087C49B1FFA363F1C /* ImportExportSheet.swift */,
+				900250F99F9EBEEC55B043DB /* StationsView.swift */,
+			);
+			path = Stations;
+			sourceTree = "<group>";
+		};
+		D37F66D47B6065A4F1809ABB /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				DAD6B1F6C0BD9A73F3EF725C /* AppIcon60x60.png */,
+				527E468E8EBC22C438C03A89 /* AppIcon60x60@2x.png */,
+				5C7E5486B627308AA580B3FA /* AppIcon60x60@3x.png */,
+				43F2FD0B5BC1114E620A90EF /* AppIcon76x76.png */,
+				4ACE8830C5D0667D4F0603EF /* AppIcon76x76@2x.png */,
+				AD22B82674B87BCA70A26DCC /* AppIcon83.5x83.5@2x.png */,
+				B0DB8F78A9EC35B7E7897E9D /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		E8056FAA58CBC4E9FB5123F8 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				C7954D7C238998B531F5319C /* SDRApp */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		EE4E6690416BA3B562888B0C /* Telemetry */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Telemetry;
+			sourceTree = "<group>";
+		};
+		FC3C324F01DBE8696538610A /* Radio */ = {
+			isa = PBXGroup;
+			children = (
+				3B59A687F723120DCCD38ED5 /* ConnectionSheet.swift */,
+				E481225ED87D67930777F977 /* FrequencyKeypadView.swift */,
+				5479E9108B6A98B1000F44A4 /* RadioView.swift */,
+				7DC7DDB76A7DC51532C9B36D /* ScanView.swift */,
+			);
+			path = Radio;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A465B18A70006CD09ACA9F9 /* CoronaSDR */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DB93C4FC80AA4F611E7AF4BA /* Build configuration list for PBXNativeTarget "CoronaSDR" */;
+			buildPhases = (
+				B12A28E216348E74F4D04C29 /* Sources */,
+				00B3A977D83437623617D78F /* Resources */,
+				453F2FA9EEC0914500E03FFB /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CoronaSDR;
+			packageProductDependencies = (
+				BA4E6A107431EB89F7F49A97 /* RTLTCPClientKit */,
+				D7425E71C5BEC821349E78CE /* SDRCoreDSP */,
+				8DE39D29C59EB576ABD3CF6F /* SDRRender */,
+				B944FB32AC46FB8D436B3C6B /* AudioEngineKit */,
+				494F684A58C456D32A3B8ECB /* SDRModels */,
+				CB27B1EE55F3DC0583BE03BA /* SDRSupport */,
+				D790FB2CD547BA1A01136FAF /* FirebaseCore */,
+				48C0701AD5E1EA2BD87BB86F /* FirebaseCrashlytics */,
+				FFE3E3D1850D6234D19B5B50 /* FirebasePerformance */,
+			);
+			productName = CoronaSDR;
+			productReference = 67EB21079C4468171086D34E /* CoronaSDR.app */;
+			productType = "com.apple.product-type.application";
+		};
+		71254B783638C6D0FE798B0B /* CoronaSDRTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0D603EE6F4546EC3D2C58FF0 /* Build configuration list for PBXNativeTarget "CoronaSDRTests" */;
+			buildPhases = (
+				2ACFF8C143FAADC89D8E81EF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DE8E4159216EA36010DABA3C /* PBXTargetDependency */,
+			);
+			name = CoronaSDRTests;
+			packageProductDependencies = (
+			);
+			productName = CoronaSDRTests;
+			productReference = C1BCC6BA54AA9D77D3C3DFBB /* CoronaSDRTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FDC89AD63FAADECEFBB7AA40 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					0A465B18A70006CD09ACA9F9 = {
+						DevelopmentTeam = DDJCP893KF;
+						ProvisioningStyle = Automatic;
+					};
+					71254B783638C6D0FE798B0B = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 526001532847D606850081F6 /* Build configuration list for PBXProject "CoronaSDR" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 0E6969148A31450C94DF51FE;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				0EE6404CD2A0314F0B28A61F /* XCLocalSwiftPackageReference "." */,
+			);
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0A465B18A70006CD09ACA9F9 /* CoronaSDR */,
+				71254B783638C6D0FE798B0B /* CoronaSDRTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		00B3A977D83437623617D78F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D87DB38D9A5CB300B1C1FC49 /* AppIcon60x60.png in Resources */,
+				3359A6D117DB1B6A138EA7DA /* AppIcon60x60@2x.png in Resources */,
+				5BFE280269734D23D72F1769 /* AppIcon60x60@3x.png in Resources */,
+				9555334D9074956824F792FD /* AppIcon76x76.png in Resources */,
+				ED53BC5EC0A0EB4C48FDF55F /* AppIcon76x76@2x.png in Resources */,
+				B5FB6385913993F9E1D5ADFC /* AppIcon83.5x83.5@2x.png in Resources */,
+				3F10D1B10CE4E7BD05B446B4 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2ACFF8C143FAADC89D8E81EF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04AF82D1E3B94C7A9D1F0E22 /* AudioFilterTests.swift in Sources */,
+				953A967263B4AC771B018AEE /* AudioRingBufferTests.swift in Sources */,
+				060450D988F56FD0835821C2 /* DeepLinkHandlerTests.swift in Sources */,
+				C6686AF665A8D0120B39D71B /* IQRingBufferTests.swift in Sources */,
+				B90C6AD4E1144F779A24F4D6 /* NFMDemodTests.swift in Sources */,
+				20A9B3A996EC6EF055A873D0 /* RFControlsTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B12A28E216348E74F4D04C29 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6A64FEEBA01C57E43BC2030A /* AddStationView.swift in Sources */,
+				32C1EF701ADD5C6E69628B45 /* ConnectionSheet.swift in Sources */,
+				0B67B96592A8918A07D262E0 /* ContentView.swift in Sources */,
+				198E17427BADB4D33AE30DA0 /* DeepLinkHandler.swift in Sources */,
+				78012DEF3E70DE33C1681436 /* DiagnosticsView.swift in Sources */,
+				A80583CE4E40FF9E36503B6A /* FrequencyKeypadView.swift in Sources */,
+				D0970DA24FD12494099D2507 /* ImportExportSheet.swift in Sources */,
+				FB777858F3413DD3C94B6768 /* MainTabView.swift in Sources */,
+				F831F95CE64ACCBD3B808ECC /* OnboardingFlow.swift in Sources */,
+				C3860BC03AAA0419436FEFDF /* RadioView.swift in Sources */,
+				55421875F4F708985508453E /* RadioViewModel.swift in Sources */,
+				921B4040B2923407E791E124 /* SDRAppMain.swift in Sources */,
+				7247B51BEC82DA9D2DD263EE /* ScanEngine.swift in Sources */,
+				4BDF8185D6B67A8C35719E1D /* ScanView.swift in Sources */,
+				D969371AA8B38478520AE6F4 /* SettingsView.swift in Sources */,
+				556A08BF9A567D43C6190694 /* StationsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DE8E4159216EA36010DABA3C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0A465B18A70006CD09ACA9F9 /* CoronaSDR */;
+			targetProxy = 3D2A9184A2757237143987D7 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		3E4A7A7EC814DE8D25FAAB3D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DDJCP893KF;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CoronaSDR.app/CoronaSDR";
+			};
+			name = Release;
+		};
+		718A31DE4CF416172A1F55E4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = DDJCP893KF;
+				INFOPLIST_FILE = App/SDRApp/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.7;
+				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		BAC3B4BC068AF2A571257CDA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BEF5E3C0199D9BB8F961D174 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = DDJCP893KF;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CoronaSDR.app/CoronaSDR";
+			};
+			name = Debug;
+		};
+		C18F49B7C0C5A65D610F9B82 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = App/SDRApp/SDRApp.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = DDJCP893KF;
+				INFOPLIST_FILE = App/SDRApp/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CoronaSDR;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.7;
+				PRODUCT_BUNDLE_IDENTIFIER = yo6say.coronasdr;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		ED7C2A8D781B324098C092B2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0D603EE6F4546EC3D2C58FF0 /* Build configuration list for PBXNativeTarget "CoronaSDRTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEF5E3C0199D9BB8F961D174 /* Debug */,
+				3E4A7A7EC814DE8D25FAAB3D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		526001532847D606850081F6 /* Build configuration list for PBXProject "CoronaSDR" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BAC3B4BC068AF2A571257CDA /* Debug */,
+				ED7C2A8D781B324098C092B2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DB93C4FC80AA4F611E7AF4BA /* Build configuration list for PBXNativeTarget "CoronaSDR" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C18F49B7C0C5A65D610F9B82 /* Debug */,
+				718A31DE4CF416172A1F55E4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0EE6404CD2A0314F0B28A61F /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		48C0701AD5E1EA2BD87BB86F /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		494F684A58C456D32A3B8ECB /* SDRModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRModels;
+		};
+		8DE39D29C59EB576ABD3CF6F /* SDRRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRRender;
+		};
+		B944FB32AC46FB8D436B3C6B /* AudioEngineKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AudioEngineKit;
+		};
+		BA4E6A107431EB89F7F49A97 /* RTLTCPClientKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RTLTCPClientKit;
+		};
+		CB27B1EE55F3DC0583BE03BA /* SDRSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRSupport;
+		};
+		D7425E71C5BEC821349E78CE /* SDRCoreDSP */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SDRCoreDSP;
+		};
+		D790FB2CD547BA1A01136FAF /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		FFE3E3D1850D6234D19B5B50 /* FirebasePerformance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B518516858BA96437C601125 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebasePerformance;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = FDC89AD63FAADECEFBB7AA40 /* Project object */;
+}

@@ -1,0 +1,122 @@
+name: CoronaSDR
+options:
+  bundleIdPrefix: yo6say
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  SDRAppPackages:
+    path: .
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.0.0
+
+targets:
+  CoronaSDR:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: App/SDRApp
+        type: group
+        excludes:
+          - Resources/GoogleService-Info.plist.example
+    resources:
+      - path: App/SDRApp/Resources/GoogleService-Info.plist
+        optional: true
+    dependencies:
+      - package: SDRAppPackages
+        product: RTLTCPClientKit
+      - package: SDRAppPackages
+        product: SDRCoreDSP
+      - package: SDRAppPackages
+        product: SDRRender
+      - package: SDRAppPackages
+        product: AudioEngineKit
+      - package: SDRAppPackages
+        product: SDRModels
+      - package: SDRAppPackages
+        product: SDRSupport
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseCrashlytics
+      - package: Firebase
+        product: FirebasePerformance
+    info:
+      path: App/SDRApp/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: ""
+          UIImageName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIBackgroundModes:
+          - audio
+        NSLocalNetworkUsageDescription: "Connect to SDR server on your local network"
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - coronasdr
+            CFBundleURLName: yo6say.coronasdr
+        CFBundleDisplayName: "$(INFOPLIST_KEY_CFBundleDisplayName)"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleIconName: AppIcon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr
+        INFOPLIST_FILE: App/SDRApp/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: CoronaSDR
+        MARKETING_VERSION: "1.0.7"
+        CURRENT_PROJECT_VERSION: "7"
+        DEVELOPMENT_TEAM: DDJCP893KF
+        CODE_SIGN_STYLE: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTED_PLATFORMS: "iphoneos"
+        SUPPORTS_MACCATALYST: "NO"
+        ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: "NO"
+    entitlements:
+      path: App/SDRApp/SDRApp.entitlements
+
+  CoronaSDRTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Tests/CoronaSDRTests
+        type: group
+    dependencies:
+      - target: CoronaSDR
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr.tests
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CoronaSDR.app/CoronaSDR"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  CoronaSDR:
+    build:
+      targets:
+        CoronaSDR: all
+
+  CoronaSDRTests:
+    build:
+      targets:
+        CoronaSDRTests: all
+    test:
+      targets:
+        - CoronaSDRTests
