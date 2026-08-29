@@ -24,9 +24,8 @@ A free, open-source RTL-SDR client for iPhone and iPad. CoronaSDR connects to an
 
 ## Repository layout
 
-- `SDRApp/` — Xcode project, Swift packages, tests, and developer documentation
+- `SDRApp/` — Xcode project, Swift packages, and tests
 - `site/` — static website deployed to Cloudflare Pages
-- `ios-rtl_tcp-sdr-implementation-spec.md` — implementation specification
 
 ## Build
 
