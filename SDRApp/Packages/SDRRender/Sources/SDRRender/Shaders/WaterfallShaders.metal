@@ -111,8 +111,9 @@ fragment float4 waterfallFragmentShader(
     // scrollOffset = currentRow / height, so scrollOffset points to the NEXT row to write (oldest)
     // At screen top (uv.y=0) we want the newest row = scrollOffset - 1/height
     // At screen bottom (uv.y=1) we want the oldest row = scrollOffset
+    float rowStep = 1.0 / float(waterfallTexture.get_height());
     float2 uv = in.texCoord;
-    uv.y = fract(uniforms.scrollOffset - uv.y);
+    uv.y = fract(uniforms.scrollOffset - rowStep - uv.y);
 
     float value = waterfallTexture.sample(texSampler, uv).r;
     return waterfallColorMap(value, uniforms.colorScheme);
