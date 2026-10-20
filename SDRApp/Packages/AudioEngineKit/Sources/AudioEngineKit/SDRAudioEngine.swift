@@ -11,6 +11,10 @@ import UIKit
 /// Handles audio session, lock screen controls, background playback, and interruptions.
 @Observable
 public final class SDRAudioEngine: @unchecked Sendable {
+    enum RemoteCommand: String {
+        case play, pause, togglePlayPause
+    }
+
     private enum TransitionPhase: Equatable {
         case idle
         case fadingOut
@@ -43,6 +47,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private var shouldResumeAfterInterruption: Bool = false
     private var interruptionObserver: NSObjectProtocol?
     private var routeChangeObserver: NSObjectProtocol?
+    private var configurationChangeObserver: NSObjectProtocol?
     private var mediaServicesResetObserver: NSObjectProtocol?
     private var remoteCommandsConfigured: Bool = false
     @ObservationIgnored private let nowPlayingArtwork: MPMediaItemArtwork?
@@ -59,7 +64,9 @@ public final class SDRAudioEngine: @unchecked Sendable {
     private var suppressAudioSignalEvents: Bool = false
 
     // Callbacks for lock screen remote commands
-    public var onPlayPause: (() -> Void)?
+    public var onPlay: (@MainActor () -> Void)?
+    public var onPause: (@MainActor () -> Void)?
+    public var onPlayPause: (@MainActor () -> Void)?
     public var onNextStation: (() -> Void)?
     public var onPreviousStation: (() -> Void)?
     public var onFirstAudioFrame: (() -> Void)?
@@ -84,18 +91,20 @@ public final class SDRAudioEngine: @unchecked Sendable {
     /// Configure audio session for playback.
     public func configureSession() throws {
         let session = AVAudioSession.sharedInstance()
+        setupInterruptionHandling()
+        setupRouteChangeHandling()
+        setupConfigurationChangeHandling()
+        setupMediaServicesResetHandling()
         try session.setCategory(.playback, mode: .default, options: [])
         try session.setPreferredSampleRate(sampleRate)
         // Higher IO duration is a standard trade-off for lower CPU/wakeup load in streaming apps.
         try session.setPreferredIOBufferDuration(preferredIOBufferDuration)
         try session.setActive(true)
 
-        setupInterruptionHandling()
-        setupRouteChangeHandling()
-        setupMediaServicesResetHandling()
         setupRemoteCommands()
 
         SDRLogger.audio.info("Audio session configured: rate=\(session.sampleRate), bufferDuration=\(session.ioBufferDuration)")
+        logDiagnostics(event: "session_configured")
     }
 
     /// Start audio playback.
@@ -176,11 +185,13 @@ public final class SDRAudioEngine: @unchecked Sendable {
         updateNowPlaying()
 
         SDRLogger.audio.info("Audio engine started")
+        logDiagnostics(event: "engine_started")
     }
 
     /// Stop audio playback.
     public func stop() {
         guard isPlaying || sourceNode != nil else { return }
+        logDiagnostics(event: "stop_requested")
 
         engine.stop()
         if let sourceNode {
@@ -195,6 +206,36 @@ public final class SDRAudioEngine: @unchecked Sendable {
         clearNowPlaying()
 
         SDRLogger.audio.info("Audio engine stopped")
+        logDiagnostics(event: "engine_stopped")
+    }
+
+    public var diagnosticSummary: String {
+        let session = AVAudioSession.sharedInstance()
+        let ports = session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ", ")
+        let statistics = audioBuffer.statistics
+        let channels = Int(channelCount)
+        let formats: String
+        if let sourceNode {
+            formats = "Source: \(sourceNode.outputFormat(forBus: 0))\n" +
+                "Mixer input: \(engine.mainMixerNode.inputFormat(forBus: 0))\n" +
+                "Mixer output: \(engine.mainMixerNode.outputFormat(forBus: 0))\n" +
+                "Output: \(engine.outputNode.outputFormat(forBus: 0))"
+        } else {
+            formats = "Audio graph: no source connected"
+        }
+        return """
+        Route: \(ports.isEmpty ? "none" : ports)
+        Session: \(session.sampleRate) Hz, I/O \(session.ioBufferDuration * 1000) ms, output latency \(session.outputLatency * 1000) ms
+        Engine running: \(engine.isRunning), playing: \(isPlaying), interrupted: \(isInterrupted)
+        \(formats)
+        Source frames: produced \(statistics.writtenSamples / channels), requested \(statistics.requestedSamples / channels), read \(statistics.readSamples / channels)
+        Buffer reads: \(statistics.readCalls), largest request \(statistics.largestReadSamples / channels) frames
+        Headroom: \(Double(statistics.availableSamples) / (sampleRate * Double(channels)) * 1000) ms, underruns: \(statistics.underruns), overruns: \(audioBuffer.overrunCount)
+        """
+    }
+
+    public func logDiagnostics(event: String) {
+        SDRLogger.audio.info("Audio diagnostics [\(event, privacy: .public)]\n\(self.diagnosticSummary, privacy: .public)")
     }
 
     // MARK: - Interruption Handling
@@ -207,6 +248,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
             queue: .main
         ) { [weak self] notification in
             guard let self else { return }
+            self.logDiagnostics(event: "interruption: \(String(describing: notification.userInfo))")
             guard let info = notification.userInfo,
                   let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
@@ -240,18 +282,39 @@ public final class SDRAudioEngine: @unchecked Sendable {
             object: AVAudioSession.sharedInstance(),
             queue: .main
         ) { [weak self] notification in
+            guard let self else { return }
             guard let info = notification.userInfo,
                   let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
                   let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
 
             SDRLogger.audio.info("Audio route changed: \(reason.rawValue)")
+            let previousRoute = info[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription
+            let previousPorts = previousRoute?.outputs.map { $0.portType.rawValue }.joined(separator: ", ") ?? "unknown"
+            self.logDiagnostics(event: "route_changed: \(reason.rawValue), previous_ports: \(previousPorts)")
 
             if reason == .oldDeviceUnavailable {
                 // Headphones unplugged etc - keep playing through speaker
-                if self?.isPlaying == true {
-                    try? self?.engine.start()
+                if self.isPlaying {
+                    do {
+                        try self.engine.start()
+                        self.logDiagnostics(event: "route_restart_succeeded")
+                    } catch {
+                        self.logDiagnostics(event: "route_restart_failed: \(error as NSError)")
+                        SDRLogger.audio.error("Failed to restart after route change: \(error)")
+                    }
                 }
             }
+        }
+    }
+
+    private func setupConfigurationChangeHandling() {
+        guard configurationChangeObserver == nil else { return }
+        configurationChangeObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: .main
+        ) { [weak self] _ in
+            self?.logDiagnostics(event: "engine_configuration_changed")
         }
     }
 
@@ -263,6 +326,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
             queue: .main
         ) { [weak self] _ in
             guard let self else { return }
+            self.logDiagnostics(event: "media_services_reset")
             let shouldResume = self.isPlaying || self.shouldResumeAfterInterruption
             do {
                 try self.configureSession()
@@ -273,6 +337,7 @@ public final class SDRAudioEngine: @unchecked Sendable {
                 }
                 SDRLogger.audio.info("Audio media services were reset and session was reconfigured")
             } catch {
+                self.logDiagnostics(event: "media_services_reset_failed: \(error as NSError)")
                 SDRLogger.audio.error("Failed to recover after media services reset: \(error)")
             }
         }
@@ -287,19 +352,19 @@ public final class SDRAudioEngine: @unchecked Sendable {
 
         center.playCommand.isEnabled = true
         _ = center.playCommand.addTarget { [weak self] _ in
-            self?.onPlayPause?()
+            DispatchQueue.main.async { self?.handleRemoteCommand(.play) }
             return .success
         }
 
         center.pauseCommand.isEnabled = true
         _ = center.pauseCommand.addTarget { [weak self] _ in
-            self?.onPlayPause?()
+            DispatchQueue.main.async { self?.handleRemoteCommand(.pause) }
             return .success
         }
 
         center.togglePlayPauseCommand.isEnabled = true
         _ = center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            self?.onPlayPause?()
+            DispatchQueue.main.async { self?.handleRemoteCommand(.togglePlayPause) }
             return .success
         }
 
@@ -316,6 +381,16 @@ public final class SDRAudioEngine: @unchecked Sendable {
         }
     }
 
+    @MainActor
+    func handleRemoteCommand(_ command: RemoteCommand) {
+        logDiagnostics(event: "remote_command: \(command.rawValue)")
+        switch command {
+        case .play: onPlay?()
+        case .pause: onPause?()
+        case .togglePlayPause: onPlayPause?()
+        }
+    }
+
     private func resumeAfterInterruptionIfNeeded(options: AVAudioSession.InterruptionOptions) {
         let shouldResume = shouldResumeAfterInterruption || options.contains(.shouldResume)
         shouldResumeAfterInterruption = false
@@ -328,13 +403,19 @@ public final class SDRAudioEngine: @unchecked Sendable {
                 try engine.start()
                 isPlaying = true
                 updateNowPlaying()
+                logDiagnostics(event: "interruption_resumed")
             }
         } catch {
+            logDiagnostics(event: "interruption_resume_failed: \(error as NSError)")
             SDRLogger.audio.error("Failed to resume audio after interruption: \(error)")
         }
     }
 
     private func removeObservers() {
+        if let configurationChangeObserver {
+            NotificationCenter.default.removeObserver(configurationChangeObserver)
+            self.configurationChangeObserver = nil
+        }
         if let interruptionObserver {
             NotificationCenter.default.removeObserver(interruptionObserver)
             self.interruptionObserver = nil

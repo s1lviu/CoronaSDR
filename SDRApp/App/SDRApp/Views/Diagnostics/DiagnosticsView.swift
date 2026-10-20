@@ -38,6 +38,12 @@ struct DiagnosticsView: View {
                     diagRow("Audio AGC", value: viewModel.audioAgcEnabled ? "On" : "Off")
                 }
 
+                Section("Audio Output") {
+                    Text(viewModel.audioDiagnostics)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                }
+
                 Section("Display") {
                     diagRow("Waterfall FPS", value: waterfallFPSText)
                 }

@@ -194,25 +194,8 @@ public final class WaterfallRenderer: NSObject, MTKViewDelegate {
 
         // Resample bins to texture width
         let useDirectBins = bins.count == textureWidth
-        if useDirectBins {
-            // No resampling needed.
-        } else if bins.count > textureWidth {
-            bins.withUnsafeBufferPointer { src in
-                waterfallRowScratch.withUnsafeMutableBufferPointer { dst in
-                    dst.baseAddress!.update(from: src.baseAddress!, count: textureWidth)
-                }
-            }
-        } else {
-            // Interpolate bins to texture width
-            let scale = Float(bins.count - 1) / Float(textureWidth - 1)
-            for i in 0..<textureWidth {
-                let srcIdx = Float(i) * scale
-                let idx = Int(srcIdx)
-                let frac = srcIdx - Float(idx)
-                let s0 = bins[min(idx, bins.count - 1)]
-                let s1 = bins[min(idx + 1, bins.count - 1)]
-                waterfallRowScratch[i] = s0 + (s1 - s0) * frac
-            }
+        if !useDirectBins {
+            resampleWaterfallRow(bins, into: &waterfallRowScratch)
         }
 
         // Write row to texture at currentRow
