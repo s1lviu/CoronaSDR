@@ -108,6 +108,7 @@ final class RadioViewModel {
     var iqBufferFill: Double = 0
     var audioBufferFill: Double = 0
     var audioHeadroomMs: Double = 0
+    var audioDiagnostics: String = "Audio session not configured"
     var currentFPS: Double = 0
     var squelchNoiseLevel: Float = 0
 
@@ -157,6 +158,7 @@ final class RadioViewModel {
     private var firstAudioTrace: PerformanceTrace?
     private var pendingRetuneTrace: PerformanceTrace?
     private var lastSevereAudioUnderrunAt: CFAbsoluteTime = 0
+    private var lastAudioDiagnosticLogAt: CFAbsoluteTime = 0
     private var profileSwitchTask: Task<Void, Never>?
 
     init() {
@@ -173,6 +175,13 @@ final class RadioViewModel {
         dspPipeline.onFFTFrame = fftHandler
 
         // Lock screen callbacks
+        audioEngine.onPlay = { [weak self] in
+            self?.startListening()
+        }
+        audioEngine.onPause = { [weak self] in
+            guard self?.isPlaying == true else { return }
+            self?.stopListening()
+        }
         audioEngine.onPlayPause = { [weak self] in
             if self?.isPlaying == true {
                 self?.stopListening()
@@ -334,6 +343,7 @@ final class RadioViewModel {
             try audioEngine.start()
         } catch {
             SDRLogger.audio.error("Failed to start audio: \(error)")
+            audioEngine.logDiagnostics(event: "audio_start_failed: \(error as NSError)")
             TelemetryService.shared.recordNonFatal(
                 kind: "audio_start_failed",
                 message: error.localizedDescription,
@@ -362,6 +372,9 @@ final class RadioViewModel {
 
     func setAppActive(_ isActive: Bool) {
         isAppActive = isActive
+        if isPlaying {
+            audioEngine.logDiagnostics(event: "app_active=\(isActive), app_playing=\(isPlaying)")
+        }
         if !isActive {
             scanEngine.stop()
         }
@@ -706,6 +719,12 @@ final class RadioViewModel {
                 }()
                 self.connectionState = self.connection.state
                 self.updateNetworkQuality()
+                self.audioDiagnostics = self.audioEngine.diagnosticSummary
+                let now = CFAbsoluteTimeGetCurrent()
+                if self.isPlaying, now - self.lastAudioDiagnosticLogAt >= 5 {
+                    self.lastAudioDiagnosticLogAt = now
+                    self.audioEngine.logDiagnostics(event: "stream: app_playing=\(self.isPlaying), throughput_mbps=\(self.throughputMbps), iq_fill=\(self.iqBufferFill), iq_underruns=\(self.iqBuffer.underrunCount)")
+                }
             }
         }
         if let diagnosticsTimer {

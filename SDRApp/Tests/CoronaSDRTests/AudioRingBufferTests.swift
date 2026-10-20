@@ -73,6 +73,41 @@ final class AudioRingBufferTests: XCTestCase {
         XCTAssertEqual(readResult.samples, stereoFrames)
     }
 
+    func testStatisticsDistinguishProductionDemandAndUnderruns() {
+        let buffer = AudioRingBuffer(capacity: 16)
+        buffer.write([1, -1, 0.5, -0.5])
+        _ = read(from: buffer, count: 2)
+        _ = read(from: buffer, count: 6)
+
+        let statistics = buffer.statistics
+        XCTAssertEqual(statistics.writtenSamples, 4)
+        XCTAssertEqual(statistics.requestedSamples, 8)
+        XCTAssertEqual(statistics.readSamples, 4)
+        XCTAssertEqual(statistics.readCalls, 2)
+        XCTAssertEqual(statistics.largestReadSamples, 6)
+        XCTAssertEqual(statistics.availableSamples, 0)
+        XCTAssertEqual(statistics.underruns, 1)
+    }
+
+    func testFlushPreservesStatisticsAndResetClearsThem() {
+        let buffer = AudioRingBuffer(capacity: 16)
+        buffer.write([1, -1, 0.5, -0.5])
+        _ = read(from: buffer, count: 2)
+        buffer.flush()
+        XCTAssertEqual(buffer.statistics.writtenSamples, 4)
+        XCTAssertEqual(buffer.statistics.readSamples, 2)
+        XCTAssertEqual(buffer.statistics.availableSamples, 0)
+
+        buffer.reset()
+        let statistics = buffer.statistics
+        XCTAssertEqual(statistics.writtenSamples, 0)
+        XCTAssertEqual(statistics.requestedSamples, 0)
+        XCTAssertEqual(statistics.readSamples, 0)
+        XCTAssertEqual(statistics.readCalls, 0)
+        XCTAssertEqual(statistics.largestReadSamples, 0)
+        XCTAssertEqual(statistics.underruns, 0)
+    }
+
     func testPerformanceWriteReadHotPath() {
         let buffer = AudioRingBuffer(capacity: 65_536)
         let chunkSize = 4_096

@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented here.
 
+## [1.0.8] - 2026-10-20
+
+### Fixed
+
+- Corrected waterfall frequency alignment on Medium and High processing profiles and at fractional zoom levels, preserving narrow signal peaks across the full span.
+- Corrected remote Play and Pause commands so repeated commands no longer toggle playback.
+
+### Added
+
+- Added audio output diagnostics for routes, session and graph formats, engine state, buffer demand, and underruns, with logs for playback commands, interruptions, and route changes.
+- Added regression tests for waterfall resampling, playback controls, and audio buffer statistics.
+
+### Known issues
+
+- The Bluetooth A2DP playback failure reported in #15 remains under investigation. This release adds diagnostics to collect evidence from affected devices.
+
 ## [1.0.7] - 2026-08-29
 
 ### Fixed

@@ -15,6 +15,23 @@ public final class AudioRingBuffer: @unchecked Sendable {
 
     private var _overrunCount: Int = 0
     private var _underrunCount: Int = 0
+    private var writtenSamples: Int = 0
+    private var requestedSamples: Int = 0
+    private var readSamples: Int = 0
+    private var readCalls: Int = 0
+    private var largestReadSamples: Int = 0
+
+    public var statistics: (
+        writtenSamples: Int, requestedSamples: Int, readSamples: Int, readCalls: Int,
+        largestReadSamples: Int, availableSamples: Int, underruns: Int
+    ) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (
+            writtenSamples, requestedSamples, readSamples, readCalls,
+            largestReadSamples, (head - tail + capacity) % capacity, _underrunCount
+        )
+    }
 
     public var overrunCount: Int {
         lock.lock()
@@ -94,6 +111,7 @@ public final class AudioRingBuffer: @unchecked Sendable {
         }
 
         head = (writeStart + samplesToWrite) % capacity
+        writtenSamples &+= samplesToWrite
         return samplesToWrite
     }
 
@@ -112,6 +130,10 @@ public final class AudioRingBuffer: @unchecked Sendable {
         let available = (head - tail + capacity) % capacity
 
         let count = min(requestedCount, available)
+        requestedSamples &+= requestedCount
+        readSamples &+= count
+        readCalls &+= 1
+        largestReadSamples = max(largestReadSamples, requestedCount)
 
         if count > 0 {
             let readStart = tail
@@ -158,6 +180,11 @@ public final class AudioRingBuffer: @unchecked Sendable {
         tail = 0
         _overrunCount = 0
         _underrunCount = 0
+        writtenSamples = 0
+        requestedSamples = 0
+        readSamples = 0
+        readCalls = 0
+        largestReadSamples = 0
         lock.unlock()
     }
 }
