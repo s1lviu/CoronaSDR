@@ -5,6 +5,7 @@ import RTLTCPClientKit
 
 struct RadioView: View {
     @Environment(SettingsStore.self) private var settings
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var viewModel: RadioViewModel
     @State private var showFrequencyKeypad = false
     @State private var showConnectionSheet = false
@@ -61,7 +62,7 @@ struct RadioView: View {
             case .squelch:
                 return "Squelch mutes audio when signal level is below a threshold. Useful for FM scanning to avoid constant noise."
             case .bfo:
-                return "BFO shifts SSB/CW audio pitch for fine tuning. It helps center speech/tones without changing RF frequency."
+                return "In CW, listening pitch changes the tone while the selected RF carrier stays centered. In SSB, BFO shifts the demodulation frequency. FT8 keeps this at zero."
             case .ppm:
                 return "PPM compensates crystal frequency error in the SDR tuner. Use it to align stations exactly on frequency."
             case .offsetTuning:
@@ -104,6 +105,7 @@ struct RadioView: View {
                             modeSelector
                         }
                     }
+                    sectionCard { DecoderPanel(viewModel: viewModel) }
                     sectionCard { controlsSection }
                 }
                 .padding(.horizontal, 12)
@@ -167,19 +169,19 @@ struct RadioView: View {
                 settings.lastFrequencyHz = newFrequency
             }
             .onChange(of: viewModel.mode) { _, newMode in
-                settings.lastMode = newMode.rawValue
+                if viewModel.decodeState.mode == .off { settings.lastMode = newMode.rawValue }
             }
             .onChange(of: viewModel.stepHz) { _, newStepHz in
-                settings.lastStepHz = newStepHz
+                if viewModel.decodeState.mode == .off { settings.lastStepHz = newStepHz }
             }
             .onChange(of: viewModel.bandwidthHz) { _, newBandwidthHz in
-                settings.lastBandwidthHz = newBandwidthHz
+                if viewModel.decodeState.mode == .off { settings.lastBandwidthHz = newBandwidthHz }
             }
             .onChange(of: viewModel.squelchLevel) { _, newSquelchLevel in
                 settings.lastSquelchLevel = newSquelchLevel
             }
             .onChange(of: viewModel.bfoOffset) { _, newBFOOffset in
-                settings.lastBFOOffset = newBFOOffset
+                if viewModel.decodeState.mode == .off { settings.lastBFOOffset = newBFOOffset }
             }
             .onChange(of: viewModel.gainMode) { _, newGainMode in
                 settings.lastGainMode = newGainMode.rawValue
@@ -322,31 +324,41 @@ struct RadioView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            HStack {
-                Text("Span \(formatSpan(spectrumSpanHz))")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if viewModel.waterfallZoom > 1.01 {
-                    Button {
-                        viewModel.setWaterfallZoom(1.0)
-                        pinchBaseZoom = 1.0
-                    } label: {
-                        Text(String(format: "%.1f×", viewModel.waterfallZoom))
-                            .font(.caption2.monospacedDigit().bold())
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.tint.opacity(0.2))
-                            .clipShape(Capsule())
-                    }
-                    .accessibilityLabel("Reset zoom")
-                }
-                Text("Center \(formatAxisFrequency(viewModel.frequencyHz))")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                spectrumSummary(horizontal: true)
+                spectrumSummary(horizontal: false)
             }
 
             waterfallRangeControl
+        }
+    }
+
+    private func spectrumSummary(horizontal: Bool) -> some View {
+        let layout = horizontal ? AnyLayout(HStackLayout()) : AnyLayout(VStackLayout(alignment: .leading))
+        return layout {
+            Text("Span \(formatSpan(spectrumSpanHz))")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: horizontal, vertical: true)
+            if horizontal { Spacer() }
+            if viewModel.waterfallZoom > 1.01 {
+                Button {
+                    viewModel.setWaterfallZoom(1.0)
+                    pinchBaseZoom = 1.0
+                } label: {
+                    Text(String(format: "%.1f×", viewModel.waterfallZoom))
+                        .font(.caption2.monospacedDigit().bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.tint.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+                .accessibilityLabel("Reset zoom")
+            }
+            Text("Center \(formatAxisFrequency(viewModel.frequencyHz))")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: horizontal, vertical: true)
         }
     }
 
@@ -355,7 +367,7 @@ struct RadioView: View {
             Text("Range")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .frame(width: 40, alignment: .leading)
+                .fixedSize(horizontal: true, vertical: false)
 
             Slider(
                 value: Binding(
@@ -370,7 +382,7 @@ struct RadioView: View {
             Text(String(format: "%.0f dB", viewModel.spectrumProcessor.dynamicRangeDB))
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 40, alignment: .trailing)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -381,20 +393,35 @@ struct RadioView: View {
     private let waterfallTickCount = 5
 
     private var waterfallTickMarks: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<waterfallTickCount, id: \.self) { i in
-                let fraction = Double(i) / Double(waterfallTickCount - 1)
-                let hz = spectrumStartHz + Int(fraction * Double(spectrumSpanHz))
-                let alignment: Alignment = i == 0 ? .leading : (i == waterfallTickCount - 1 ? .trailing : .center)
-                VStack(spacing: 1) {
-                    Text(formatAxisFrequency(hz))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    Image(systemName: "arrowtriangle.down.fill")
-                        .font(.system(size: 5))
-                        .foregroundStyle(.secondary)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Lower edge \(formatAxisFrequency(spectrumStartHz))")
+                    Text("Upper edge \(formatAxisFrequency(spectrumEndHz))")
                 }
-                .frame(maxWidth: .infinity, alignment: alignment)
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 0) {
+                    ForEach(0..<waterfallTickCount, id: \.self) { i in
+                        let fraction = Double(i) / Double(waterfallTickCount - 1)
+                        let hz = spectrumStartHz + Int(fraction * Double(spectrumSpanHz))
+                        let alignment: Alignment = i == 0 ? .leading : (i == waterfallTickCount - 1 ? .trailing : .center)
+                        VStack(spacing: 1) {
+                            Text(formatAxisFrequency(hz))
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                            Image(systemName: "arrowtriangle.down.fill")
+                                .font(.system(size: 5))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: alignment)
+                    }
+                }
             }
         }
         .accessibilityElement(children: .combine)
@@ -418,9 +445,6 @@ struct RadioView: View {
 
     @State private var waterfallDragStartFrequency: Int?
     @State private var waterfallTuneMarkerX: CGFloat?
-    @State private var waterfallDragAxis: DragAxis = .undecided
-
-    private enum DragAxis { case undecided, horizontal, vertical }
     @State private var pinchBaseZoom: Double = 1.0
 
     private var waterfallTuneMarker: some View {
@@ -442,34 +466,22 @@ struct RadioView: View {
             Color.clear
                 .contentShape(Rectangle())
                 .gesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { value in
-                            let tx = abs(value.translation.width)
-                            let ty = abs(value.translation.height)
-
-                            if waterfallDragAxis == .undecided {
-                                guard tx + ty >= 10 else { return }
-                                waterfallDragAxis = tx >= ty ? .horizontal : .vertical
-                            }
-                            guard waterfallDragAxis == .horizontal else { return }
-
-                            let width = geometry.size.width
-                            guard width > 0 else { return }
-                            if waterfallDragStartFrequency == nil {
-                                waterfallDragStartFrequency = viewModel.frequencyHz
-                            }
-                            guard let startFreq = waterfallDragStartFrequency else { return }
-                            let deltaFraction = value.translation.width / width
-                            let deltaHz = Int(Double(spectrumSpanHz) * deltaFraction)
-                            let newFreq = startFreq - deltaHz
-                            viewModel.setFrequency(max(1_000, newFreq))
-                            waterfallTuneMarkerX = value.location.x
+                    SpectrumPanGesture(onChanged: { translation, location in
+                        let width = geometry.size.width
+                        guard width > 0 else { return }
+                        if waterfallDragStartFrequency == nil {
+                            waterfallDragStartFrequency = viewModel.frequencyHz
                         }
-                        .onEnded { _ in
-                            waterfallDragStartFrequency = nil
-                            waterfallTuneMarkerX = nil
-                            waterfallDragAxis = .undecided
-                        }
+                        guard let startFreq = waterfallDragStartFrequency else { return }
+                        let deltaFraction = translation.x / width
+                        let deltaHz = Int(Double(spectrumSpanHz) * deltaFraction)
+                        let newFreq = startFreq - deltaHz
+                        viewModel.setFrequency(max(1_000, newFreq))
+                        waterfallTuneMarkerX = location.x
+                    }, onEnded: {
+                        waterfallDragStartFrequency = nil
+                        waterfallTuneMarkerX = nil
+                    })
                 )
                 .simultaneousGesture(
                     MagnificationGesture()
@@ -518,6 +530,7 @@ struct RadioView: View {
             }
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("radio.frequency")
             .simultaneousGesture(
                 DragGesture(minimumDistance: 10)
                     .onEnded { value in
@@ -590,6 +603,12 @@ struct RadioView: View {
 
     // MARK: - Controls
 
+    private var receiverControlLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout())
+    }
+
     private var controlsSection: some View {
         VStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
@@ -651,7 +670,7 @@ struct RadioView: View {
             }
 
             // Gain
-            HStack {
+            receiverControlLayout {
                 controlLabel("Gain", topic: .gain)
 
                 Picker("", selection: Binding(
@@ -682,7 +701,7 @@ struct RadioView: View {
 
             // Squelch (for applicable modes)
             if viewModel.mode.supportsSquelch {
-                HStack {
+                receiverControlLayout {
                     controlLabel("SQL", topic: .squelch)
 
                     Slider(value: Binding(
@@ -698,7 +717,7 @@ struct RadioView: View {
 
                     Text(viewModel.squelchThresholdDBFS.map { String(format: "%.1f dBFS", $0) } ?? "OPEN")
                         .font(.caption.monospacedDigit())
-                        .frame(width: 84, alignment: .trailing)
+                        .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 84, alignment: .trailing)
                 }
 
                 HStack {
@@ -714,24 +733,24 @@ struct RadioView: View {
             }
 
             // BFO offset (for SSB/CW)
-            if viewModel.mode.usesBFO {
-                HStack {
-                    controlLabel("BFO", topic: .bfo)
+            if viewModel.mode.usesBFO && viewModel.decodeState.mode != .ft8 {
+                receiverControlLayout {
+                    controlLabel(viewModel.mode == .cw ? "Pitch" : "BFO", topic: .bfo)
 
                     Slider(value: Binding(
                         get: { viewModel.bfoOffset },
                         set: { viewModel.setBFOOffset($0) }
-                    ), in: -1000...1000, step: 10)
-                    .accessibilityLabel("BFO fine tune")
+                    ), in: viewModel.mode == .cw ? 300...1200 : -1000...1000, step: 10)
+                    .accessibilityLabel(viewModel.mode == .cw ? "CW listening pitch" : "BFO fine tune")
 
                     Text(String(format: "%+.0f Hz", viewModel.bfoOffset))
                         .font(.caption.monospacedDigit())
-                        .frame(width: 60)
+                        .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 60)
                 }
             }
 
             // PPM
-            HStack {
+            receiverControlLayout {
                 controlLabel("PPM", topic: .ppm)
 
                 Slider(value: Binding(
@@ -767,7 +786,7 @@ struct RadioView: View {
     private func tappableValue(_ text: String, width: CGFloat, field: NumericEditField) -> some View {
         Text(text)
             .font(.caption.monospacedDigit())
-            .frame(width: width)
+            .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : width)
             .padding(.vertical, 4)
             .background(Color(.systemGray5))
             .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -885,7 +904,8 @@ struct RadioView: View {
                 .font(.caption)
             helpButton(topic)
         }
-        .frame(width: 72, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(width: dynamicTypeSize.isAccessibilitySize ? nil : 72, alignment: .leading)
     }
 
     private func helpButton(_ topic: ControlHelpTopic) -> some View {
@@ -1043,6 +1063,41 @@ struct RadioView: View {
             }
             .navigationTitle(topic.title)
             .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+private struct SpectrumPanGesture: UIGestureRecognizerRepresentable {
+    var onChanged: (CGPoint, CGPoint) -> Void
+    var onEnded: () -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.maximumNumberOfTouches = 1
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        switch pan.state {
+        case .began, .changed:
+            if let translation = context.converter.localTranslation {
+                onChanged(translation, context.converter.localLocation)
+            }
+        case .ended, .cancelled, .failed:
+            onEnded()
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: pan.view)
+            // Fail before recognition so the containing scroll view can take vertical pans.
+            return abs(velocity.x) > abs(velocity.y)
         }
     }
 }

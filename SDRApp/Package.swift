@@ -9,6 +9,7 @@ let package = Package(
     products: [
         .library(name: "RTLTCPClientKit", targets: ["RTLTCPClientKit"]),
         .library(name: "SDRCoreDSP", targets: ["SDRCoreDSP"]),
+        .library(name: "SDRDecoding", targets: ["SDRDecoding"]),
         .library(name: "SDRRender", targets: ["SDRRender"]),
         .library(name: "AudioEngineKit", targets: ["AudioEngineKit"]),
         .library(name: "SDRModels", targets: ["SDRModels"]),
@@ -17,6 +18,11 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
+        .target(name: "CFT8", path: "Packages/CFT8/Sources/CFT8", exclude: ["vendor/LICENSE", "vendor/fft/COPYING"],
+                publicHeadersPath: "include", cSettings: [.define("CORONA_FT8_NO_LOG"),
+                    // Real-time DSP must remain usable in simulator/debug builds too.
+                    .unsafeFlags(["-O2"], .when(configuration: .debug))]),
+        .target(name: "SDRDecoding", dependencies: ["CFT8"], path: "Packages/SDRDecoding/Sources/SDRDecoding"),
         // CLiquidDSP Wrapper
         .target(
             name: "CLiquidDSP",
@@ -59,7 +65,7 @@ let package = Package(
         // SDRCoreDSP
         .target(
             name: "SDRCoreDSP",
-            dependencies: ["SDRSupport", "SDRModels", "AudioEngineKit", "RTLTCPClientKit", "CLiquidDSP"],
+            dependencies: ["SDRSupport", "SDRModels", "AudioEngineKit", "RTLTCPClientKit", "CLiquidDSP", "SDRDecoding"],
             path: "Packages/SDRCoreDSP/Sources/SDRCoreDSP",
             linkerSettings: [
                 .linkedFramework("Accelerate"),

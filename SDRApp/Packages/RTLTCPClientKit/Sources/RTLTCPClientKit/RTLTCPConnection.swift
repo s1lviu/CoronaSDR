@@ -309,6 +309,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
 
             SDRLogger.network.info("Header valid: tuner=\(header.tunerType.displayName), gains=\(header.gainCount)")
             SDRDebug.print("🔌 Header valid: \(header.tunerType.displayName), setting state=connected")
+            self.iqBuffer.reset()
             self.header = header
             self.setState(.connected(header))
             SDRDebug.print("🔌 State set to connected on main thread")
@@ -342,7 +343,7 @@ public final class RTLTCPConnection: @unchecked Sendable {
 
                 // Handle settle window
                 if self.consumeSettleWindow(bytesReceived: data.count) {
-                    // Don't write to buffer while settling.
+                    self.iqBuffer.discard(byteCount: data.count)
                 } else {
                     self.iqBuffer.write(data)
                 }

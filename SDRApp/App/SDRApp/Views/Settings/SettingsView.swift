@@ -5,6 +5,13 @@ struct SettingsView: View {
     @Environment(SettingsStore.self) private var settings
     private let landingPageURL = URL(string: "https://coronasdr.pages.dev/")!
     private let issuesURL = URL(string: "https://github.com/s1lviu/CoronaSDR/issues")!
+    private var decoderAcknowledgements: String {
+        guard let url = Bundle.main.url(forResource: "DecoderThirdPartyNotices", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return "Acknowledgements could not be loaded."
+        }
+        return text
+    }
 
     var body: some View {
         @Bindable var settings = settings
@@ -137,6 +144,12 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
+                    NavigationLink("Decoder acknowledgements") {
+                        ScrollView {
+                            Text(decoderAcknowledgements)
+                                .font(.footnote).textSelection(.enabled).padding()
+                        }.navigationTitle("Acknowledgements")
+                    }
                     HStack {
                         Text("Version")
                         Spacer()

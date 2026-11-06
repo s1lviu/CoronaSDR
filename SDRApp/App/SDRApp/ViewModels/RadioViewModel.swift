@@ -6,6 +6,7 @@ import SDRModels
 import SDRSupport
 import RTLTCPClientKit
 import SDRCoreDSP
+import SDRDecoding
 import AudioEngineKit
 import SDRRender
 
@@ -66,6 +67,60 @@ struct ReceiverTuningPlan: Equatable {
 @Observable
 @MainActor
 final class RadioViewModel {
+    let decodeState = DecoderViewModel()
+    private var savedReceiveSettings: (mode: DemodMode, bandwidth: Int, step: Int, bfo: Float)?
+    private var applyingDecoderProfile = false
+
+    func setDecoderMode(_ selected: DecodeMode, restoreReceiver: Bool = true) {
+        if selected == .off {
+            decodeState.mode = .off
+            setMonitorMuted(false)
+            if restoreReceiver, let saved = savedReceiveSettings {
+                applyingDecoderProfile = true
+                setMode(saved.mode); setBandwidth(saved.bandwidth)
+                stepHz = saved.step; setBFOOffset(saved.bfo)
+                applyingDecoderProfile = false
+            }
+            savedReceiveSettings = nil
+        } else {
+            if decodeState.mode == .off {
+                savedReceiveSettings = (mode, bandwidthHz, stepHz, bfoOffset)
+            }
+            scanEngine.stop()
+            applyingDecoderProfile = true
+            setMode(selected == .cw ? .cw : .usb)
+            setBandwidth(selected == .cw ? 500 : 3500)
+            setBFOOffset(selected == .cw ? 600 : 0)
+            applyingDecoderProfile = false
+            decodeState.mode = selected
+        }
+        syncDecoder()
+    }
+
+    func syncDecoder() {
+        let active = isPlaying && isConnected && isAppActive
+        let effective = active ? decodeState.mode : .off
+        let status: String?
+        if decodeState.mode == .off { status = "Decoder off" }
+        else if !isAppActive { status = "Decoding paused while the app is in the background" }
+        else if !isConnected { status = "Connect a receiver to decode" }
+        else if !isPlaying { status = "Press Play to receive and decode" }
+        else { status = nil }
+        dspPipeline.configureDecoder(.init(mode: effective, frequencyHz: frequencyHz,
+            pitchHz: mode == .cw ? (bfoOffset == 0 ? 600 : abs(bfoOffset)) : 600,
+            speedWPM: decodeState.speedWPM, automaticSpeed: decodeState.automaticSpeed), status: status)
+        refreshDecoder()
+    }
+    func refreshDecoder() {
+        let snapshot = dspPipeline.decoder.snapshot()
+        if decodeState.snapshot != snapshot { decodeState.snapshot = snapshot }
+    }
+    func clearDecodeHistory() { dspPipeline.decoder.clearHistory(); refreshDecoder() }
+    func setMonitorMuted(_ muted: Bool) {
+        decodeState.monitorMuted = muted
+        audioEngine.volume = muted ? 0 : 1
+    }
+
     // MARK: - State
 
     var frequencyHz: Int = 100_000_000
@@ -360,6 +415,8 @@ final class RadioViewModel {
         dspPipeline.start()
 
         isPlaying = true
+        audioEngine.volume = decodeState.monitorMuted ? 0 : 1
+        syncDecoder()
         if isRadioTabVisible {
             dspPipeline.onFFTFrame = dspFFTHandler
         }
@@ -372,6 +429,8 @@ final class RadioViewModel {
 
     func setAppActive(_ isActive: Bool) {
         isAppActive = isActive
+        if !isActive && decodeState.monitorMuted && isPlaying { stopListening() }
+        syncDecoder()
         if isPlaying {
             audioEngine.logDiagnostics(event: "app_active=\(isActive), app_playing=\(isPlaying)")
         }
@@ -398,6 +457,7 @@ final class RadioViewModel {
         iqBuffer.flush()
         audioBuffer.flush()
         isPlaying = false
+        syncDecoder()
         dspPipeline.onFFTFrame = nil
         waterfallRenderer?.setRenderingActive(false)
         updateDiagnosticsTimerState()
@@ -421,6 +481,7 @@ final class RadioViewModel {
     // MARK: - Scan
 
     func startListScan(frequencies: [(hz: Int, mode: DemodMode)], dwellMs: Int, holdSec: Int) -> Bool {
+        setDecoderMode(.off, restoreReceiver: false)
         guard case .connected = connection.state else { return false }
         if !isPlaying {
             startListening()
@@ -447,6 +508,7 @@ final class RadioViewModel {
             startListening()
             guard isPlaying else { return false }
         }
+        setDecoderMode(.off, restoreReceiver: false)
         scanEngine.startRangeScan(
             startHz: startHz,
             endHz: endHz,
@@ -469,6 +531,7 @@ final class RadioViewModel {
     // MARK: - Tuning
 
     func setFrequency(_ hz: Int) {
+        defer { if decodeState.mode != .off { syncDecoder() } }
         let sanitizedHz = min(maxTunableFrequencyHz, max(1_000, hz))
         let didChangeFrequency = sanitizedHz != frequencyHz
         frequencyHz = sanitizedHz
@@ -505,15 +568,17 @@ final class RadioViewModel {
     }
 
     func setMode(_ newMode: DemodMode) {
+        if !applyingDecoderProfile && decodeState.mode != .off { setDecoderMode(.off, restoreReceiver: false) }
         let didChangeMode = newMode != mode
-        mode = newMode
-        stepHz = newMode.defaultStepHz
-        bandwidthHz = newMode.defaultBandwidthHz
         guard didChangeMode else {
             updateNowPlaying()
             updateTelemetryContext()
             return
         }
+        mode = newMode
+        stepHz = newMode.defaultStepHz
+        bandwidthHz = newMode.defaultBandwidthHz
+        if newMode == .cw { setBFOOffset(bfoOffset) }
 
         let applyModeChange = {
             self.dspPipeline.mode = newMode
@@ -536,6 +601,11 @@ final class RadioViewModel {
     }
 
     func setBandwidth(_ hz: Int) {
+        if !applyingDecoderProfile && decodeState.mode != .off {
+            savedReceiveSettings = nil
+            if decodeState.mode == .ft8 && hz < 3500 { setDecoderMode(.off, restoreReceiver: false) }
+        }
+        defer { if !applyingDecoderProfile && decodeState.mode != .off { syncDecoder() } }
         guard bandwidthHz != hz else { return }
         bandwidthHz = hz
         dspPipeline.bandwidthHz = hz
@@ -552,6 +622,7 @@ final class RadioViewModel {
     }
 
     func setPPM(_ value: Float) {
+        defer { dspPipeline.resetState(); if decodeState.mode != .off { syncDecoder() } }
         ppm = value
         connection.setPPM(ppmCommandValue(from: value))
     }
@@ -588,8 +659,15 @@ final class RadioViewModel {
     }
 
     func setBFOOffset(_ hz: Float) {
-        bfoOffset = hz
-        dspPipeline.bfoOffsetHz = hz
+        guard hz.isFinite else { return }
+        if !applyingDecoderProfile && decodeState.mode != .off {
+            savedReceiveSettings = nil
+            if decodeState.mode == .ft8 && hz != 0 { setDecoderMode(.off, restoreReceiver: false) }
+        }
+        let value = mode == .cw ? min(1200, max(300, hz == 0 ? 600 : abs(hz))) : hz
+        bfoOffset = value
+        dspPipeline.bfoOffsetHz = value
+        if !applyingDecoderProfile && decodeState.mode != .off { syncDecoder() }
     }
 
     func applySampleProfile(label: String) {
@@ -1184,6 +1262,7 @@ final class RadioViewModel {
     }
 
     private func handleConnectionStateChange(_ newState: ConnectionState) {
+        defer { syncDecoder() }
         connectionState = newState
         if case .connected(let header) = newState {
             isConnected = true

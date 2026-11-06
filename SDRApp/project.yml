@@ -32,6 +32,8 @@ targets:
       - package: SDRAppPackages
         product: SDRCoreDSP
       - package: SDRAppPackages
+        product: SDRDecoding
+      - package: SDRAppPackages
         product: SDRRender
       - package: SDRAppPackages
         product: AudioEngineKit
@@ -76,8 +78,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr
         INFOPLIST_FILE: App/SDRApp/Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: CoronaSDR
-        MARKETING_VERSION: "1.0.8"
-        CURRENT_PROJECT_VERSION: "8"
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "9"
         DEVELOPMENT_TEAM: DDJCP893KF
         CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -96,6 +98,8 @@ targets:
     sources:
       - path: Tests/CoronaSDRTests
         type: group
+      - path: Tests/DecoderTests/Fixtures/191111_110130.wav
+        buildPhase: resources
     dependencies:
       - target: CoronaSDR
     settings:
@@ -106,6 +110,23 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CoronaSDR.app/CoronaSDR"
         BUNDLE_LOADER: "$(TEST_HOST)"
+
+  CoronaSDRUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Tests/CoronaSDRUITests
+      - path: Tests/DecoderTests/Fixtures/191111_110130.wav
+        buildPhase: resources
+    dependencies:
+      - target: CoronaSDR
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: yo6say.coronasdr.uitests
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: CoronaSDR
 
 schemes:
   CoronaSDR:
@@ -120,3 +141,11 @@ schemes:
     test:
       targets:
         - CoronaSDRTests
+
+  CoronaSDRUITests:
+    build:
+      targets:
+        CoronaSDRUITests: all
+    test:
+      targets:
+        - CoronaSDRUITests
