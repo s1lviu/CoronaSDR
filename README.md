@@ -8,8 +8,6 @@ The app supports AM, FM stereo, single sideband and CW reception, with experimen
 [![CoronaSDR website](https://img.shields.io/badge/Website-coronasdr.pages.dev-0ea5e9)](https://coronasdr.pages.dev/)
 [![Source license: GPL-3.0-only](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-This README describes the current source. CW and FT8 decoding are included in the [1.1.0 prerelease](https://github.com/s1lviu/CoronaSDR/releases/tag/1.1.0); the App Store version may differ. See the [changelog](CHANGELOG.md) for release history.
-
 ## Radio receiver features
 
 - **Six reception modes:** AM, narrowband FM (NFM), wideband FM stereo (WFM), upper sideband (USB), lower sideband (LSB), and CW.
