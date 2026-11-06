@@ -4,6 +4,7 @@
 .LSOverride
 
 # Editor / local tooling
+.codegraph/
 .vscode/
 .idea/
 *.swp

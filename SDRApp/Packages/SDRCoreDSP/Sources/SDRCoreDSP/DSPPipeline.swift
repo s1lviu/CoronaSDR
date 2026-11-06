@@ -1,6 +1,7 @@
 import Foundation
 import Accelerate
 import SDRModels
+import SDRDecoding
 import SDRSupport
 import AudioEngineKit
 import RTLTCPClientKit
@@ -59,7 +60,10 @@ public final class DSPPipeline: @unchecked Sendable {
 
     public var bfoOffsetHz: Float {
         get { withPipelineLock { _bfoOffsetHz } }
-        set { withPipelineLock { _bfoOffsetHz = newValue } }
+        set { withPipelineLock {
+            _bfoOffsetHz = newValue
+            if let cw = demodulator as? CWDemodulator { cw.pitchHz = newValue == 0 ? 600 : abs(newValue) }
+        } }
     }
 
     /// Software tuner-center correction in Hz. Used when the RF tuner is
@@ -86,6 +90,25 @@ public final class DSPPipeline: @unchecked Sendable {
                     resetStateLocked()
                 }
             }
+        }
+    }
+
+    public let decoder = DecoderService()
+    private var decoderMode: DecodeMode = .off
+    private var decoderToken: UInt64 = 0
+    private var decoderStream: UInt64 = 0
+    private var decoderSampleIndex: UInt64 = 0
+    private var lastIQGeneration: UInt64?
+    private var decoderAudioPath: DecoderAudioPath?
+    private var decoderWork: [Float] = []
+
+    public func configureDecoder(_ config: DecoderConfiguration, status: String? = nil) {
+        withPipelineLock {
+            decoderMode = config.mode
+            if let ssb = demodulator as? SSBDemodulator { ssb.agcEnabled = config.mode != .ft8 }
+            decoderStream &+= 1; decoderSampleIndex = 0
+            decoderAudioPath?.reset()
+            decoderToken = decoder.configure(config, status: status)
         }
     }
 
@@ -286,7 +309,8 @@ public final class DSPPipeline: @unchecked Sendable {
             starvationSince = nil
 
             // Read IQ data
-            let bytesRead = iqBuffer.read(into: rawBlock, maxCount: blockSize)
+            let iqRead = iqBuffer.readBlock(into: rawBlock, maxCount: blockSize)
+            let bytesRead = iqRead.byteCount
             guard bytesRead > 0 else { continue }
 
             // Convert 8-bit IQ to complex float
@@ -297,7 +321,13 @@ public final class DSPPipeline: @unchecked Sendable {
             guard sampleCount > 0 else { continue }
             let processingStart = CFAbsoluteTimeGetCurrent()
 
+            var pendingDecode: (samples: [Float], stream: UInt64, first: UInt64, token: UInt64)?
+            let receiveEstimate = Date().addingTimeInterval(-Double(iqBuffer.availableForReading + bytesRead) / Double(max(1, sampleRate) * 2))
             let iterationMetrics = withPipelineLock { () -> (filteredCount: Int, audioCount: Int, resampledCount: Int, fillLevel: Double, ratio: Double, modeRawValue: String, currentSampleRate: Int)? in
+                if lastIQGeneration != iqRead.generation {
+                    resetStateLocked()
+                    lastIQGeneration = iqRead.generation
+                }
                 if realWork.count != sampleCount {
                     realWork = [Float](repeating: 0, count: sampleCount)
                     imagWork = [Float](repeating: 0, count: sampleCount)
@@ -315,12 +345,15 @@ public final class DSPPipeline: @unchecked Sendable {
                 }
 
                 // DC blocker
-                if _dcBlockEnabled {
+                // A centered CW carrier is the wanted signal, not removable receiver DC.
+                // Keep low FT8 tones intact when no software RF offset is available, too.
+                let preserveCenter = _softwareFrequencyShiftHz == 0 && (_mode == .cw || decoderMode == .ft8)
+                if _dcBlockEnabled && !preserveCenter {
                     iqDcBlocker.process(real: &realWork, imag: &imagWork)
                 }
 
                 // NCO mix (if needed for software offset tuning or BFO)
-                let mixerOffsetHz = _softwareFrequencyShiftHz + _bfoOffsetHz
+                let mixerOffsetHz = _softwareFrequencyShiftHz + (_mode == .cw ? 0 : _bfoOffsetHz)
                 if mixerOffsetHz != 0 {
                     ncoMixer.setFrequency(mixerOffsetHz, sampleRate: Float(_sampleRate))
                     ncoMixer.mix(real: &realWork, imag: &imagWork, count: sampleCount)
@@ -406,6 +439,14 @@ public final class DSPPipeline: @unchecked Sendable {
                 } else {
                     var audio = demodulator.demodulate(real: filteredIWork, imag: filteredQWork)
                     audioCount = audio.count
+                    if (decoderMode == .cw && _mode == .cw) || (decoderMode == .ft8 && _mode == .usb),
+                       let decoderAudioPath {
+                        let decodedCount = decoderAudioPath.process(audio, into: &decoderWork)
+                        if decodedCount > 0 {
+                            pendingDecode = (decoderWork, decoderStream, decoderSampleIndex, decoderToken)
+                            decoderSampleIndex &+= UInt64(decodedCount)
+                        }
+                    }
 
                     // Noise blanker (impulse spike removal, before squelch)
                     if _noiseBlankerEnabled {
@@ -463,6 +504,11 @@ public final class DSPPipeline: @unchecked Sendable {
                 )
             }
 
+            if let pendingDecode {
+                decoder.submit(pendingDecode.samples, stream: pendingDecode.stream,
+                               firstSampleIndex: pendingDecode.first, receivedAt: receiveEstimate,
+                               configurationRevision: pendingDecode.token)
+            }
             guard let iterationMetrics else { continue }
 
             // Periodic diagnostics (every ~2 sec)
@@ -640,7 +686,7 @@ public final class DSPPipeline: @unchecked Sendable {
             wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 2_400 }
         case .cw:
-            demodulator = CWDemodulator()
+            demodulator = CWDemodulator(sampleRate: intermediateRate, bandwidthHz: preservingBandwidth ? requestedBandwidth : 500)
             wfmStereoDemodulator = nil
             if !preservingBandwidth { _bandwidthHz = 500 }
         }
@@ -649,6 +695,8 @@ public final class DSPPipeline: @unchecked Sendable {
             _bandwidthHz = requestedBandwidth
         }
 
+        if let ssb = demodulator as? SSBDemodulator { ssb.agcEnabled = decoderMode != .ft8 }
+        if let cw = demodulator as? CWDemodulator { cw.pitchHz = _bfoOffsetHz == 0 ? 600 : abs(_bfoOffsetHz) }
         // Rebuild filters with final mode/bandwidth.
         rebuildFiltersLocked()
         pendingDemodChainRebuild = false
@@ -683,6 +731,13 @@ public final class DSPPipeline: @unchecked Sendable {
         )
 
         let intermediateRate = design.intermediateRate
+        if _mode == .cw {
+            let cw = CWDemodulator(sampleRate: Float(intermediateRate), bandwidthHz: _bandwidthHz)
+            cw.pitchHz = _bfoOffsetHz == 0 ? 600 : abs(_bfoOffsetHz)
+            demodulator = cw
+        }
+        decoderAudioPath = DecoderAudioPath(inputRate: intermediateRate)
+        decoderStream &+= 1; decoderSampleIndex = 0
         let newBaseRatio = outputRate / intermediateRate
         resampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
         leftResampler = Resampler(inputRate: intermediateRate, outputRate: outputRate)
@@ -835,6 +890,8 @@ public final class DSPPipeline: @unchecked Sendable {
     }
 
     private func resetStateLocked() {
+        decoderStream &+= 1; decoderSampleIndex = 0
+        decoderAudioPath?.reset()
         iqDcBlocker.reset()
         ncoMixer.reset()
         channelFilterI.reset()

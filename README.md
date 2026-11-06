@@ -9,6 +9,7 @@ A free, open-source RTL-SDR client for iPhone and iPad. CoronaSDR connects to an
 ## Features
 
 - AM, NFM, WFM stereo, USB, LSB, and CW demodulation
+- Foreground, receive-only CW text and FT8 message decoding, with independent monitoring mute, bounded history and text export
 - Metal-accelerated spectrum and waterfall
 - List scanning and range scanning
 - Station favorites, tags, and CSV/TSV import/export
@@ -46,6 +47,20 @@ TEAM_ID=YOUR_TEAM_ID BUNDLE_ID=com.example.coronasdr ./build.sh build
 Open `SDRApp/CoronaSDR.xcodeproj` in Xcode if you prefer the standard Xcode workflow.
 
 Firebase is optional. Copy `SDRApp/App/SDRApp/Resources/GoogleService-Info.plist.example` to `GoogleService-Info.plist` and add your own Firebase project values only when telemetry is required.
+
+## Decoder validation
+
+Select **Decode → CW or FT8** on the Radio screen. CW selects a narrow channel and provides listening pitch and speed controls. FT8 selects USB and collects overlapping audio windows. Reception times are estimates because `rtl_tcp` supplies no capture timestamps. Both decoders require an active receiver session and pause in the background.
+
+Host tests run without a radio or iOS device:
+
+```bash
+python3 SDRApp/scripts/test_decoders.py -c release
+python3 SDRApp/scripts/test_cft8_safety.py
+python3 SDRApp/scripts/benchmark_ft8.py
+```
+
+These require macOS, Xcode, Python 3.12+, CMake and RTK. The host harness downloads checksum-verified liquid-dsp 1.7.0 on its first run. Recorded fixtures, coverage, measured limitations and remaining device checks are documented in [Decoder validation](docs/DECODER-VALIDATION.md).
 
 ## Contributing
 

@@ -1,199 +1,140 @@
 import Foundation
 
-/// Thread-safe ring buffer for IQ data.
-/// Producer: network thread writes raw bytes.
-/// Consumer: DSP thread reads blocks of bytes.
+public struct IQRead: Sendable {
+    public let byteCount: Int
+    public let firstSampleIndex: UInt64
+    public let generation: UInt64
+    public let droppedSamples: UInt64
+}
+
+/// Reads and evictions preserve I/Q pairs across arbitrary TCP chunk boundaries.
 public final class IQRingBuffer: @unchecked Sendable {
     private let buffer: UnsafeMutableRawBufferPointer
     private let capacity: Int
     private let lock = NSLock()
+    private var head = 0
+    private var tail = 0
+    private var used = 0
+    private var streamBytes: UInt64 = 0
+    private var firstIndex: UInt64 = 0
+    private var pendingI: UInt8?
+    private var generation: UInt64 = 0
+    private var dropped: UInt64 = 0
+    private var overruns = 0
+    private var underruns = 0
 
-    private var head: Int = 0 // write position
-    private var tail: Int = 0 // read position
-
-    // Diagnostics
-    private var _overrunCount: Int = 0
-    private var _underrunCount: Int = 0
-
-    public var overrunCount: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return _overrunCount
-    }
-
-    public var underrunCount: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return _underrunCount
-    }
-
-    /// Fill level as a fraction 0.0–1.0.
-    public var fillLevel: Double {
-        lock.lock()
-        let used = (head - tail + capacity) % capacity
-        lock.unlock()
-        return Double(used) / Double(capacity)
-    }
-
-    /// Available bytes for reading.
-    public var availableForReading: Int {
-        lock.lock()
-        let available = (head - tail + capacity) % capacity
-        lock.unlock()
-        return available
-    }
-
-    /// Available space for writing.
-    public var availableForWriting: Int {
-        lock.lock()
-        let available = capacity - 1 - ((head - tail + capacity) % capacity)
-        lock.unlock()
-        return available
-    }
-
-    /// Create ring buffer with given capacity in bytes.
-    /// Capacity should accommodate 0.5–2 seconds of IQ data.
     public init(capacity: Int) {
-        self.capacity = capacity
-        self.buffer = UnsafeMutableRawBufferPointer.allocate(byteCount: capacity, alignment: 16)
+        precondition(capacity >= 4)
+        self.capacity = capacity & ~1
+        buffer = .allocate(byteCount: self.capacity, alignment: 16)
     }
+    deinit { buffer.deallocate() }
+    public var overrunCount: Int { lock.withLock { overruns } }
+    public var underrunCount: Int { lock.withLock { underruns } }
+    public var fillLevel: Double { lock.withLock { Double(used) / Double(capacity) } }
+    public var availableForReading: Int { lock.withLock { used } }
+    public var availableForWriting: Int { lock.withLock { capacity - used } }
 
-    deinit {
-        buffer.deallocate()
-    }
-
-    /// Write data into the ring buffer (producer side).
-    /// Returns the number of bytes actually written. Drops oldest data on overrun.
-    @discardableResult
-    public func write(_ data: UnsafeRawBufferPointer) -> Int {
-        let count = data.count
-        guard count > 0 else { return 0 }
-        guard let sourceBase = data.baseAddress else { return 0 }
-
-        lock.lock()
-        defer { lock.unlock() }
-
-        let available = capacity - 1 - ((head - tail + capacity) % capacity)
-
-        if count > available {
-            _overrunCount &+= 1
-            // Advance tail to make room (drop oldest data)
-            let drop = count - available
-            tail = (tail + drop) % capacity
-        }
-
-        let bytesToWrite = min(count, capacity - 1)
-        let writeStart = head
-
-        if writeStart + bytesToWrite <= capacity {
-            buffer.baseAddress!.advanced(by: writeStart)
-                .copyMemory(from: sourceBase, byteCount: bytesToWrite)
-        } else {
-            let firstChunk = capacity - writeStart
-            buffer.baseAddress!.advanced(by: writeStart)
-                .copyMemory(from: sourceBase, byteCount: firstChunk)
-            buffer.baseAddress!
-                .copyMemory(from: sourceBase.advanced(by: firstChunk), byteCount: bytesToWrite - firstChunk)
-        }
-
-        head = (writeStart + bytesToWrite) % capacity
-        return bytesToWrite
-    }
-
-    /// Convenience write from Data.
-    @discardableResult
-    public func write(_ data: Data) -> Int {
-        data.withUnsafeBytes { write($0) }
-    }
-
-    /// Read up to `maxCount` bytes from the ring buffer (consumer side).
-    /// Returns a Data with the bytes read.
-    public func read(maxCount: Int) -> Data {
-        lock.lock()
-        defer { lock.unlock() }
-        let available = (head - tail + capacity) % capacity
-
-        if available == 0 {
-            _underrunCount &+= 1
-            return Data()
-        }
-
-        let count = min(maxCount, available)
-        var result = Data(count: count)
-
-        result.withUnsafeMutableBytes { dest in
-            let readStart = tail
-            if readStart + count <= capacity {
-                dest.baseAddress!.copyMemory(
-                    from: buffer.baseAddress!.advanced(by: readStart),
-                    byteCount: count
-                )
-            } else {
-                let firstChunk = capacity - readStart
-                dest.baseAddress!.copyMemory(
-                    from: buffer.baseAddress!.advanced(by: readStart),
-                    byteCount: firstChunk
-                )
-                dest.baseAddress!.advanced(by: firstChunk).copyMemory(
-                    from: buffer.baseAddress!,
-                    byteCount: count - firstChunk
-                )
+    /// Returns consumed bytes, including any trailing I retained until its Q arrives.
+    @discardableResult public func write(_ data: UnsafeRawBufferPointer) -> Int {
+        guard let base = data.baseAddress, !data.isEmpty else { return 0 }
+        return lock.withLock {
+            var offset = 0
+            if streamBytes & 1 != 0 {
+                if let i = pendingI {
+                    var pair = (i, data[0])
+                    withUnsafeBytes(of: &pair) { append($0.baseAddress!, count: 2) }
+                } else { dropped &+= 1 }
+                streamBytes &+= 1
+                pendingI = nil
+                offset = 1
             }
+            let complete = (data.count - offset) & ~1
+            if complete > 0 {
+                let keep = min(complete, capacity)
+                let skip = complete - keep
+                if skip > 0 {
+                    dropped &+= UInt64((used + skip) / 2)
+                    generation &+= 1; overruns &+= 1
+                    used = 0; tail = head
+                }
+                streamBytes &+= UInt64(skip)
+                append(base.advanced(by: offset + skip), count: keep)
+                streamBytes &+= UInt64(keep)
+                offset += complete
+            }
+            if offset < data.count {
+                pendingI = data[offset]
+                streamBytes &+= 1
+            }
+            return data.count
         }
-
-        tail = (tail + count) % capacity
-        return result
     }
+    private func append(_ source: UnsafeRawPointer, count: Int) {
+        let evict = max(0, used + count - capacity)
+        if evict > 0 {
+            tail = (tail + evict) % capacity
+            used -= evict
+            firstIndex &+= UInt64(evict / 2)
+            dropped &+= UInt64(evict / 2)
+            generation &+= 1; overruns &+= 1
+        }
+        if used == 0 { firstIndex = streamBytes / 2 }
+        let first = min(count, capacity - head)
+        buffer.baseAddress!.advanced(by: head).copyMemory(from: source, byteCount: first)
+        if first < count { buffer.baseAddress!.copyMemory(from: source.advanced(by: first), byteCount: count - first) }
+        head = (head + count) % capacity
+        used += count
+    }
+    @discardableResult public func write(_ data: Data) -> Int { data.withUnsafeBytes { write($0) } }
 
-    /// Read directly into a pre-allocated buffer. Returns actual bytes read.
+    /// Metadata and samples are read under the same lock.
+    public func readBlock(into dest: UnsafeMutableRawBufferPointer, maxCount: Int) -> IQRead {
+        lock.withLock {
+            let count = max(0, min(used, min(dest.count, maxCount))) & ~1
+            let metadata = IQRead(byteCount: count, firstSampleIndex: firstIndex, generation: generation, droppedSamples: dropped)
+            guard count > 0, let out = dest.baseAddress else { underruns &+= 1; return metadata }
+            let first = min(count, capacity - tail)
+            out.copyMemory(from: buffer.baseAddress!.advanced(by: tail), byteCount: first)
+            if first < count { out.advanced(by: first).copyMemory(from: buffer.baseAddress!, byteCount: count - first) }
+            tail = (tail + count) % capacity
+            used -= count
+            firstIndex &+= UInt64(count / 2)
+            return metadata
+        }
+    }
     public func read(into dest: UnsafeMutableRawBufferPointer, maxCount: Int) -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        let available = (head - tail + capacity) % capacity
-
-        if available == 0 {
-            _underrunCount &+= 1
-            return 0
-        }
-
-        let count = min(min(maxCount, available), dest.count)
-        let readStart = tail
-
-        if readStart + count <= capacity {
-            dest.baseAddress!.copyMemory(
-                from: buffer.baseAddress!.advanced(by: readStart),
-                byteCount: count
-            )
-        } else {
-            let firstChunk = capacity - readStart
-            dest.baseAddress!.copyMemory(
-                from: buffer.baseAddress!.advanced(by: readStart),
-                byteCount: firstChunk
-            )
-            dest.baseAddress!.advanced(by: firstChunk).copyMemory(
-                from: buffer.baseAddress!,
-                byteCount: count - firstChunk
-            )
-        }
-
-        tail = (tail + count) % capacity
-        return count
+        readBlock(into: dest, maxCount: maxCount).byteCount
     }
-
-    /// Flush all data in the buffer.
+    public func read(maxCount: Int) -> Data {
+        var data = Data(count: max(0, min(maxCount, capacity)))
+        let count = data.withUnsafeMutableBytes { read(into: $0, maxCount: maxCount) }
+        data.count = count
+        return data
+    }
+    /// Discard incoming bytes while preserving stream parity across settling windows.
+    public func discard(byteCount: Int) {
+        guard byteCount > 0 else { return }
+        lock.withLock {
+            dropped &+= UInt64(used / 2) + (streamBytes + UInt64(byteCount)) / 2 - streamBytes / 2
+            streamBytes &+= UInt64(byteCount)
+            used = 0; tail = head; pendingI = nil
+            generation &+= 1
+        }
+    }
     public func flush() {
-        lock.lock()
-        tail = head
-        lock.unlock()
+        lock.withLock {
+            dropped &+= UInt64(used / 2)
+            used = 0; tail = head; pendingI = nil
+            generation &+= 1
+        }
     }
-
-    /// Reset all state.
+    /// A new stream starts with I. A flush of the same stream must preserve parity instead.
     public func reset() {
-        lock.lock()
-        head = 0
-        tail = 0
-        _overrunCount = 0
-        _underrunCount = 0
-        lock.unlock()
+        lock.withLock {
+            head = 0; tail = 0; used = 0; streamBytes = 0; firstIndex = 0; pendingI = nil
+            overruns = 0; underruns = 0; dropped = 0
+            generation &+= 1
+        }
     }
 }

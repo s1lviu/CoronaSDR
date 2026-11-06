@@ -2,6 +2,19 @@
 
 All notable user-facing changes are documented here.
 
+## Unreleased
+
+- Added foreground CW text decoding and FT8 receive decoding, monitoring mute, result details, freeze-on-scroll and text sharing.
+- Added CW channel filtering with listening pitch independent of the selected carrier.
+- Preserved I/Q alignment across arbitrary network chunks, overruns and settling windows, and fixed decimation timing across block boundaries.
+- Added fixed-rate decoder audio independent of speaker drift correction and audio effects, with bounded worker queues and interruption recovery.
+- Added recorded and synthetic decoder tests, C memory-safety checks and decoder controls tests. FT8 sensitivity and physical-device limits are documented in `docs/DECODER-VALIDATION.md`.
+
+- Improved FT8 recovery with bounded reliability reprocessing, decoded-signal cancellation and finer residual timing. Original annotated recording coverage improved from 17/24 to 23/24; the unresolved annotation and additional reference differences are documented.
+- Fixed large-text spectrum frequency labels, receiver controls and decoder actions, and optimized the decoder's debug-build processing path.
+- Allowed vertical page scrolling over the spectrum while retaining horizontal drag tuning.
+- Added recorded rtl_tcp replay UI coverage and repeated-decoding measurements without a physical receiver.
+
 ## [1.0.8] - 2026-10-20
 
 ### Fixed

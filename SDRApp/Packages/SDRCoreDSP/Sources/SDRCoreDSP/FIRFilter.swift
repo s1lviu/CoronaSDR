@@ -10,6 +10,7 @@ public final class FIRFilter {
     private let numTaps: Int
     public let decimationFactor: Int
     private var extendedBuffer: [Float] = []
+    private var nextOutputOffset = 0
 
     /// Create a FIR low-pass filter.
     /// - Parameters:
@@ -17,6 +18,7 @@ public final class FIRFilter {
     ///   - numTaps: Number of filter taps (odd recommended, e.g. 63, 127).
     ///   - decimationFactor: Decimation factor (keep every Nth sample).
     public init(cutoffNormalized: Float, numTaps: Int = 63, decimationFactor: Int = 1) {
+        precondition(numTaps > 0 && decimationFactor > 0)
         self.numTaps = numTaps
         self.decimationFactor = decimationFactor
         self.taps = FIRFilter.designLowPass(cutoff: cutoffNormalized, numTaps: numTaps)
@@ -26,6 +28,7 @@ public final class FIRFilter {
 
     /// Create from pre-computed taps.
     public init(taps: [Float], decimationFactor: Int = 1) {
+        precondition(!taps.isEmpty && decimationFactor > 0)
         self.numTaps = taps.count
         self.taps = taps
         self.decimationFactor = decimationFactor
@@ -68,19 +71,11 @@ public final class FIRFilter {
             }
         }
 
-        // Output count: decimated samples from NEW input only.
-        let outputCount = input.count / decimationFactor
-        guard outputCount > 0 else {
-            saveHistory(fromExtendedCount: extendedCount)
-            output.removeAll(keepingCapacity: true)
-            return 0
-        }
-
-        let validOutputs = min(
-            outputCount,
-            max(0, (extendedCount - numTaps) / decimationFactor + 1)
-        )
-        if validOutputs <= 0 {
+        // Preserve the decimation grid even when a block ends between output samples.
+        let offset = nextOutputOffset
+        let validOutputs = offset < input.count ? 1 + (input.count - 1 - offset) / decimationFactor : 0
+        nextOutputOffset = offset + validOutputs * decimationFactor - input.count
+        guard validOutputs > 0 else {
             saveHistory(fromExtendedCount: extendedCount)
             output.removeAll(keepingCapacity: true)
             return 0
@@ -95,7 +90,7 @@ public final class FIRFilter {
             taps.withUnsafeBufferPointer { t in
                 output.withUnsafeMutableBufferPointer { out in
                     vDSP_desamp(
-                        ext.baseAddress!,
+                        ext.baseAddress!.advanced(by: offset),
                         vDSP_Stride(decimationFactor),
                         t.baseAddress!,
                         out.baseAddress!,
@@ -131,6 +126,7 @@ public final class FIRFilter {
     }
 
     public func reset() {
+        nextOutputOffset = 0
         history = [Float](repeating: 0, count: numTaps - 1)
     }
 

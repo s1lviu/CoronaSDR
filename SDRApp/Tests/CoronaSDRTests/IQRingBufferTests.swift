@@ -17,13 +17,15 @@ final class IQRingBufferTests: XCTestCase {
         XCTAssertEqual(buffer.overrunCount, 0)
     }
 
-    func testOverrunDropsOldestBytes() {
-        let buffer = IQRingBuffer(capacity: 8) // max storable = 7 bytes
+    func testOverrunDropsOldestCompletePairs() {
+        let buffer = IQRingBuffer(capacity: 8)
 
         XCTAssertEqual(buffer.write(Data((0..<7).map(UInt8.init))), 7)
         XCTAssertEqual(buffer.write(Data((7..<11).map(UInt8.init))), 4)
 
-        XCTAssertEqual(Array(buffer.read(maxCount: 7)), Array((4..<11).map(UInt8.init)))
+        XCTAssertEqual(Array(buffer.read(maxCount: 8)), Array((2..<10).map(UInt8.init)))
+        buffer.write(Data([11]))
+        XCTAssertEqual(Array(buffer.read(maxCount: 8)), [10, 11])
         XCTAssertEqual(buffer.overrunCount, 1)
     }
 
@@ -31,7 +33,7 @@ final class IQRingBufferTests: XCTestCase {
         let buffer = IQRingBuffer(capacity: 12)
 
         XCTAssertEqual(buffer.write(Data((1...8).map(UInt8.init))), 8)
-        _ = buffer.read(maxCount: 5)
+        XCTAssertEqual(buffer.read(maxCount: 5).count, 4)
         XCTAssertEqual(buffer.write(Data((9...13).map(UInt8.init))), 5)
 
         let dest = UnsafeMutableRawBufferPointer.allocate(byteCount: 8, alignment: 16)
@@ -40,7 +42,7 @@ final class IQRingBufferTests: XCTestCase {
         let read = buffer.read(into: dest, maxCount: 8)
         let values = Array(dest.bindMemory(to: UInt8.self).prefix(read))
         XCTAssertEqual(read, 8)
-        XCTAssertEqual(values, Array((6...13).map(UInt8.init)))
+        XCTAssertEqual(values, Array((5...12).map(UInt8.init)))
     }
 
     func testUnderrunCountIncrementsWhenReadingEmptyBuffer() {

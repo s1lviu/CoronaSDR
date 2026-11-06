@@ -2,13 +2,6 @@ import Foundation
 import Accelerate
 import CLiquidDSP
 
-/// Protocol for all demodulators.
-public protocol Demodulator {
-    /// Demodulate complex IQ samples into real audio samples.
-    func demodulate(real: [Float], imag: [Float]) -> [Float]
-    func reset()
-}
-
 /// Left/right stereo demodulator output before final audio resampling.
 public struct StereoAudioBlock {
     public var left: [Float]
@@ -404,23 +397,5 @@ public final class SSBDemodulator: Demodulator {
     public func reset() {
         ampmodem_reset(q)
         agc.reset()
-    }
-}
-
-// MARK: - CW Demodulator
-
-/// CW demodulator: uses USB demodulation + narrow filter (handled in pipeline) + BFO.
-/// We reuse SSBDemodulator(USB) as the base, since CW is essentially SSB with a tone.
-public final class CWDemodulator: Demodulator {
-    private let ssbDemod = SSBDemodulator(isUSB: true)
-
-    public init() {}
-
-    public func demodulate(real: [Float], imag: [Float]) -> [Float] {
-        return ssbDemod.demodulate(real: real, imag: imag)
-    }
-
-    public func reset() {
-        ssbDemod.reset()
     }
 }
