@@ -2,7 +2,7 @@
 
 CoronaSDR is a free, open-source **software-defined radio (SDR) client for iOS and iPadOS**. Connect to an RTL-SDR receiver through an `rtl_tcp` server on your local network to tune signals, listen to radio, scan frequencies, and explore a live spectrum and waterfall.
 
-The app supports AM, FM stereo, single sideband and CW reception, with experimental **CW Morse code and FT8 decoding** introduced in version 1.1.0. Receiver hardware and an `rtl_tcp` server are required separately.
+The app supports AM, FM stereo, single sideband and CW reception, with experimental **CW Morse code and FT8 decoding**. Receiver hardware and an `rtl_tcp` server are required separately.
 
 [![Download CoronaSDR on the App Store](https://img.shields.io/badge/App_Store-Download-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137)
 [![CoronaSDR website](https://img.shields.io/badge/Website-coronasdr.pages.dev-0ea5e9)](https://coronasdr.pages.dev/)
