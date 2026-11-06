@@ -75,7 +75,9 @@ Synthetic CW is generated independently from Morse durations; FT8 synthetic fixt
 
 The iPhone 16 simulator (iOS 27.2, build 24B8117) passes all 122 app unit tests, including the existing DSP/audio/network/model regressions and the new decoder controls tests. Both new full-pipeline tests pass: independently generated Morse I/Q through the running CW pipeline, and a recorded FT8 waveform converted to quantized I/Q through the running USB pipeline. The CW test exposed and now guards the initial steady-carrier acquisition issue. Both use the real worker threads, filters, resampler and decoder service.
 
-The signed arm64 iOS Release archive and local App Store export succeed. The exported IPA passes `codesign --verify --deep --strict`, has an Apple Distribution signature, has `get-task-allow=false`, and is not device-restricted. Xcode exported version 1.0.8, build 9. This is a packaging result, not approval to release that version. The final archive includes the spectrum gesture and receiver-layout fixes. Its 68-source/configuration SHA-256 manifest still matches the workspace. The initial final export failed because signing assets were unavailable; retrying with `-allowProvisioningUpdates` succeeded. The package has SHA-256 `dd2b78f88aa7959a9d218be94118ca937e1d77557a0e11f3edab9d37bfa0e5b0`.
+Release preparation for **1.1.0 (build 9)** reran all 26 optimized host tests (12.524 s) and all 122 app unit tests on the iPhone 16 simulator (11.035 s), with zero failures. The production changes since the sanitizer and interface evidence below are trailing-whitespace/EOF normalization and version metadata only; no decoder behavior changed during release preparation. The three pinned WAV checksums were verified again.
+
+The signed arm64 iOS Release archive and local App Store export for **1.1.0 (9)** succeed. The exported IPA passes `codesign --verify --deep --strict` with access to the Mac's certificate trust store, has an Apple Distribution signature, has `get-task-allow=false`, and is not device-restricted. The initial restricted signature check could not establish certificate trust; the check with trust-store access passed. Export used `-allowProvisioningUpdates` and `manageAppVersionAndBuildNumber=false`, and the embedded version/build were verified. All 69 entries in `release-1.1.0-source-manifest.json` match the release sources/configuration. The local package is `SDRApp/build/Release-1.1.0/CoronaSDR.ipa`, with SHA-256 `4dbb671adbfda188bce488933b552d30298951d6bbfed1c1b18886e27c1876e7`. Nothing was uploaded to App Store Connect. This is a packaging result, not physical-device qualification.
 
 The two interface tests cover FT8/CW/Off selection, disconnected status, help, control reachability, freeze/clear, and a recorded rtl_tcp replay through the actual app network and DSP paths. The test-only server supplies quantized I/Q in paced, deliberately odd-sized chunks and verifies receiver commands. Populated-message details, the system share sheet's Copy action, muted reception stopping after background entry, and clearing/disabling sharing have passed on iPhone 16 and iPad mini (6th generation), including largest-text runs. This does not verify clipboard bytes, physical networking or audio routes.
 
@@ -85,14 +87,14 @@ Local evidence is retained in the ignored `SDRApp/build` directory:
 
 | Evidence | File |
 |---|---|
-| Optimized host tests, 26 passing | `decoder-host-release-final.log` |
+| Fresh 1.1.0 optimized host tests, 26 passing | `release-1.1.0-host.log` |
 | Address / Thread Sanitizer host tests, 26 passing each | `decoder-host-address.log`, `decoder-host-thread.log` |
 | C Address / Undefined Behavior Sanitizer harness | `cft8-safety.log` |
-| App unit tests, 122 passing | `decoder-sim-final.log` |
+| Fresh 1.1.0 app unit tests, 122 passing | `release-1.1.0-simulator.log` |
 | Final iPhone interface methods, both passing in separate runs at largest text | `decoder-ui-iphone-verified.log` (controls), `decoder-ui-iphone-replay-labelled.log` (replay) |
 | Final iPad interface methods, both passing in separate runs at largest text | `decoder-ui-ipad-verified.log` (controls), `decoder-ui-ipad-replay-labelled.log` (replay) |
-| Signed Release archive and App Store package export | `decoder-signed-archive.log`, `decoder-appstore-export-retry.log` |
-| Final package signature, profile and SHA-256 | `decoder-distribution-verification.json` |
+| Signed 1.1.0 Release archive and local App Store package export | `release-1.1.0-archive.log`, `release-1.1.0-export.log` |
+| 1.1.0 package signature, profile and SHA-256 | `release-1.1.0-distribution-verification.json`, `release-1.1.0-source-manifest.json` |
 | Repeated recorded-window soak | `ft8-soak.json` |
 | Inspected final iPhone screenshots | `decoder-iphone-mute-check-screens/` (controls), `decoder-iphone-labelled-final-screens/` (successful replay) |
 | Inspected final iPad screenshots | `decoder-ipad-mute-check-screens/` (controls), `decoder-ipad-replay-verified-screens/` (successful replay) |
