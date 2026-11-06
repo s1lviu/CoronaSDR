@@ -2,7 +2,7 @@
 
 All notable user-facing changes are documented here.
 
-## [1.1.0] - Release candidate
+## [1.1.0] - 2026-11-06 (prerelease)
 
 ### Added and fixed
 
@@ -20,7 +20,7 @@ All notable user-facing changes are documented here.
 
 - FT8 recovers 23 of 24 original corpus annotations; one annotation and two additional WSJT-X reference outputs remain unresolved. This is not WSJT-X sensitivity parity.
 - Physical-device performance, audio routes, accessibility and receiver/RF qualification remain pending. The existing Bluetooth A2DP issue (#15) remains open.
-- Runtime testing at the iOS 18 minimum and App Store Connect validation remain pending. The release candidate has not been published or submitted to the App Store.
+- Runtime testing at the iOS 18 minimum and App Store Connect validation remain pending. Build 1.1.0 (9) has been uploaded to App Store Connect; App Store review and public distribution remain pending.
 
 ## [1.0.8] - 2026-10-20
 
