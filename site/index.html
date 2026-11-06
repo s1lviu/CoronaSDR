@@ -3,12 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CoronaSDR | High-Performance rtl_tcp Client for iOS</title>
+    <title>CoronaSDR | RTL-SDR for iPhone &amp; iPad, CW &amp; FT8</title>
     <meta
       name="description"
-      content="CoronaSDR is an iOS app for connecting to rtl_tcp SDR servers on your local network, with live spectrum, waterfall, and stable audio playback."
+      content="Free RTL-SDR app for iPhone and iPad with live spectrum, waterfall, scanning, and experimental CW Morse code and FT8 decoding over rtl_tcp."
     />
-    <meta name="keywords" content="SDR, iOS, iPhone, rtl_tcp, RTL-SDR, Software Defined Radio, Spectrum Analyzer, Waterfall, Radio" />
     <meta name="author" content="Silviu YO6SAY" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://coronasdr.pages.dev/" />
@@ -16,16 +15,21 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://coronasdr.pages.dev/" />
-    <meta property="og:title" content="CoronaSDR | High-Performance rtl_tcp Client for iOS" />
-    <meta property="og:description" content="Connect your iPhone to any rtl_tcp server. Experience smooth waterfall displays, precise tuning, and crystal-clear audio without the cloud." />
+    <meta property="og:site_name" content="CoronaSDR" />
+    <meta property="og:title" content="CoronaSDR | RTL-SDR for iPhone &amp; iPad, CW &amp; FT8" />
+    <meta property="og:description" content="Free RTL-SDR app for iPhone and iPad with live spectrum, waterfall, scanning, and experimental CW Morse code and FT8 decoding over rtl_tcp." />
     <meta property="og:image" content="https://coronasdr.pages.dev/assets/sdr.png" />
+    <meta property="og:image:alt" content="CoronaSDR app icon" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="1024" />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://coronasdr.pages.dev/" />
-    <meta property="twitter:title" content="CoronaSDR | High-Performance rtl_tcp Client for iOS" />
-    <meta property="twitter:description" content="Connect your iPhone to any rtl_tcp server. Experience smooth waterfall displays, precise tuning, and crystal-clear audio without the cloud." />
-    <meta property="twitter:image" content="https://coronasdr.pages.dev/assets/sdr.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://coronasdr.pages.dev/" />
+    <meta name="twitter:title" content="CoronaSDR | RTL-SDR for iPhone &amp; iPad, CW &amp; FT8" />
+    <meta name="twitter:description" content="Free RTL-SDR app for iPhone and iPad with live spectrum, waterfall, scanning, and experimental CW Morse code and FT8 decoding over rtl_tcp." />
+    <meta name="twitter:image" content="https://coronasdr.pages.dev/assets/sdr.png" />
+    <meta name="twitter:image:alt" content="CoronaSDR app icon" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="./assets/sdr.png" />
@@ -37,8 +41,8 @@
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "CoronaSDR",
-      "operatingSystem": "iOS 18.0+",
-      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "iOS 18.0+, iPadOS 18.0+",
+      "applicationCategory": "UtilitiesApplication",
       "url": "https://coronasdr.pages.dev/",
       "license": "https://github.com/s1lviu/CoronaSDR/blob/main/LICENSE",
       "downloadUrl": "https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137",
@@ -52,7 +56,15 @@
         "@type": "Person",
         "name": "Silviu YO6SAY"
       },
-      "description": "Turn your RTL-SDR dongle into a portable software-defined radio. Listen to FM broadcasts, aircraft, marine, amateur radio, and weather stations from your iPhone or iPad."
+      "description": "Free RTL-SDR app for iPhone and iPad with live spectrum, waterfall, scanning, and experimental CW Morse code and FT8 decoding over rtl_tcp.",
+      "featureList": [
+        "AM, NFM, WFM stereo, USB, LSB and CW reception",
+        "Live spectrum analyzer and waterfall",
+        "Experimental foreground CW Morse code and FT8 receive decoding",
+        "Station memories and frequency scanning",
+        "Background audio and Now Playing controls"
+      ],
+      "softwareRequirements": "An RTL-SDR receiver connected to an rtl_tcp server on the local network"
     }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -214,8 +226,9 @@
             <span class="font-bold tracking-tight">CoronaSDR</span>
           </a>
 
-          <div class="hidden md:flex items-center gap-8">
+          <div class="hidden lg:flex items-center gap-6">
             <a href="#features" class="nav-link">Features</a>
+            <a href="#decoding" class="nav-link">CW &amp; FT8</a>
             <a href="#setup" class="nav-link">Setup</a>
             <a href="#frequencies" class="nav-link">Frequencies</a>
             <a href="https://github.com/s1lviu/CoronaSDR" target="_blank" rel="noopener noreferrer" class="nav-link">Source</a>
@@ -225,7 +238,7 @@
             <a href="https://apps.apple.com/app/coronasdr-rtl-sdr-client/id6759222137" target="_blank" rel="noopener noreferrer" class="hidden sm:inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
               Download Free
             </a>
-            <button id="mobile-menu-btn" class="md:hidden p-2 text-muted-foreground hover:text-foreground">
+            <button id="mobile-menu-btn" aria-label="Open navigation menu" aria-controls="mobile-menu" aria-expanded="false" class="lg:hidden p-2 text-muted-foreground hover:text-foreground">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
             </button>
           </div>
@@ -233,16 +246,17 @@
       </header>
 
       <!-- Mobile Menu -->
-      <div id="mobile-menu" class="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm hidden md:hidden">
+      <div id="mobile-menu" class="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm hidden lg:hidden">
         <div class="fixed inset-y-0 right-0 w-full max-w-xs border-l bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out translate-x-full" id="mobile-menu-panel">
           <div class="flex items-center justify-between mb-8">
             <span class="font-bold text-lg">Menu</span>
-            <button id="close-menu-btn" class="p-2 text-muted-foreground hover:text-foreground">
+            <button id="close-menu-btn" aria-label="Close navigation menu" class="p-2 text-muted-foreground hover:text-foreground">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>
             </button>
           </div>
           <nav class="flex flex-col gap-6">
             <a href="#features" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Features</a>
+            <a href="#decoding" class="text-lg font-medium hover:text-primary transition-colors mobile-link">CW &amp; FT8 decoding</a>
             <a href="#setup" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Setup</a>
             <a href="#frequencies" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Frequencies</a>
             <a href="https://github.com/s1lviu/CoronaSDR" target="_blank" rel="noopener noreferrer" class="text-lg font-medium hover:text-primary transition-colors mobile-link">Source Code</a>
@@ -265,12 +279,12 @@
               </div>
 
               <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
-                Your RTL-SDR dongle, <br />
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">now on iPhone.</span>
+                RTL-SDR for <br />
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">iPhone and iPad.</span>
               </h1>
 
               <p class="text-lg text-muted-foreground max-w-xl leading-relaxed">
-                Listen to FM broadcasts, aircraft, marine, amateur radio, and weather stations. Connect to any rtl_tcp server and get a GPU-accelerated spectrum analyzer with crystal-clear audio in your pocket.
+                Explore software-defined radio with live spectrum, waterfall, scanning, and experimental CW Morse code and FT8 decoding. Connect CoronaSDR to an RTL-SDR receiver through an rtl_tcp server on your local network.
               </p>
 
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -292,7 +306,7 @@
                   <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold">Mac</div>
                   <div class="w-8 h-8 rounded-full border-2 border-background bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-[10px] font-bold">Lnx</div>
                 </div>
-                <p>Works with any rtl_tcp server &mdash; Raspberry Pi, macOS, Linux</p>
+                <p>Run rtl_tcp on a Raspberry Pi, Mac, or Linux host</p>
               </div>
             </div>
 
@@ -301,9 +315,11 @@
               <div class="relative rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
                  <img
                   src="./assets/coronasdr-waterfall.webp"
-                  alt="CoronaSDR app showing live spectrum waterfall on iPhone"
+                  alt="CoronaSDR RTL-SDR app displaying a radio spectrum and waterfall on iPhone"
                   class="w-full max-h-[600px] object-cover object-top"
-                  loading="lazy"
+                  width="1320"
+                  height="2868"
+                  fetchpriority="high"
                 />
                 <!-- Reflection/Glare effect -->
                 <div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 dark:opacity-100 pointer-events-none"></div>
@@ -315,8 +331,8 @@
         <!-- Features Bento Grid -->
         <section id="features" class="py-20">
           <div class="text-center max-w-2xl mx-auto mb-16">
-            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">A real SDR client, not a toy</h2>
-            <p class="text-muted-foreground text-lg">Six demodulation modes, GPU-accelerated visuals, and pro-grade controls &mdash; designed for iOS from the ground up.</p>
+            <h2 class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Explore, tune, and listen</h2>
+            <p class="text-muted-foreground text-lg">Six reception modes, a live spectrum analyzer, station memories, and receiver controls for your iPhone or iPad.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -335,7 +351,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M2 12h20"/><path d="m4.929 4.929 14.14 14.14"/><path d="m19.071 4.929-14.14 14.14"/></svg>
               </div>
               <h3 class="text-xl font-semibold mb-2">6 Demodulation Modes</h3>
-              <p class="text-muted-foreground">AM, NFM, WFM, USB, LSB, CW &mdash; with squelch, FM de-emphasis (50/75 &micro;s), configurable audio filters, and BFO tuning for SSB.</p>
+              <p class="text-muted-foreground">AM, narrowband FM, wideband FM stereo, USB, LSB, and CW &mdash; with squelch, FM de-emphasis (50/75 &micro;s), audio filters, and BFO tuning for single sideband.</p>
             </div>
 
             <!-- Feature 3: Scanning -->
@@ -362,7 +378,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
               </div>
               <h3 class="text-xl font-semibold mb-2">Background Audio</h3>
-              <p class="text-muted-foreground">Keep listening while you use other apps. Full lock screen and Now Playing integration &mdash; control playback without opening the app.</p>
+              <p class="text-muted-foreground">Keep listening while you use other apps, with lock screen and Now Playing controls. CW and FT8 decoding require the app to stay in the foreground.</p>
             </div>
 
             <!-- Feature 6: Advanced Control -->
@@ -371,7 +387,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               </div>
               <h3 class="text-xl font-semibold mb-2">Full SDR Control</h3>
-              <p class="text-muted-foreground">Gain (auto/manual), PPM correction, direct sampling, offset tuning, bias-tee, and 4 performance profiles from Ultra Low to High sample rate.</p>
+              <p class="text-muted-foreground">Adjust gain, PPM correction, and sample-rate profiles. Direct sampling, offset tuning, and bias tee are available where supported by your receiver and server.</p>
             </div>
 
             <!-- Feature 7: Deep Links -->
@@ -394,19 +410,55 @@
           </div>
         </section>
 
+        <!-- CW and FT8 decoding -->
+        <section id="decoding" class="py-20 scroll-mt-24" aria-labelledby="decoding-title">
+          <div class="text-center max-w-2xl mx-auto mb-12">
+            <span class="inline-flex rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary mb-5">Experimental &middot; Receive only</span>
+            <h2 id="decoding-title" class="text-3xl font-bold tracking-tight sm:text-4xl mb-4">CW Morse code and FT8 decoding</h2>
+            <p class="text-muted-foreground text-lg">Read received signals as text on your iPhone or iPad. During an active receiver session, open Decode on the Radio screen and choose CW or FT8.</p>
+          </div>
+          <div class="grid md:grid-cols-2 gap-6">
+            <article class="bento-card">
+              <span class="bento-icon font-mono font-semibold" aria-hidden="true">CW</span>
+              <h3 class="text-xl font-semibold mb-3">Follow a Morse code signal</h3>
+              <p class="text-muted-foreground mb-4">Decode one selected CW carrier through a narrow receive channel. Adjust the listening pitch without moving away from the signal.</p>
+              <ul class="list-disc pl-5 space-y-2 text-muted-foreground">
+                <li>Set a speed hint or enable automatic speed tracking.</li>
+                <li>Read a text transcript with uncertain characters marked.</li>
+                <li>Share decoded text from the receiver session.</li>
+              </ul>
+            </article>
+            <article class="bento-card">
+              <span class="bento-icon font-mono font-semibold" aria-hidden="true">FT8</span>
+              <h3 class="text-xl font-semibold mb-3">Read FT8 messages</h3>
+              <p class="text-muted-foreground mb-4">Select FT8 to apply a USB receive profile and collect decoded messages in a bounded history.</p>
+              <ul class="list-disc pl-5 space-y-2 text-muted-foreground">
+                <li>View decoded callsigns, message text, and message details.</li>
+                <li>Keep unsupported message types visible.</li>
+                <li>Share received messages as text.</li>
+              </ul>
+            </article>
+          </div>
+          <div class="mt-6 rounded-xl border border-border bg-muted/40 p-6">
+            <h3 class="font-semibold mb-2">Monitor quietly, read at your pace</h3>
+            <p class="text-muted-foreground">Mute listening audio while foreground decoding continues, or freeze displayed results while reception continues. Both decoders pause when the app moves to the background.</p>
+            <p class="text-sm text-muted-foreground mt-3">These experimental decoders may miss signals or messages. FT8 reception times are estimates; CoronaSDR does not transmit. <a href="https://github.com/s1lviu/CoronaSDR/blob/main/docs/DECODER-VALIDATION.md" class="text-primary underline underline-offset-4">Read decoding limits and validation</a>.</p>
+          </div>
+        </section>
+
         <!-- Setup Section -->
         <section id="setup" class="py-20">
           <div class="rounded-3xl border border-border bg-card p-8 lg:p-12 shadow-sm">
             <div class="grid lg:grid-cols-2 gap-12 items-center">
               <div>
-                <h2 class="text-3xl font-bold tracking-tight mb-6">Up and running in 3 steps</h2>
-                <p class="text-muted-foreground text-lg mb-8">Plug in your RTL-SDR dongle, start the server, and connect from your iPhone. No cloud account, no subscription.</p>
+                <h2 class="text-3xl font-bold tracking-tight mb-6">Connect your RTL-SDR receiver</h2>
+                <p class="text-muted-foreground text-lg mb-8">You need an iPhone or iPad running iOS 18 or later, an RTL-SDR receiver with a suitable antenna or signal input, and an rtl_tcp server on your local network.</p>
 
                 <div class="space-y-8">
                   <div class="flex gap-4">
                     <span class="setup-step">1</span>
                     <div>
-                      <h4 class="font-semibold text-foreground">Start rtl_tcp on your server</h4>
+                      <h3 class="font-semibold text-foreground">Start rtl_tcp on your server</h3>
                       <p class="text-sm text-muted-foreground mt-1">Raspberry Pi, Mac, or any Linux box with an RTL-SDR plugged in:</p>
                       <code class="mt-2 block w-fit rounded bg-muted px-3 py-1 font-mono text-sm text-foreground">rtl_tcp -a 0.0.0.0</code>
                     </div>
@@ -415,16 +467,16 @@
                   <div class="flex gap-4">
                     <span class="setup-step">2</span>
                     <div>
-                      <h4 class="font-semibold text-foreground">Open CoronaSDR</h4>
-                      <p class="text-sm text-muted-foreground mt-1">Enter the server's IP and port, then tap connect. The built-in connection test verifies everything works.</p>
+                      <h3 class="font-semibold text-foreground">Open CoronaSDR</h3>
+                      <p class="text-sm text-muted-foreground mt-1">Join the same local network, allow local-network access, and enter the server's IP address and port. Use the connection test to check server access.</p>
                     </div>
                   </div>
 
                   <div class="flex gap-4">
                     <span class="setup-step">3</span>
                     <div>
-                      <h4 class="font-semibold text-foreground">Pick a mode and tune in</h4>
-                      <p class="text-sm text-muted-foreground mt-1">Try WFM at 100 MHz for your local FM station, or AM at 118&ndash;137 MHz for aircraft.</p>
+                      <h3 class="font-semibold text-foreground">Pick a mode and tune in</h3>
+                      <p class="text-sm text-muted-foreground mt-1">Choose a frequency and reception mode, then start listening. To read Morse code or FT8 messages, select CW or FT8 in the Decode controls.</p>
                     </div>
                   </div>
                 </div>
@@ -517,7 +569,7 @@
             <div class="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/20 transition-colors">
               <div class="text-sm font-medium text-primary">ADS-B</div>
               <div class="text-2xl font-bold tracking-tight">1090 MHz</div>
-              <div class="text-xs text-muted-foreground">Aircraft position data</div>
+              <div class="text-xs text-muted-foreground">Signal viewing only &mdash; no ADS-B decoding</div>
             </div>
           </div>
           <p class="text-center text-sm text-muted-foreground mt-6">Frequencies vary by region. Check your local band plans for amateur radio and public safety allocations.</p>
@@ -531,7 +583,7 @@
             <p class="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">Inspect the DSP pipeline, build CoronaSDR yourself, report issues, or contribute improvements. The complete source and release history are public on GitHub.</p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a href="https://github.com/s1lviu/CoronaSDR" target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center justify-center rounded-lg bg-foreground px-6 text-sm font-semibold text-background transition-all hover:opacity-90 hover:scale-[1.02]">Browse source</a>
-              <a href="https://github.com/s1lviu/CoronaSDR/releases/latest" target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-background px-6 text-sm font-semibold text-foreground transition-all hover:bg-muted hover:scale-[1.02]">Download latest release</a>
+              <a href="https://github.com/s1lviu/CoronaSDR/releases" target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-background px-6 text-sm font-semibold text-foreground transition-all hover:bg-muted hover:scale-[1.02]">Browse releases</a>
             </div>
           </div>
         </section>
@@ -592,6 +644,7 @@
       const mobileLinks = document.querySelectorAll('.mobile-link');
 
       function openMenu() {
+        mobileMenuBtn.setAttribute('aria-expanded', 'true');
         mobileMenu.classList.remove('hidden');
         // Slight delay to allow display:block to apply before transform
         setTimeout(() => {
@@ -601,6 +654,7 @@
       }
 
       function closeMenu() {
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
         mobileMenuPanel.classList.add('translate-x-full');
         setTimeout(() => {
           mobileMenu.classList.add('hidden');
